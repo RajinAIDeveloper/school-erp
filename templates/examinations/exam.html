@@ -1,4 +1,89 @@
-{% extends "layouts/base.html" %}{% block content %}
-<div class="card card-body"><h2 class="font-semibold text-xl">{{ exam }}</h2><p>Status: {{ exam.status }} · Published version: {{ exam.publication_version }}</p>
-<div class="flex gap-3 my-4"><a class="btn-secondary" href="{% url 'examinations:marks' %}">Enter marks</a><a class="btn-secondary" href="{% url 'examinations:results' %}?exam={{ exam.pk }}">Results</a><a class="btn-secondary" href="{% url 'examinations:rules' exam.grade_scale_id %}">Grading rules</a></div>
-{% if can_publish and exam.status != "published" %}<form method="post" action="{% url 'examinations:publish' exam.pk %}">{% csrf_token %}<p class="mb-3">Publishing requires every scheduled mark or an explicit absence. It freezes report snapshots and locks mark entry.</p><button class="btn-primary">Publish results</button></form>{% endif %}</div>{% endblock %}
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block header_actions %}
+  <a href="{% url 'examinations:exam_routine' exam.pk %}" class="btn-secondary btn-sm">Routine</a>
+  {% if perms.examinations.change_exam and exam.publication_version == 0 %}
+    <a href="{% url 'examinations:exam_update' exam.pk %}" class="btn-secondary btn-sm">Edit</a>
+  {% endif %}
+  <a href="{% url 'examinations:results' %}?exam={{ exam.pk }}" class="btn-secondary btn-sm">Results</a>
+{% endblock %}
+{% block content %}
+<div class="card mb-6">
+  <div class="card-body">
+    <div class="flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <h2 class="text-xl font-semibold">{{ exam.name }} {{ exam.status|status_badge }}</h2>
+        <p class="text-slate-600">{{ exam.academic_year }}{% if exam.term %} &middot; {{ exam.term }}{% endif %} &middot; grading {{ exam.grade_scale }}</p>
+        <p class="mt-1 text-sm text-slate-500">
+          {% if exam.start_date %}{{ exam.start_date|date:"d M Y" }}{% if exam.end_date %} – {{ exam.end_date|date:"d M Y" }}{% endif %}
+          {% else %}Dates not set{% endif %}
+          {% if exam.published_at %} &middot; published {{ exam.published_at|date:"d M Y" }} by {{ exam.published_by }} (version {{ exam.publication_version }}){% endif %}
+        </p>
+      </div>
+      <div class="rounded-lg bg-slate-50 px-5 py-3 text-center">
+        <p class="text-xs text-slate-500">Marks entered</p>
+        <p class="text-2xl font-bold {% if marks_entered < marks_expected %}text-amber-700{% else %}text-emerald-700{% endif %}">{{ marks_entered }}<span class="text-base text-slate-400">/{{ marks_expected }}</span></p>
+      </div>
+    </div>
+
+    {% if can_publish and exam.status != "published" %}
+      <form method="post" action="{% url 'examinations:publish' exam.pk %}" class="mt-5 border-t border-slate-200 pt-4"
+            data-confirm="Publish these results? Marks are locked afterwards and corrections need an approved unlock.">
+        {% csrf_token %}
+        <p class="mb-3 text-sm text-slate-600">
+          Publishing takes a permanent snapshot of every student's result and locks the marks.
+          Every enrolled student needs a mark or an explicit absence first.
+        </p>
+        <button class="btn-primary">Publish results</button>
+      </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="grid gap-6 lg:grid-cols-2">
+  <section class="card">
+    <div class="card-header"><h3 class="font-semibold">Papers</h3>
+      {% if perms.examinations.add_examschedule and exam.publication_version == 0 %}
+        <a href="{% url 'examinations:schedule_create' %}" class="link text-sm">Add paper</a>{% endif %}</div>
+    <table class="table">
+      <thead><tr><th>Class</th><th>Subject</th><th>Date</th><th class="text-right">Full</th><th class="text-right">Pass</th></tr></thead>
+      <tbody>
+        {% for s in schedules %}
+          <tr><td>{{ s.class_level }}</td><td>{{ s.subject }}</td>
+            <td>{{ s.date|date:"d M Y"|default:"—" }}</td>
+            <td class="text-right">{{ s.full_marks }}</td><td class="text-right">{{ s.pass_marks }}</td></tr>
+        {% empty %}<tr><td colspan="5">{% include "components/empty.html" with message="No papers scheduled. Results cannot be published until at least one exists." %}</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="card">
+    <div class="card-header"><h3 class="font-semibold">Print for a section</h3></div>
+    <div class="card-body space-y-4">
+      <form method="get" action="{% url 'examinations:admit_cards' %}" class="flex flex-wrap items-end gap-3">
+        <input type="hidden" name="exam" value="{{ exam.pk }}">
+        <div class="flex-1"><label class="label">Section</label>
+          <select name="section" class="input">
+            {% for s in sections %}<option value="{{ s.pk }}">{{ s }}</option>{% endfor %}
+          </select></div>
+        <button class="btn-secondary">Admit cards</button>
+      </form>
+
+      {% if perms.examinations.view_mark %}
+      <form method="get" action="{% url 'examinations:report_cards' %}" class="flex flex-wrap items-end gap-3">
+        <input type="hidden" name="exam" value="{{ exam.pk }}">
+        <div class="flex-1"><label class="label">Section</label>
+          <select name="section" class="input">
+            {% for s in sections %}<option value="{{ s.pk }}">{{ s }}</option>{% endfor %}
+          </select></div>
+        <button class="btn-secondary">Report cards</button>
+      </form>
+      {% endif %}
+
+      <p class="text-xs text-slate-500">
+        Report cards print whatever the results currently say; before publication each is marked DRAFT.
+      </p>
+    </div>
+  </section>
+</div>
+{% endblock %}

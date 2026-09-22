@@ -192,6 +192,11 @@ def test_approved_leave_marks_attendance_and_withdrawal_removes_only_those_rows(
 
 
 def test_self_check_in_then_out_requires_the_school_policy(erp):
+    """Uses a pinned clock: the real one would make this fail near midnight."""
+    from unittest import mock
+
+    from django.utils import timezone
+
     erp.employee.user = erp.teacher
     erp.employee.save()
     with pytest.raises(ValidationError):
@@ -199,19 +204,17 @@ def test_self_check_in_then_out_requires_the_school_policy(erp):
 
     erp.school.staff_self_checkin = True
     erp.school.save()
-    row = self_check(erp.employee, erp.teacher)
-    assert row.check_in and row.check_out is None
+    arrival = timezone.localtime().replace(hour=8, minute=30, second=0, microsecond=0)
+    with mock.patch("attendance.services.timezone.localtime", return_value=arrival):
+        row = self_check(erp.employee, erp.teacher)
+    assert row.check_in == arrival.time() and row.check_out is None
 
-    from datetime import datetime
+    departure = arrival + timedelta(hours=8)
+    row = self_check(erp.employee, erp.teacher, when=departure)
+    assert row.check_out == departure.time()
 
-    from django.utils import timezone
-
-    # An explicit later moment, so the test does not depend on the wall clock.
-    moment = timezone.make_aware(datetime.combine(row.date, row.check_in)) + timedelta(minutes=30)
-    row = self_check(erp.employee, erp.teacher, when=moment)
-    assert row.check_out is not None
     with pytest.raises(ValidationError):
-        self_check(erp.employee, erp.teacher, when=moment)
+        self_check(erp.employee, erp.teacher, when=departure)
 
 
 def test_self_check_in_refused_on_a_closed_day(erp):

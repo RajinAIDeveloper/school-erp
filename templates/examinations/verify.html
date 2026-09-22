@@ -1,0 +1,31 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Report verification · {{ school.name }}</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body class="flex min-h-full items-center justify-center bg-slate-100 px-4 py-10">
+  <main class="w-full max-w-lg rounded-xl bg-white p-8 shadow-lg">
+    <p class="text-sm uppercase tracking-wide text-slate-500">Report verification</p>
+    <h1 class="mt-1 text-xl font-semibold text-slate-900">{{ school.name }}</h1>
+
+    <div class="mt-6 rounded-lg border px-5 py-4
+      {% if current %}border-emerald-200 bg-emerald-50{% else %}border-amber-200 bg-amber-50{% endif %}">
+      <p class="font-medium {% if current %}text-emerald-800{% else %}text-amber-800{% endif %}">
+        {% if current %}This is a current, published report card.{% else %}This code refers to a superseded or unpublished version.{% endif %}
+      </p>
+      <p class="mt-2 text-sm text-slate-600">
+        Version {{ snapshot.version }}{% if not current %}, which has since been replaced or withdrawn{% endif %}.
+        Issued {{ snapshot.created_at|date:"d M Y" }}.
+      </p>
+    </div>
+
+    <p class="mt-6 text-sm text-slate-500">
+      For privacy, verification confirms only that a record exists and whether it is current.
+      It names no student and shows no marks. To query a result, contact the school office.
+    </p>
+  </main>
+</body>
+</html>

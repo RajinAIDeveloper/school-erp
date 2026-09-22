@@ -1,20 +1,32 @@
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
+from urllib.parse import urlencode
 
 from django import forms
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 
-from academics.models import ClassLevel
+from academics.models import ClassLevel, Section
 from core.access import is_manager, require_permission, sections_for, students_for
-from core.exports import pdf_response, spreadsheet
+from core.exports import spreadsheet
 from core.forms import TailwindFormMixin
 from core.generic import ERPListView
+from core.pdf import table_document
 from students.models import Enrollment
 
 from .models import Exam, ExamSchedule, GradeRule, GradeScale, Mark, ResultSnapshot, UnlockRequest
-from .services import active_unlock, assert_can_mark, build_result_sheet, publish_exam, review_unlock, save_mark
+from .services import (
+    MarkEntryError,
+    active_unlock,
+    assert_can_mark,
+    build_result_sheet,
+    publish_exam,
+    review_unlock,
+    save_mark,
+    save_marks,
+)
 
 
 class ExamListView(ERPListView):
@@ -36,11 +48,30 @@ class ExamListView(ERPListView):
 
 @require_permission("examinations.view_exam")
 def exam_detail(request, pk):
-    exam = get_object_or_404(Exam, school=request.school, pk=pk)
+    exam = get_object_or_404(
+        Exam.objects.select_related("academic_year", "term", "grade_scale"), school=request.school, pk=pk
+    )
+    schedules = exam.schedules.select_related("subject", "class_level").order_by("date", "class_level__order")
+    sections = sections_for(request.user, request.school).select_related("class_level")
+    marks_entered = Mark.objects.filter(schedule__exam=exam).count()
+    expected = sum(
+        Enrollment.objects.filter(
+            school=request.school, academic_year=exam.academic_year, class_level=s.class_level
+        ).count()
+        for s in schedules
+    )
     return render(
         request,
         "examinations/exam.html",
-        {"exam": exam, "page_title": str(exam), "can_publish": is_manager(request.user)},
+        {
+            "exam": exam,
+            "schedules": schedules,
+            "sections": sections,
+            "marks_entered": marks_entered,
+            "marks_expected": expected,
+            "page_title": str(exam),
+            "can_publish": is_manager(request.user) and request.user.has_perm("examinations.change_exam"),
+        },
     )
 
 
@@ -82,31 +113,83 @@ class MarkForm(TailwindFormMixin, forms.Form):
 
 @require_permission("examinations.view_mark")
 def marks(request):
-    selector = MarkFilter(request.GET or None, user=request.user, school=request.school)
-    rows = []
-    schedule = section = None
-    locked = False
+    """
+    A grid: every student of the section on one screen, saved in one submission.
+
+    Entering marks one student at a time was the single slowest thing a teacher had to do
+    in this system.
+    """
+    selector = MarkFilter(request.GET or request.POST or None, user=request.user, school=request.school)
+    rows, schedule, section, locked = [], None, None, False
+    row_errors = {}
+
     if selector.is_bound and selector.is_valid():
         schedule = selector.cleaned_data["schedule"]
         section = selector.cleaned_data["section"]
         assert_can_mark(request.user, schedule)
         locked = schedule.exam.status == "published" and not active_unlock(request.user, schedule)
-        for e in Enrollment.objects.filter(
-            school=request.school, academic_year=schedule.exam.academic_year, section=section
-        ).select_related("student"):
-            m = Mark.objects.filter(schedule=schedule, enrollment=e).first()
+        enrollments = list(
+            Enrollment.objects.filter(school=request.school, academic_year=schedule.exam.academic_year, section=section)
+            .select_related("student")
+            .order_by("roll_number")
+        )
+        existing = {
+            mark.enrollment_id: mark for mark in Mark.objects.filter(schedule=schedule, enrollment__in=enrollments)
+        }
+
+        if request.method == "POST":
+            if locked:
+                raise PermissionDenied("Results are published. Request an unlock before editing.")
+            if not request.user.has_perm("examinations.change_mark"):
+                raise PermissionDenied
+            submitted, invalid = [], {}
+            for enrollment in enrollments:
+                prefix = str(enrollment.pk)
+                raw = request.POST.get(f"{prefix}-score", "").strip()
+                absent = request.POST.get(f"{prefix}-absent") == "on"
+                try:
+                    version = int(request.POST.get(f"{prefix}-version", "0"))
+                except ValueError:
+                    version = 0
+                score = None
+                if raw and not absent:
+                    try:
+                        score = Decimal(raw)
+                    except InvalidOperation:
+                        invalid[enrollment.pk] = f"'{raw}' is not a number."
+                        continue
+                submitted.append((enrollment, score, absent, version))
+            if invalid:
+                row_errors = invalid
+            else:
+                try:
+                    saved = save_marks(user=request.user, schedule=schedule, section=section, rows=submitted)
+                    messages.success(request, f"Saved {len(saved)} mark(s).")
+                    return redirect(
+                        reverse("examinations:marks")
+                        + "?"
+                        + urlencode({"schedule": schedule.pk, "section": section.pk})
+                    )
+                except MarkEntryError as exc:
+                    row_errors = exc.errors
+                    messages.error(request, "Nothing was saved. Fix the rows marked below and submit again.")
+                except ValidationError as exc:
+                    messages.error(request, " ".join(exc.messages))
+
+        for enrollment in enrollments:
+            mark = existing.get(enrollment.pk)
             rows.append(
                 {
-                    "enrollment": e,
-                    "form": MarkForm(
-                        initial={
-                            "score": m.marks_obtained if m else None,
-                            "absent": m.is_absent if m else False,
-                            "expected_version": m.version if m else 0,
-                        }
-                    ),
+                    "enrollment": enrollment,
+                    "mark": mark,
+                    "score": mark.marks_obtained if mark and not mark.is_absent else None,
+                    "absent": bool(mark and mark.is_absent),
+                    "version": mark.version if mark else 0,
+                    "error": row_errors.get(enrollment.pk),
                 }
             )
+
+    entered = sum(1 for row in rows if row["score"] is not None or row["absent"])
     return render(
         request,
         "examinations/marks.html",
@@ -116,6 +199,8 @@ def marks(request):
             "schedule": schedule,
             "section": section,
             "locked": locked,
+            "entered": entered,
+            "missing": len(rows) - entered,
             "page_title": "Mark entry",
         },
     )
@@ -217,7 +302,17 @@ def results(request):
                 for r in sheet["rows"]
             ]
             if fmt == "pdf":
-                return pdf_response("Result sheet", headers, rows, request.school.name)
+                subtitle = f"{sheet['class_level']}"
+                if sheet["section"]:
+                    subtitle += f" - {sheet['section']}"
+                return table_document(
+                    request.school,
+                    f"Result sheet - {sheet['exam'].name}",
+                    headers,
+                    rows,
+                    subtitle=subtitle,
+                    filename="result-sheet.pdf",
+                )
             stats = sheet["subject_stats"]
             return spreadsheet(
                 "results",
@@ -280,21 +375,9 @@ def report_card(request, exam_pk, student_pk):
         raise Http404
     snap = ResultSnapshot.objects.filter(exam=exam, enrollment=enr, version=exam.publication_version).first()
     if request.GET.get("format") == "pdf":
-        data = [
-            [
-                c["subject"],
-                c["full_marks"],
-                "ABS" if c["absent"] else c["score"],
-                c["letter"] if not c["missing"] else "?",
-            ]
-            for c in row["cells"]
-        ]
-        data.append(["Total", row["full_total"], row["total"], row["result"]])
-        title = f"{exam.name} · {student.full_name}" + (" · DRAFT" if exam.status != "published" else "")
-        subtitle = f"{request.school.name} | {enr.section} | GPA {row['gpa']} | Rank {row['rank']} | Version {exam.publication_version}"
-        if snap:
-            subtitle += f" | Verification: {snap.verification_code}"
-        return pdf_response(title, ["Subject", "Full marks", "Obtained", "Grade"], data, subtitle)
+        from .documents import report_card_pdf
+
+        return report_card_pdf(request.school, exam, enr, row, snap)
     return render(
         request,
         "examinations/report_card.html",
@@ -303,20 +386,23 @@ def report_card(request, exam_pk, student_pk):
 
 
 def verify(request, code):
-    snap = get_object_or_404(ResultSnapshot.objects.select_related("exam", "school"), verification_code=code)
-    # Public verification deliberately reveals no child's identity or marks.
-    state = (
-        "Current"
-        if snap.exam.status == "published" and snap.version == snap.exam.publication_version
-        else "Superseded or unpublished"
-    )
-    from django.http import HttpResponse
-    from django.utils.html import format_html
+    """
+    Public check that a report card is genuine.
 
-    return HttpResponse(
-        format_html(
-            "<h1>Report verification</h1><p>{}</p><p>Version {} · {}</p>", snap.school.name, snap.version, state
-        )
+    It confirms the school, the version and whether that version is still current, and
+    deliberately names no child and no mark: anyone may be holding the code.
+    """
+    snapshot = get_object_or_404(ResultSnapshot.objects.select_related("exam", "school"), verification_code=code)
+    current = snapshot.exam.status == "published" and snapshot.version == snapshot.exam.publication_version
+    return render(
+        request,
+        "examinations/verify.html",
+        {
+            "snapshot": snapshot,
+            "school": snapshot.school,
+            "current": current,
+            "page_title": "Report verification",
+        },
     )
 
 
@@ -396,4 +482,123 @@ def grade_rules(request, pk):
         return redirect("examinations:rules", pk=pk)
     return render(
         request, "examinations/rules.html", {"formset": formset, "page_title": "Grading rules: " + scale.name}
+    )
+
+
+@require_permission("examinations.view_exam")
+def admit_cards(request):
+    """Printable admit cards for one section of an exam."""
+    from .documents import admit_cards_pdf
+
+    exam = get_object_or_404(Exam, school=request.school, pk=request.GET.get("exam", 0))
+    section = get_object_or_404(Section, school=request.school, pk=request.GET.get("section", 0))
+    if not is_manager(request.user) and not sections_for(request.user, request.school).filter(pk=section.pk).exists():
+        raise PermissionDenied("You can print admit cards only for your own sections.")
+    schedules = list(
+        exam.schedules.filter(class_level=section.class_level).select_related("subject").order_by("date", "start_time")
+    )
+    enrollments = list(
+        Enrollment.objects.filter(school=request.school, academic_year=exam.academic_year, section=section)
+        .select_related("student", "section__class_level")
+        .order_by("roll_number")
+    )
+    return admit_cards_pdf(request.school, exam, enrollments, schedules)
+
+
+@require_permission("examinations.view_exam")
+def exam_routine(request, pk):
+    """The paper timetable for an exam, on screen or as a PDF."""
+    exam = get_object_or_404(Exam, school=request.school, pk=pk)
+    schedules = exam.schedules.select_related("subject", "class_level").order_by(
+        "date", "start_time", "class_level__order"
+    )
+    headers = ["Date", "Time", "Class", "Subject", "Full marks", "Pass marks", "Room"]
+    rows = [
+        [
+            s.date or "To be announced",
+            f"{s.start_time:%H:%M} - {s.end_time:%H:%M}" if s.start_time and s.end_time else "",
+            str(s.class_level),
+            str(s.subject),
+            s.full_marks,
+            s.pass_marks,
+            s.room,
+        ]
+        for s in schedules
+    ]
+    fmt = request.GET.get("format")
+    if fmt == "pdf":
+        return table_document(
+            request.school,
+            f"Examination routine - {exam.name}",
+            headers,
+            rows,
+            subtitle=str(exam.academic_year),
+            filename=f"exam-routine-{exam.pk}.pdf",
+        )
+    if fmt in ("csv", "xlsx"):
+        return spreadsheet(f"exam-routine-{exam.pk}", headers, rows, fmt)
+    return render(
+        request,
+        "generic/report.html",
+        {"page_title": f"Examination routine: {exam.name}", "headers": headers, "rows": rows, "form": None},
+    )
+
+
+@require_permission("examinations.view_mark")
+def report_cards(request):
+    """Every card for a section in one PDF, for printing in a single run."""
+    from .documents import bulk_report_cards_pdf
+
+    exam = get_object_or_404(Exam, school=request.school, pk=request.GET.get("exam", 0))
+    section = get_object_or_404(Section, school=request.school, pk=request.GET.get("section", 0))
+    if not is_manager(request.user) and not sections_for(request.user, request.school).filter(pk=section.pk).exists():
+        raise PermissionDenied("You can print cards only for your own sections.")
+    sheet = build_result_sheet(exam, section.class_level, section)
+    enrollments = {
+        e.pk: e
+        for e in Enrollment.objects.filter(
+            school=request.school, section=section, academic_year=exam.academic_year
+        ).select_related("student", "section__class_level")
+    }
+    snapshots = {s.enrollment_id: s for s in ResultSnapshot.objects.filter(exam=exam, version=exam.publication_version)}
+    cards = [
+        (enrollments[row["enrollment_id"]], row, snapshots.get(row["enrollment_id"]))
+        for row in sheet["rows"]
+        if row["enrollment_id"] in enrollments
+    ]
+    return bulk_report_cards_pdf(request.school, exam, cards)
+
+
+@require_permission(None)
+def progress(request, student_pk):
+    """One student's published results across the exams they have sat."""
+    from .documents import progress_rows
+
+    student = get_object_or_404(students_for(request.user, request.school), pk=student_pk)
+    enrollments = {
+        e.academic_year_id: e
+        for e in Enrollment.objects.filter(school=request.school, student=student).select_related(
+            "section__class_level", "academic_year"
+        )
+    }
+    exams = Exam.objects.filter(school=request.school, academic_year_id__in=enrollments, status="published").order_by(
+        "academic_year__start_date", "start_date", "name"
+    )
+    rows = progress_rows(exams, enrollments)
+    headers = ["Examination", "Class", "Total", "Percent", "GPA", "Rank", "Result"]
+    table = [[r["exam"].name, r["section"], r["total"], r["percent"], r["gpa"], r["rank"], r["result"]] for r in rows]
+    if request.GET.get("format") == "pdf":
+        return table_document(
+            request.school,
+            "Progress report",
+            headers,
+            table,
+            subtitle=f"{student.full_name} ({student.student_id})",
+            filename=f"progress-{student.student_id}.pdf",
+            align_right=(2, 3, 4, 5),
+        )
+    return render(
+        request,
+        "examinations/progress.html",
+        {"student": student, "rows": rows, "page_title": f"Progress: {student.full_name}"},
     )

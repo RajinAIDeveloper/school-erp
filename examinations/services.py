@@ -8,6 +8,7 @@ from django.utils import timezone
 from academics.models import ClassLevel, SubjectTeacher
 from core.access import assert_school, is_manager
 from core.models import AuditLog
+from messaging.notifications import notify_results_published
 from students.models import Enrollment
 
 from .grading import grade_for, pct_of, scale_rules
@@ -263,6 +264,10 @@ def snapshot_exam(exam, user):
         object_id=str(exam.pk),
         description=f"Snapshot version {version}",
     )
+    # Announced after commit, deduplicated per student and version, and only when the
+    # school has switched result messages on.
+    published = list(ResultSnapshot.objects.filter(exam=exam, version=version).select_related("enrollment__student"))
+    transaction.on_commit(lambda: notify_results_published(exam, published))
     return exam
 
 
@@ -294,3 +299,45 @@ def review_unlock(request_obj, user, approve):
         school=obj.school, user=user, action="marks.unlock." + obj.status, object_id=str(obj.pk), description=obj.reason
     )
     return obj
+
+
+class MarkEntryError(Exception):
+    """Carries per-student messages so the grid can show each one in place."""
+
+    def __init__(self, errors):
+        self.errors = errors
+        super().__init__(f"{len(errors)} mark(s) could not be saved")
+
+
+@transaction.atomic
+def save_marks(*, user, schedule, section, rows):
+    """
+    Save a whole class in one go.
+
+    `rows` is [(enrollment, score, absent, expected_version)]. Every row is validated
+    before any is written: a teacher entering thirty marks should not discover on row
+    twenty-nine that the first twenty-eight went in and the rest did not. Any error
+    rolls the lot back and is reported against its own student.
+    """
+    assert_can_mark(user, schedule)
+    errors = {}
+    saved = []
+    for enrollment, score, absent, expected_version in rows:
+        if score is None and not absent:
+            continue  # nothing entered for this student yet
+        try:
+            saved.append(
+                save_mark(
+                    user=user,
+                    schedule=schedule,
+                    enrollment=enrollment,
+                    score=score,
+                    absent=absent,
+                    expected_version=expected_version,
+                )
+            )
+        except (ValidationError, PermissionDenied) as exc:
+            errors[enrollment.pk] = " ".join(getattr(exc, "messages", [str(exc)]))
+    if errors:
+        raise MarkEntryError(errors)
+    return saved
