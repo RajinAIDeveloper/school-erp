@@ -62,6 +62,7 @@ class SMSBatch(SchoolScopedModel):
 class SMSMessage(SchoolScopedModel):
     class Status(models.TextChoices):
         QUEUED = "queued", "Queued"
+        PROCESSING = "processing", "Processing"
         SENT = "sent", "Sent"
         FAILED = "failed", "Failed"
 

@@ -1,0 +1,10 @@
+{% extends "layouts/base.html" %}{% block content %}
+<div class="grid gap-4 md:grid-cols-2">{% for s in students %}
+<div class="card card-body"><h2 class="font-semibold text-lg">{{ s.full_name }} ? {{ s.student_id }}</h2>
+<p class="text-slate-600 mb-4">{% if s.current_enrollment %}{{ s.current_enrollment.section }} ? Roll {{ s.current_enrollment.roll_number }}{% else %}No current enrollment{% endif %}</p>
+<div class="flex flex-wrap gap-3"><a class="btn-secondary" href="{% url 'portal:attendance' %}?student={{ s.pk }}">Attendance</a>
+<a class="btn-secondary" href="{% url 'portal:fees' %}?student={{ s.pk }}">Fees</a>
+<a class="btn-secondary" href="{% url 'portal:results' %}?student={{ s.pk }}">Published results</a>
+<a class="btn-secondary" href="{% url 'timetable:routine' %}">Class routine</a></div></div>
+{% empty %}<div class="card card-body">No student is linked to this account. Ask the school administrator to link the student or guardian profile.</div>{% endfor %}</div>
+{% endblock %}

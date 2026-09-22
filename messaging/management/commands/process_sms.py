@@ -13,8 +13,9 @@ class Command(BaseCommand):
         ids=list(SMSMessage.objects.filter(status="queued").order_by("pk").values_list("pk",flat=True)[:max(0,options["limit"])])
         for pk in ids:
             with transaction.atomic():
-                msg=SMSMessage.objects.select_for_update().filter(pk=pk,status="queued").first()
-                if msg:
-                    if backend.deliver(msg): sent+=1
-                    else: failed+=1
+                claimed=SMSMessage.objects.filter(pk=pk,status="queued").update(status="processing")
+            if claimed:
+                msg=SMSMessage.objects.get(pk=pk)
+                if backend.deliver(msg): sent+=1
+                else: failed+=1
         self.stdout.write(f"Sent {sent}; failed {failed}.")

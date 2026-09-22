@@ -1,0 +1,3 @@
+{% extends "layouts/base.html" %}{% load erp %}{% block content %}
+<form method="get" class="card card-body mb-4">{% render_form form %}<div class="flex flex-wrap gap-3 mt-4"><button class="btn-primary">View overview</button><button class="btn-secondary" name="format" value="csv">CSV</button><button class="btn-secondary" name="format" value="xlsx">Excel</button><button class="btn-secondary" name="format" value="pdf">PDF</button></div></form>
+<div class="card overflow-x-auto"><table class="table"><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody>{% for row in rows %}<tr><td>{{ row.0 }}</td><td>{{ row.1 }}</td></tr>{% empty %}<tr><td>Choose a date range.</td><td></td></tr>{% endfor %}</tbody></table></div>{% endblock %}

@@ -10,9 +10,14 @@ def listing(request):
     items=[i for i in DownloadItem.objects.filter(school=request.school,is_active=True).select_related("category") if i.visible_to(request.user)]
     return render(request,"downloads/list.html",{"items":items,"page_title":"Downloads"})
 
-@require_permission("downloads.view_downloaditem")
 def download(request,pk):
-    obj=get_object_or_404(DownloadItem,school=request.school,pk=pk,is_active=True)
+    obj=get_object_or_404(DownloadItem,pk=pk,is_active=True)
+    if obj.audience != DownloadItem.Audience.PUBLIC and (not request.user.is_authenticated or not request.user.has_perm("downloads.view_downloaditem")):
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied
+    if request.user.is_authenticated and request.school is not None and obj.school_id != request.school.pk:
+        from django.http import Http404
+        raise Http404
     if not obj.visible_to(request.user):
         from django.core.exceptions import PermissionDenied
         raise PermissionDenied

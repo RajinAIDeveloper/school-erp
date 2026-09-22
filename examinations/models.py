@@ -186,46 +186,19 @@ class UnlockRequest(SchoolScopedModel):
 
 
 def compute_result(exam, enrollment):
-    """
-    Returns a dict with per-subject rows, total, percent, GPA, letter grade, pass/fail.
-    Bangladesh rule: failing any subject => GPA 0 / F overall.
-    """
-    schedules = exam.schedules.filter(class_level=enrollment.class_level).select_related("subject")
-    marks = {m.schedule_id: m for m in Mark.objects.filter(schedule__in=schedules, enrollment=enrollment)}
-    scale = exam.grade_scale
-    rules = list(scale.rules.all())
-
-    def rule_for(pct):
-        for r in rules:
-            if r.min_percent <= pct <= r.max_percent:
-                return r
+    """Compatibility adapter using the same live or published snapshot as report screens."""
+    from .services import build_result_sheet
+    sheet = build_result_sheet(exam, enrollment.class_level, enrollment.section)
+    row = next((r for r in sheet["rows"] if r["enrollment_id"] == enrollment.pk), None)
+    if row is None:
         return None
-
-    rows, total, full_total, points, failed = [], Decimal("0"), Decimal("0"), [], False
-    for s in schedules:
-        m = marks.get(s.id)
-        obtained = m.marks_obtained if m and not m.is_absent and m.marks_obtained is not None else None
-        pct = (obtained / s.full_marks * 100) if obtained is not None and s.full_marks else Decimal("0")
-        rule = rule_for(pct)
-        sub_pass = obtained is not None and obtained >= s.pass_marks
-        if not sub_pass:
-            failed = True
-        rows.append({
-            "subject": s.subject, "full_marks": s.full_marks, "pass_marks": s.pass_marks,
-            "obtained": obtained, "absent": bool(m and m.is_absent) or m is None,
-            "percent": round(pct, 2), "letter": rule.letter if rule else "-",
-            "gp": rule.grade_point if rule else Decimal("0"), "passed": sub_pass,
-        })
-        total += obtained or Decimal("0")
-        full_total += s.full_marks
-        points.append(rule.grade_point if rule else Decimal("0"))
-    percent = (total / full_total * 100) if full_total else Decimal("0")
-    gpa = (sum(points) / len(points)) if points else Decimal("0")
-    if failed:
-        gpa = Decimal("0")
-    overall_rule = rule_for(percent) if not failed else None
     return {
-        "rows": rows, "total": total, "full_total": full_total, "percent": round(percent, 2),
-        "gpa": round(gpa, 2), "letter": overall_rule.letter if overall_rule else "F",
-        "passed": not failed and bool(rows),
+        "rows": row["cells"],
+        "total": Decimal(row["total"]),
+        "full_total": Decimal(row["full_total"]),
+        "percent": Decimal(row["percent"]) if row["percent"] is not None else None,
+        "gpa": Decimal(row["gpa"]) if row["gpa"] is not None else None,
+        "passed": row["result"] == "PASS",
+        "result": row["result"],
+        "rank": row["rank"],
     }

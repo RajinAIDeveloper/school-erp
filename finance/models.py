@@ -9,6 +9,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.db.models import Sum
+from django.utils import timezone
 
 from core.models import SchoolScopedModel
 
@@ -121,7 +122,7 @@ class JournalEntry(SchoolScopedModel):
         rev = JournalEntry.objects.create(
             school=self.school,
             entry_no=JournalEntry.next_entry_no(self.school),
-            date=self.date,
+            date=timezone.localdate(),
             narration=narration or f"Reversal of JE-{self.entry_no:05d}: {self.narration}",
             reference=self.reference,
             source=self.Source.REVERSAL,

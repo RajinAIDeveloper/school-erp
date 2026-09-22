@@ -14,6 +14,7 @@
 <div class="card card-body"><h3 class="font-semibold">Documents</h3>
 {% for doc in documents %}<p><a class="link" href="{% url 'students:document' doc.pk %}">{{ doc.title }}</a></p>{% empty %}<p>No documents.</p>{% endfor %}
 {% if perms.students.add_studentdocument %}<a class="link" href="{% url 'students:document_upload' student.pk %}">Upload document</a>{% endif %}</div>
-<div class="card card-body"><h3 class="font-semibold">Fees</h3>
-{% for inv in invoices %}<p><a class="link" href="{% url 'fees:invoice_detail' inv.pk %}">{{ inv.invoice_no }}</a> · Due {{ inv.balance }}</p>{% empty %}<p>No invoices.</p>{% endfor %}</div></div>
+{% if perms.fees.view_feeinvoice or student.user_id == user.id or user.guardian_profile %}<div class="card card-body"><h3 class="font-semibold">Fees</h3>
+{% for inv in invoices %}<p><a class="link" href="{% url 'fees:invoice_detail' inv.pk %}">{{ inv.invoice_no }}</a> · Due {{ inv.balance }}</p>{% empty %}<p>No invoices.</p>{% endfor %}</div>{% endif %}
+</div>
 {% endblock %}

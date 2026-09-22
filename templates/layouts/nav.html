@@ -4,6 +4,13 @@
   <span class="w-5 text-center">🏠</span> Dashboard
 </a>
 
+{% if user.student_profile or user.guardian_profile %}
+<a href="{% url 'portal:index' %}" class="{{ base }} {% active request 'portal' %}">My school records</a>
+<a href="{% url 'portal:attendance' %}" class="{{ base }}">My attendance</a>
+<a href="{% url 'portal:fees' %}" class="{{ base }}">My fees</a>
+<a href="{% url 'portal:results' %}" class="{{ base }}">My results</a>
+{% endif %}
+
 {% if perms.students.view_student %}
 <p class="mt-4 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">People</p>
 <a href="{% url 'students:list' %}" class="{{ base }} {% active request 'students' %}"><span class="w-5 text-center">🎓</span> Students</a>
@@ -20,6 +27,10 @@
 {% endif %}
 {% if perms.attendance.view_staffattendance %}
 <a href="{% url 'attendance:staff_take' %}" class="{{ base }} {% active request 'staff_take' 'staff_report' 'leave_list' 'leave_create' %}"><span class="w-5 text-center">🕒</span> Staff Attendance</a>
+{% endif %}
+
+{% if perms.attendance.view_leaverequest %}
+<a href="{% url 'attendance:leave_list' %}" class="{{ base }}">My leave</a>
 {% endif %}
 
 {% if perms.fees.view_feeinvoice or perms.finance.view_journalentry %}
@@ -49,11 +60,16 @@
 {% endif %}
 <a href="{% url 'holidays:list' %}" class="{{ base }} {% active request 'holidays' %}"><span class="w-5 text-center">🎉</span> Holidays</a>
 
-{% if perms.core.change_school or perms.users.view_user %}
+<a href="{% url 'reports:hub' %}" class="{{ base }} {% active request 'reports' %}">Reports</a>
+
+{% if perms.core.change_school or perms.users.view_user or perms.academics.view_academicyear %}
 <p class="mt-4 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Administration</p>
 {% endif %}
 {% if perms.core.change_school %}
 <a href="{% url 'settings:school' %}" class="{{ base }} {% active request 'settings' %}"><span class="w-5 text-center">⚙️</span> Basic Settings</a>
+{% endif %}
+{% if perms.academics.view_academicyear and not perms.core.change_school %}
+<a href="{% url 'settings:year_list' %}" class="{{ base }} {% active request 'settings' %}">Academic setup</a>
 {% endif %}
 {% if perms.users.view_user %}
 <a href="{% url 'users:list' %}" class="{{ base }} {% active request 'users' %}"><span class="w-5 text-center">👥</span> User Management</a>

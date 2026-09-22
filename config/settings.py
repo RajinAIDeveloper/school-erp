@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     "downloads",
     "messaging",
     "holidays",
+    "reports",
 ]
 
 MIDDLEWARE = [
@@ -122,7 +123,6 @@ LANGUAGE_CODE = "en"
 TIME_ZONE = "Asia/Dhaka"
 USE_I18N = True
 USE_TZ = True
-FORMS_URLFIELD_ASSUME_HTTPS = True
 DATE_FORMAT = "d M Y"
 DATETIME_FORMAT = "d M Y, h:i A"
 SHORT_DATE_FORMAT = "d/m/Y"
@@ -149,7 +149,7 @@ MESSAGE_TAGS = {
     10: "debug", 20: "info", 25: "success", 30: "warning", 40: "error",
 }
 
-EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend" if DEBUG else "django.core.mail.backends.smtp.EmailBackend")
 EMAIL_HOST = os.environ.get("EMAIL_HOST", "localhost")
 EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
@@ -160,7 +160,11 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 DATA_UPLOAD_MAX_MEMORY_SIZE = 12 * 1024 * 1024
 
 if not DEBUG:
+    if SECRET_KEY == "dev-only-insecure-key-change-me-in-production":
+        raise RuntimeError("Set DJANGO_SECRET_KEY before running with DJANGO_DEBUG=0.")
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_SSL_REDIRECT = os.environ.get("DJANGO_SSL_REDIRECT", "1") == "1"
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_HSTS_SECONDS = int(os.environ.get("DJANGO_HSTS_SECONDS", "31536000"))

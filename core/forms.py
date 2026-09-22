@@ -137,3 +137,4 @@ class SMSSettingsForm(TailwindFormMixin, forms.ModelForm):
     class Meta:
         model = School
         fields = ["sms_sender_id", "sms_api_url", "sms_api_key", "sms_extra_params"]
+        widgets = {"sms_api_key": forms.PasswordInput(render_value=True)}

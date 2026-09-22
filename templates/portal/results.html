@@ -1,0 +1,6 @@
+{% extends "layouts/base.html" %}{% block content %}
+<form method="get" class="card card-body mb-4"><label class="label">Student</label><select class="input" name="student">{% for s in students %}<option value="{{ s.pk }}" {% if selected.pk == s.pk %}selected{% endif %}>{{ s.full_name }}</option>{% endfor %}</select><button class="btn-primary mt-4">View results</button></form>
+{% if selected %}<div class="card overflow-x-auto"><table class="table"><thead><tr><th>Exam</th><th>Class</th><th>Score</th><th>GPA</th><th>Result</th><th>Report card</th></tr></thead><tbody>
+{% for snapshot in snapshots %}<tr><td>{{ snapshot.exam.name }}</td><td>{{ snapshot.payload.section }}</td><td>{{ snapshot.payload.total }}/{{ snapshot.payload.full_total }}</td><td>{{ snapshot.payload.gpa }}</td><td>{{ snapshot.payload.result }}</td><td><a class="link" href="{% url 'examinations:report_card' snapshot.exam_id selected.pk %}">View or download</a></td></tr>
+{% empty %}<tr><td>No published results for this student.</td></tr>{% endfor %}</tbody></table></div>{% endif %}
+{% endblock %}

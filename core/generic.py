@@ -36,11 +36,14 @@ class ERPListView(SchoolScopedMixin, ListView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        model = self.model
+        app = model._meta.app_label
+        stem = model._meta.model_name
         ctx.update({
             "columns": self.columns,
-            "create_url": reverse(self.create_url_name) if self.create_url_name else None,
-            "update_url_name": self.update_url_name,
-            "delete_url_name": self.delete_url_name,
+            "create_url": reverse(self.create_url_name) if self.create_url_name and self.request.user.has_perm(f"{app}.add_{stem}") else None,
+            "update_url_name": self.update_url_name if self.request.user.has_perm(f"{app}.change_{stem}") else None,
+            "delete_url_name": self.delete_url_name if self.request.user.has_perm(f"{app}.delete_{stem}") else None,
             "detail_url_name": self.detail_url_name,
             "extra_actions": [(label, reverse(name)) for label, name in self.extra_actions],
             "filters": self.get_filter_choices(),
