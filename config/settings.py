@@ -5,6 +5,7 @@ Environment variables (all optional in development):
     DJANGO_SECRET_KEY, DJANGO_DEBUG, DJANGO_ALLOWED_HOSTS,
     DATABASE_URL (postgres://user:pass@host:5432/dbname) – falls back to SQLite.
 """
+
 import os
 from pathlib import Path
 from urllib.parse import urlparse
@@ -115,7 +116,6 @@ LOGIN_REDIRECT_URL = "dashboard"
 LOGOUT_REDIRECT_URL = "login"
 
 
-
 # ---------------------------------------------------------------------------
 # Localisation – Bangladesh defaults
 # ---------------------------------------------------------------------------
@@ -146,10 +146,17 @@ ERP_DEFAULT_COUNTRY = "BD"
 SMS_BACKEND = os.environ.get("SMS_BACKEND", "messaging.backends.ConsoleSMSBackend")
 
 MESSAGE_TAGS = {
-    10: "debug", 20: "info", 25: "success", 30: "warning", 40: "error",
+    10: "debug",
+    20: "info",
+    25: "success",
+    30: "warning",
+    40: "error",
 }
 
-EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend" if DEBUG else "django.core.mail.backends.smtp.EmailBackend")
+EMAIL_BACKEND = os.environ.get(
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.console.EmailBackend" if DEBUG else "django.core.mail.backends.smtp.EmailBackend",
+)
 EMAIL_HOST = os.environ.get("EMAIL_HOST", "localhost")
 EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
@@ -168,3 +175,7 @@ if not DEBUG:
     SECURE_SSL_REDIRECT = os.environ.get("DJANGO_SSL_REDIRECT", "1") == "1"
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SECURE_HSTS_SECONDS = int(os.environ.get("DJANGO_HSTS_SECONDS", "31536000"))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = os.environ.get("DJANGO_HSTS_SUBDOMAINS", "1") == "1"
+    SECURE_HSTS_PRELOAD = os.environ.get("DJANGO_HSTS_PRELOAD", "1") == "1"
+    SECURE_REFERRER_POLICY = "same-origin"
+    X_FRAME_OPTIONS = "DENY"

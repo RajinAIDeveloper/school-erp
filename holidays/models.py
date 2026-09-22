@@ -47,9 +47,7 @@ def is_holiday(school, date):
     """True if the school is closed on `date` (holiday or weekend)."""
     if date.isoweekday() in school.weekend_day_numbers:
         return True
-    return Holiday.objects.filter(
-        school=school, closes_school=True, start_date__lte=date, end_date__gte=date
-    ).exists()
+    return Holiday.objects.filter(school=school, closes_school=True, start_date__lte=date, end_date__gte=date).exists()
 
 
 def holiday_dates_between(school, start, end):

@@ -1,4 +1,3 @@
-from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 
@@ -36,6 +35,7 @@ class AcademicYear(SchoolScopedModel):
 
 class Term(SchoolScopedModel):
     """Optional sub-division of a year, e.g. First Term / Half Yearly / Annual."""
+
     academic_year = models.ForeignKey(AcademicYear, on_delete=models.CASCADE, related_name="terms")
     name = models.CharField(max_length=50)
     start_date = models.DateField()
@@ -53,6 +53,7 @@ class Term(SchoolScopedModel):
 
 class ClassLevel(SchoolScopedModel):
     """Play, Nursery, KG, Class 1 ... Class 10."""
+
     name = models.CharField(max_length=50)
     order = models.PositiveSmallIntegerField(help_text="Sort order for promotion, e.g. Play=0, Class 1=3")
 
@@ -107,12 +108,14 @@ class Subject(SchoolScopedModel):
 
 class SubjectTeacher(SchoolScopedModel):
     """Which teacher teaches which subject in which section, per academic year."""
+
     academic_year = models.ForeignKey(AcademicYear, on_delete=models.CASCADE, related_name="subject_teachers")
     section = models.ForeignKey(Section, on_delete=models.CASCADE, related_name="subject_teachers")
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name="subject_teachers")
     teacher = models.ForeignKey("employees.Employee", on_delete=models.CASCADE, related_name="subject_assignments")
 
     class Meta:
+        ordering = ["section__class_level__order", "section__name", "subject__name"]
         constraints = [
             models.UniqueConstraint(
                 fields=["academic_year", "section", "subject"], name="unique_subject_teacher_per_section"

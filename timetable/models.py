@@ -6,12 +6,19 @@ from core.models import SchoolScopedModel
 from employees.models import Employee
 
 WEEKDAYS = [
-    (6, "Saturday"), (7, "Sunday"), (1, "Monday"), (2, "Tuesday"), (3, "Wednesday"), (4, "Thursday"), (5, "Friday"),
+    (6, "Saturday"),
+    (7, "Sunday"),
+    (1, "Monday"),
+    (2, "Tuesday"),
+    (3, "Wednesday"),
+    (4, "Thursday"),
+    (5, "Friday"),
 ]
 
 
 class Period(SchoolScopedModel):
     """A time slot of the school day, e.g. 1st period 09:00-09:45, Tiffin 12:00-12:30."""
+
     name = models.CharField(max_length=50)
     order = models.PositiveSmallIntegerField()
     start_time = models.TimeField()
@@ -44,7 +51,9 @@ class RoutineSlot(SchoolScopedModel):
     weekday = models.PositiveSmallIntegerField(choices=WEEKDAYS)
     period = models.ForeignKey(Period, on_delete=models.CASCADE, related_name="routine_slots")
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name="routine_slots")
-    teacher = models.ForeignKey(Employee, null=True, blank=True, on_delete=models.SET_NULL, related_name="routine_slots")
+    teacher = models.ForeignKey(
+        Employee, null=True, blank=True, on_delete=models.SET_NULL, related_name="routine_slots"
+    )
     room = models.ForeignKey(Room, null=True, blank=True, on_delete=models.SET_NULL, related_name="routine_slots")
 
     class Meta:
@@ -64,8 +73,10 @@ class RoutineSlot(SchoolScopedModel):
         if not (self.academic_year_id and self.period_id and self.weekday):
             return
         others = RoutineSlot.objects.filter(
-            academic_year_id=self.academic_year_id, weekday=self.weekday,
-            period__start_time__lt=self.period.end_time, period__end_time__gt=self.period.start_time
+            academic_year_id=self.academic_year_id,
+            weekday=self.weekday,
+            period__start_time__lt=self.period.end_time,
+            period__end_time__gt=self.period.start_time,
         ).exclude(pk=self.pk)
         if self.period.is_break:
             raise ValidationError({"period": "Cannot schedule teaching during a break."})
@@ -74,9 +85,7 @@ class RoutineSlot(SchoolScopedModel):
         if self.teacher_id:
             clash = others.filter(teacher_id=self.teacher_id).select_related("section__class_level").first()
             if clash:
-                raise ValidationError(
-                    {"teacher": f"{self.teacher} already teaches {clash.section} in this period."}
-                )
+                raise ValidationError({"teacher": f"{self.teacher} already teaches {clash.section} in this period."})
         if self.room_id:
             clash = others.filter(room_id=self.room_id).select_related("section__class_level").first()
             if clash:

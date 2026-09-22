@@ -6,6 +6,7 @@ SMS backends. Select with settings.SMS_BACKEND.
   SSL Wireless, Alpha SMS...) accept api_key / senderid / number / message query params.
   Configure URL, key, sender ID and extra params under Settings -> SMS gateway.
 """
+
 import json
 import logging
 from urllib.parse import urlencode
@@ -24,6 +25,7 @@ class BaseSMSBackend:
 
     def deliver(self, message):
         from .models import SMSMessage
+
         try:
             response = self.send(message)
             message.status = SMSMessage.Status.SENT

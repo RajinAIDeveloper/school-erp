@@ -11,15 +11,29 @@ from students.models import Enrollment, Student
 ZERO = Decimal("0.00")
 
 MONTHS = [
-    (1, "January"), (2, "February"), (3, "March"), (4, "April"), (5, "May"), (6, "June"),
-    (7, "July"), (8, "August"), (9, "September"), (10, "October"), (11, "November"), (12, "December"),
+    (1, "January"),
+    (2, "February"),
+    (3, "March"),
+    (4, "April"),
+    (5, "May"),
+    (6, "June"),
+    (7, "July"),
+    (8, "August"),
+    (9, "September"),
+    (10, "October"),
+    (11, "November"),
+    (12, "December"),
 ]
 
 
 class FeeCategory(SchoolScopedModel):
     name = models.CharField(max_length=100, help_text="e.g. Tuition Fee, Admission Fee, Exam Fee")
     income_account = models.ForeignKey(
-        "finance.Account", null=True, blank=True, on_delete=models.SET_NULL, related_name="fee_categories",
+        "finance.Account",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="fee_categories",
         help_text="Income account credited when this fee is collected",
     )
     is_active = models.BooleanField(default=True)
@@ -49,9 +63,7 @@ class FeeStructure(SchoolScopedModel):
     class Meta:
         ordering = ["academic_year", "class_level__order", "category__name"]
         constraints = [
-            models.UniqueConstraint(
-                fields=["academic_year", "class_level", "category"], name="unique_fee_structure"
-            )
+            models.UniqueConstraint(fields=["academic_year", "class_level", "category"], name="unique_fee_structure")
         ]
 
     def __str__(self):
@@ -60,6 +72,7 @@ class FeeStructure(SchoolScopedModel):
 
 class FeeConcession(SchoolScopedModel):
     """Scholarship / sibling discount / staff-child waiver for one student."""
+
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="concessions")
     category = models.ForeignKey(
         FeeCategory, null=True, blank=True, on_delete=models.CASCADE, help_text="Blank = applies to all categories"
@@ -68,6 +81,9 @@ class FeeConcession(SchoolScopedModel):
     fixed_amount = models.DecimalField(max_digits=12, decimal_places=2, default=ZERO)
     reason = models.CharField(max_length=200, blank=True)
     is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["student__student_id", "category__name"]
 
     def __str__(self):
         return f"{self.student} - {self.percent}% / {self.fixed_amount}"
@@ -101,7 +117,11 @@ class FeeInvoice(SchoolScopedModel):
         ordering = ["-issue_date", "-id"]
         constraints = [
             models.UniqueConstraint(fields=["school", "invoice_no"], name="unique_invoice_no_per_school"),
-            models.UniqueConstraint(fields=["enrollment", "month"], condition=models.Q(month__isnull=False), name="one_invoice_per_enrollment_month"),
+            models.UniqueConstraint(
+                fields=["enrollment", "month"],
+                condition=models.Q(month__isnull=False),
+                name="one_invoice_per_enrollment_month",
+            ),
         ]
 
     def __str__(self):
@@ -142,7 +162,9 @@ class FeeInvoice(SchoolScopedModel):
         prefix = f"INV-{year_name}-"
         last = (
             FeeInvoice.objects.filter(school=school, invoice_no__startswith=prefix)
-            .order_by("-invoice_no").values_list("invoice_no", flat=True).first()
+            .order_by("-invoice_no")
+            .values_list("invoice_no", flat=True)
+            .first()
         )
         n = int(last.split("-")[-1]) + 1 if last and last.split("-")[-1].isdigit() else 1
         return f"{prefix}{n:05d}"
@@ -191,7 +213,9 @@ class FeePayment(SchoolScopedModel):
         prefix = "RCP-"
         last = (
             FeePayment.objects.filter(school=school, receipt_no__startswith=prefix)
-            .order_by("-receipt_no").values_list("receipt_no", flat=True).first()
+            .order_by("-receipt_no")
+            .values_list("receipt_no", flat=True)
+            .first()
         )
         n = int(last.split("-")[-1]) + 1 if last and last.split("-")[-1].isdigit() else 1
         return f"{prefix}{n:06d}"
@@ -200,39 +224,52 @@ class FeePayment(SchoolScopedModel):
     def post_to_ledger(self, user=None):
         """Allocate partial receipts proportionally across their fee income accounts."""
         from decimal import ROUND_HALF_UP
+
         from django.core.exceptions import ValidationError
+
         from core.models import School
         from finance.models import Account, JournalEntry, JournalLine, ensure_default_accounts
+
         School.objects.select_for_update().get(pk=self.school_id)
-        current=FeePayment.objects.select_for_update().get(pk=self.pk)
+        current = FeePayment.objects.select_for_update().get(pk=self.pk)
         if current.journal_entry_id:
             return current.journal_entry
         ensure_default_accounts(self.school)
-        debit=Account.objects.get(school=self.school,code=self.METHOD_ACCOUNT_CODE[self.method])
-        fallback=Account.objects.get(school=self.school,code="4090")
-        amounts={}
+        debit = Account.objects.get(school=self.school, code=self.METHOD_ACCOUNT_CODE[self.method])
+        fallback = Account.objects.get(school=self.school, code="4090")
+        amounts = {}
         for item in self.invoice.items.select_related("category__income_account"):
-            account=item.category.income_account or fallback
+            account = item.category.income_account or fallback
             if account.school_id != self.school_id or account.account_type != "income":
                 raise ValidationError("Fee categories must use income accounts from the same school.")
             if item.amount > 0:
-                amounts[account.pk]=amounts.get(account.pk,ZERO)+item.amount
+                amounts[account.pk] = amounts.get(account.pk, ZERO) + item.amount
         if not amounts:
-            amounts[fallback.pk]=self.amount
-        total=sum(amounts.values(),ZERO)
-        entry=JournalEntry.objects.create(school=self.school,entry_no=JournalEntry.next_entry_no(self.school),date=self.date,
+            amounts[fallback.pk] = self.amount
+        total = sum(amounts.values(), ZERO)
+        entry = JournalEntry.objects.create(
+            school=self.school,
+            entry_no=JournalEntry.next_entry_no(self.school),
+            date=self.date,
             narration=f"Fee receipt {self.receipt_no} - {self.invoice.student.full_name}"[:250],
-            reference=self.receipt_no,source=JournalEntry.Source.FEE,created_by=user)
-        JournalLine.objects.create(entry=entry,account=debit,debit=self.amount)
-        remaining=self.amount
-        for index,(account_id,weight) in enumerate(amounts.items()):
-            credit=remaining if index==len(amounts)-1 else min(remaining,(self.amount*weight/total).quantize(Decimal("0.01"),rounding=ROUND_HALF_UP))
+            reference=self.receipt_no,
+            source=JournalEntry.Source.FEE,
+            created_by=user,
+        )
+        JournalLine.objects.create(entry=entry, account=debit, debit=self.amount)
+        remaining = self.amount
+        for index, (account_id, weight) in enumerate(amounts.items()):
+            credit = (
+                remaining
+                if index == len(amounts) - 1
+                else min(remaining, (self.amount * weight / total).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+            )
             if credit:
-                JournalLine.objects.create(entry=entry,account_id=account_id,credit=credit)
-            remaining-=credit
+                JournalLine.objects.create(entry=entry, account_id=account_id, credit=credit)
+            remaining -= credit
         entry.post()
-        self.journal_entry=entry
-        self.save(update_fields=["journal_entry","updated_at"])
+        self.journal_entry = entry
+        self.save(update_fields=["journal_entry", "updated_at"])
         return entry
 
     @transaction.atomic

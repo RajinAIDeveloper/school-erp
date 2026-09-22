@@ -48,6 +48,7 @@ def taka(value):
 @register.filter
 def has_role(user, names):
     from core.roles import has_role as _has
+
     return _has(user, *[n.strip() for n in names.split(",")])
 
 
@@ -99,20 +100,34 @@ def query_replace(context, **kwargs):
 
 
 BADGE_COLORS = {
-    "present": "bg-emerald-100 text-emerald-800", "absent": "bg-red-100 text-red-800",
-    "late": "bg-amber-100 text-amber-800", "leave": "bg-sky-100 text-sky-800",
-    "half_day": "bg-amber-100 text-amber-800", "holiday": "bg-slate-100 text-slate-600",
-    "paid": "bg-emerald-100 text-emerald-800", "partial": "bg-amber-100 text-amber-800",
-    "unpaid": "bg-red-100 text-red-800", "cancelled": "bg-slate-200 text-slate-700",
-    "active": "bg-emerald-100 text-emerald-800", "inactive": "bg-slate-200 text-slate-700",
-    "pending": "bg-amber-100 text-amber-800", "approved": "bg-emerald-100 text-emerald-800",
-    "rejected": "bg-red-100 text-red-800", "sent": "bg-emerald-100 text-emerald-800",
-    "failed": "bg-red-100 text-red-800", "queued": "bg-sky-100 text-sky-800",
-    "published": "bg-emerald-100 text-emerald-800", "draft": "bg-slate-200 text-slate-700",
-    "posted": "bg-emerald-100 text-emerald-800", "enrolled": "bg-emerald-100 text-emerald-800",
-    "promoted": "bg-sky-100 text-sky-800", "graduated": "bg-indigo-100 text-indigo-800",
-    "transferred": "bg-amber-100 text-amber-800", "withdrawn": "bg-slate-200 text-slate-700",
-    "resigned": "bg-slate-200 text-slate-700", "on_leave": "bg-sky-100 text-sky-800",
+    "present": "bg-emerald-100 text-emerald-800",
+    "absent": "bg-red-100 text-red-800",
+    "late": "bg-amber-100 text-amber-800",
+    "leave": "bg-sky-100 text-sky-800",
+    "half_day": "bg-amber-100 text-amber-800",
+    "holiday": "bg-slate-100 text-slate-600",
+    "paid": "bg-emerald-100 text-emerald-800",
+    "partial": "bg-amber-100 text-amber-800",
+    "unpaid": "bg-red-100 text-red-800",
+    "cancelled": "bg-slate-200 text-slate-700",
+    "active": "bg-emerald-100 text-emerald-800",
+    "inactive": "bg-slate-200 text-slate-700",
+    "pending": "bg-amber-100 text-amber-800",
+    "approved": "bg-emerald-100 text-emerald-800",
+    "rejected": "bg-red-100 text-red-800",
+    "sent": "bg-emerald-100 text-emerald-800",
+    "failed": "bg-red-100 text-red-800",
+    "queued": "bg-sky-100 text-sky-800",
+    "published": "bg-emerald-100 text-emerald-800",
+    "draft": "bg-slate-200 text-slate-700",
+    "posted": "bg-emerald-100 text-emerald-800",
+    "enrolled": "bg-emerald-100 text-emerald-800",
+    "promoted": "bg-sky-100 text-sky-800",
+    "graduated": "bg-indigo-100 text-indigo-800",
+    "transferred": "bg-amber-100 text-amber-800",
+    "withdrawn": "bg-slate-200 text-slate-700",
+    "resigned": "bg-slate-200 text-slate-700",
+    "on_leave": "bg-sky-100 text-sky-800",
 }
 
 
@@ -120,10 +135,9 @@ BADGE_COLORS = {
 def status_badge(value):
     css = BADGE_COLORS.get(str(value).lower(), "bg-slate-100 text-slate-700")
     from django.utils.html import escape
+
     label = escape(str(value).replace("_", " ").title())
-    return mark_safe(
-        f'<span class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium {css}">{label}</span>'
-    )
+    return mark_safe(f'<span class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium {css}">{label}</span>')
 
 
 @register.filter
@@ -172,6 +186,7 @@ def render_cell(context, obj, col):
 @register.simple_tag
 def url_for(name, obj=None):
     from django.urls import reverse
+
     if obj is None:
         return reverse(name)
     return reverse(name, args=[obj.pk])

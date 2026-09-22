@@ -45,6 +45,10 @@
           {% endfor %}
           <td class="whitespace-nowrap text-right">
             {% block row_actions %}
+            {% for label, url_name, confirm in row_forms %}
+              <form method="post" action="{% url_for url_name obj %}" class="mr-3 inline" data-confirm="{{ confirm }}">{% csrf_token %}
+                <button class="link text-xs">{{ label }}</button></form>
+            {% endfor %}
             {% if detail_url_name %}<a href="{% url_for detail_url_name obj %}" class="link text-xs">View</a>{% endif %}
             {% if update_url_name %}<a href="{% url_for update_url_name obj %}" class="link ml-3 text-xs">Edit</a>{% endif %}
             {% if delete_url_name %}<a href="{% url_for delete_url_name obj %}" class="ml-3 text-xs text-red-600 hover:underline">Delete</a>{% endif %}

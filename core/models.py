@@ -15,6 +15,7 @@ class School(TimeStampedModel):
     The tenant. One row today; many rows when the platform becomes SaaS.
     Also holds the "Basic Settings" (identity, currency, SMS gateway).
     """
+
     name = models.CharField(max_length=200)
     short_name = models.CharField(max_length=50, blank=True)
     slug = models.SlugField(unique=True, help_text="Used for the subdomain later, e.g. dhaka-model")
@@ -61,6 +62,7 @@ class SchoolScopedModel(TimeStampedModel):
     """
     Every business record inherits this so tenant isolation is enforced at the model level.
     """
+
     school = models.ForeignKey(School, on_delete=models.PROTECT, related_name="+")
 
     objects = SchoolQuerySet.as_manager()
@@ -70,6 +72,7 @@ class SchoolScopedModel(TimeStampedModel):
 
     def clean(self):
         from django.core.exceptions import ValidationError
+
         super().clean()
         if not self.school_id:
             return
@@ -87,6 +90,7 @@ class SchoolScopedModel(TimeStampedModel):
 
 class AuditLog(models.Model):
     """Records sensitive actions: payments, result publication, attendance edits, role changes."""
+
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name="audit_logs", null=True, blank=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
     action = models.CharField(max_length=100)

@@ -54,9 +54,10 @@ class DownloadItem(SchoolScopedModel):
             return False
         if user.is_superuser or user.groups.filter(name__in=["Administrator", "Principal"]).exists():
             return True
-        is_staff_member = hasattr(user, "employee_profile") or user.groups.filter(
-            name__in=["Teacher", "Staff", "Accountant"]
-        ).exists()
+        is_staff_member = (
+            hasattr(user, "employee_profile")
+            or user.groups.filter(name__in=["Teacher", "Staff", "Accountant"]).exists()
+        )
         if self.audience == self.Audience.STAFF:
             return is_staff_member
         if self.audience == self.Audience.STUDENTS:
@@ -72,8 +73,10 @@ class DownloadItem(SchoolScopedModel):
             guardian = getattr(user, "guardian_profile", None)
             if guardian:
                 from students.models import Enrollment
+
                 return Enrollment.objects.filter(
-                    student__guardian_links__guardian=guardian, academic_year__is_current=True,
+                    student__guardian_links__guardian=guardian,
+                    academic_year__is_current=True,
                     class_level_id__in=levels,
                 ).exists()
             return False

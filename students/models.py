@@ -14,8 +14,11 @@ class Gender(models.TextChoices):
 BLOOD_GROUPS = [(bg, bg) for bg in ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]]
 
 RELIGIONS = [
-    ("islam", "Islam"), ("hinduism", "Hinduism"), ("buddhism", "Buddhism"),
-    ("christianity", "Christianity"), ("other", "Other"),
+    ("islam", "Islam"),
+    ("hinduism", "Hinduism"),
+    ("buddhism", "Buddhism"),
+    ("christianity", "Christianity"),
+    ("other", "Other"),
 ]
 
 
@@ -81,7 +84,9 @@ class Student(SchoolScopedModel):
         prefix = f"{year_name}-"
         last = (
             Student.objects.filter(school=school, student_id__startswith=prefix)
-            .order_by("-student_id").values_list("student_id", flat=True).first()
+            .order_by("-student_id")
+            .values_list("student_id", flat=True)
+            .first()
         )
         n = int(last.split("-")[-1]) + 1 if last and last.split("-")[-1].isdigit() else 1
         return f"{prefix}{n:04d}"
@@ -161,13 +166,19 @@ class Enrollment(SchoolScopedModel):
 
     def clean(self):
         from django.core.exceptions import ValidationError
+
         super().clean()
         if self.section_id and self.class_level_id and self.section.class_level_id != self.class_level_id:
             raise ValidationError({"section": "Section must belong to the selected class."})
         if self.pk and self.result_snapshots.exists():
             old = Enrollment.objects.get(pk=self.pk)
-            if any(getattr(self, f) != getattr(old, f) for f in ("student_id", "academic_year_id", "class_level_id", "section_id", "roll_number")):
-                raise ValidationError("An enrollment with published results is historical. Create a new-year enrollment instead.")
+            if any(
+                getattr(self, f) != getattr(old, f)
+                for f in ("student_id", "academic_year_id", "class_level_id", "section_id", "roll_number")
+            ):
+                raise ValidationError(
+                    "An enrollment with published results is historical. Create a new-year enrollment instead."
+                )
 
 
 class StudentDocument(SchoolScopedModel):

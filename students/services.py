@@ -1,11 +1,15 @@
 import csv
 from io import StringIO
+
 from django.core.exceptions import ValidationError
 from django.db import transaction
+
 from core.access import assert_school
 from core.models import School
-from .models import Enrollment
+
 from .forms import StudentForm
+from .models import Enrollment
+
 
 @transaction.atomic
 def promote(school, source_year, source_section, target_year, target_section):
@@ -13,18 +17,38 @@ def promote(school, source_year, source_section, target_year, target_section):
     if target_year.start_date <= source_year.start_date:
         raise ValidationError("Target year must follow source year.")
     School.objects.select_for_update().get(pk=school.pk)
-    rows = list(Enrollment.objects.filter(school=school, academic_year=source_year,
-                section=source_section, status="enrolled", student__status="active").order_by("roll_number"))
+    rows = list(
+        Enrollment.objects.filter(
+            school=school,
+            academic_year=source_year,
+            section=source_section,
+            status="enrolled",
+            student__status="active",
+        ).order_by("roll_number")
+    )
     if Enrollment.objects.filter(academic_year=target_year, student_id__in=[e.student_id for e in rows]).exists():
         raise ValidationError("Some students already have a target-year enrollment; no records changed.")
-    roll = Enrollment.objects.filter(academic_year=target_year, section=target_section).order_by("-roll_number").values_list("roll_number", flat=True).first() or 0
+    roll = (
+        Enrollment.objects.filter(academic_year=target_year, section=target_section)
+        .order_by("-roll_number")
+        .values_list("roll_number", flat=True)
+        .first()
+        or 0
+    )
     for e in rows:
         roll += 1
-        Enrollment.objects.create(school=school, student=e.student, academic_year=target_year,
-            section=target_section, class_level=target_section.class_level, roll_number=roll)
+        Enrollment.objects.create(
+            school=school,
+            student=e.student,
+            academic_year=target_year,
+            section=target_section,
+            class_level=target_section.class_level,
+            roll_number=roll,
+        )
         e.status = "promoted"
         e.save(update_fields=["status", "updated_at"])
     return len(rows)
+
 
 @transaction.atomic
 def import_students(school, upload):
@@ -32,8 +56,8 @@ def import_students(school, upload):
         raise ValidationError("Maximum import size is 5 MB.")
     try:
         rows = list(csv.DictReader(StringIO(upload.read().decode("utf-8-sig"))))
-    except (UnicodeDecodeError, csv.Error):
-        raise ValidationError("Upload a UTF-8 CSV file.")
+    except (UnicodeDecodeError, csv.Error) as exc:
+        raise ValidationError("Upload a UTF-8 CSV file.") from exc
     if not rows or len(rows) > 5000:
         raise ValidationError("Import requires between 1 and 5000 rows.")
     forms, errors, seen = [], [], set()

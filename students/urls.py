@@ -1,8 +1,11 @@
 from django.urls import path
+
 from core.crud import crud
+
 from . import views
-from .models import Enrollment
 from .forms import EnrollmentForm
+from .models import Enrollment
+
 app_name = "students"
 urlpatterns = [
     path("", views.StudentListView.as_view(), name="list"),
@@ -17,5 +20,19 @@ urlpatterns = [
     path("import/", views.import_csv, name="import"),
     path("export/", views.export, name="export"),
 ]
-urlpatterns += crud(Enrollment, "students", "enrollment", EnrollmentForm.Meta.fields,
-    (("Student", "student"), ("Year", "academic_year"), ("Section", "section"), ("Roll", "roll_number"), ("Status", "status")), form=EnrollmentForm)
+urlpatterns += crud(
+    Enrollment,
+    "students",
+    "enrollment",
+    EnrollmentForm.Meta.fields,
+    (
+        ("Student", "student"),
+        ("Year", "academic_year"),
+        ("Section", "section"),
+        ("Roll", "roll_number"),
+        ("Status", "status", "badge"),
+    ),
+    form=EnrollmentForm,
+    scope=views.scope_to_visible_students,
+    actions=(("Students", "students:list", "students.view_student"),),
+)

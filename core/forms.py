@@ -2,6 +2,7 @@
 Base forms. SchoolModelForm limits every ModelChoiceField / ModelMultipleChoiceField
 to the current school and applies Tailwind CSS classes to widgets.
 """
+
 from django import forms
 from django.contrib.auth import get_user_model
 
@@ -20,7 +21,7 @@ FILE_CLASS = (
 
 
 def tailwindify(form):
-    for name, field in form.fields.items():
+    for field in form.fields.values():
         w = field.widget
         if isinstance(w, forms.CheckboxInput):
             w.attrs.setdefault("class", CHECKBOX_CLASS)
@@ -54,7 +55,7 @@ class SchoolModelForm(TailwindFormMixin, forms.ModelForm):
         if school is None:
             return
         User = get_user_model()
-        for name, field in self.fields.items():
+        for field in self.fields.values():
             if isinstance(field, (forms.ModelChoiceField, forms.ModelMultipleChoiceField)):
                 model = field.queryset.model
                 if model is School:
@@ -67,7 +68,11 @@ class SchoolModelForm(TailwindFormMixin, forms.ModelForm):
     def clean(self):
         cleaned = super().clean()
         for name, value in cleaned.items():
-            if name in {"amount", "basic_salary", "fixed_amount", "full_marks", "pass_marks"} and value is not None and value < 0:
+            if (
+                name in {"amount", "basic_salary", "fixed_amount", "full_marks", "pass_marks"}
+                and value is not None
+                and value < 0
+            ):
                 self.add_error(name, "Must not be negative.")
         section = cleaned.get("section")
         class_level = cleaned.get("class_level")
@@ -82,9 +87,19 @@ class SchoolModelForm(TailwindFormMixin, forms.ModelForm):
         upload = cleaned.get("file")
         if upload and hasattr(upload, "content_type"):
             from pathlib import Path
+
             if upload.size > 10 * 1024 * 1024:
                 self.add_error("file", "Maximum upload size is 10 MB.")
-            if Path(upload.name).suffix.lower() not in {".pdf", ".png", ".jpg", ".jpeg", ".docx", ".xlsx", ".csv", ".txt"}:
+            if Path(upload.name).suffix.lower() not in {
+                ".pdf",
+                ".png",
+                ".jpg",
+                ".jpeg",
+                ".docx",
+                ".xlsx",
+                ".csv",
+                ".txt",
+            }:
                 self.add_error("file", "Allowed files: PDF, images, DOCX, XLSX, CSV and text.")
         if "percent" in cleaned and cleaned["percent"] is not None and not 0 <= cleaned["percent"] <= 100:
             self.add_error("percent", "Percentage must be between 0 and 100.")
@@ -112,6 +127,7 @@ class SchoolModelForm(TailwindFormMixin, forms.ModelForm):
 
     def _post_clean(self):
         from django.core.exceptions import ValidationError
+
         super()._post_clean()
         if self.errors:
             return
@@ -127,8 +143,21 @@ class SchoolForm(TailwindFormMixin, forms.ModelForm):
     class Meta:
         model = School
         fields = [
-            "name", "short_name", "eiin", "motto", "address", "phone", "email", "website", "logo",
-            "principal_name", "currency", "currency_symbol", "country", "timezone", "weekend_days",
+            "name",
+            "short_name",
+            "eiin",
+            "motto",
+            "address",
+            "phone",
+            "email",
+            "website",
+            "logo",
+            "principal_name",
+            "currency",
+            "currency_symbol",
+            "country",
+            "timezone",
+            "weekend_days",
         ]
         widgets = {"address": forms.Textarea(attrs={"rows": 3})}
 

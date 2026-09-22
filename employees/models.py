@@ -67,9 +67,7 @@ class Employee(SchoolScopedModel):
 
     class Meta:
         ordering = ["employee_id"]
-        constraints = [
-            models.UniqueConstraint(fields=["school", "employee_id"], name="unique_employee_id_per_school")
-        ]
+        constraints = [models.UniqueConstraint(fields=["school", "employee_id"], name="unique_employee_id_per_school")]
 
     @property
     def full_name(self):
@@ -82,7 +80,9 @@ class Employee(SchoolScopedModel):
     def next_employee_id(school):
         last = (
             Employee.objects.filter(school=school, employee_id__startswith="EMP-")
-            .order_by("-employee_id").values_list("employee_id", flat=True).first()
+            .order_by("-employee_id")
+            .values_list("employee_id", flat=True)
+            .first()
         )
         n = int(last.split("-")[-1]) + 1 if last and last.split("-")[-1].isdigit() else 1
         return f"EMP-{n:04d}"

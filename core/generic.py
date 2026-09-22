@@ -2,6 +2,7 @@
 Generic CRUD views: a module defines columns + form + url names and gets a fully
 working Tailwind list/create/update/delete UI, already tenant-scoped.
 """
+
 from django.contrib import messages
 from django.urls import reverse
 from django.views.generic import CreateView, DeleteView, ListView, UpdateView
@@ -12,14 +13,25 @@ from .mixins import SchoolScopedMixin
 class ERPListView(SchoolScopedMixin, ListView):
     template_name = "generic/list.html"
     paginate_by = 25
-    columns = ()              # [("Label", "attr.path", "kind"), ...]
+    columns = ()  # [("Label", "attr.path", "kind"), ...]
     create_url_name = None
     update_url_name = None
     delete_url_name = None
     detail_url_name = None
-    extra_actions = ()        # [("Label", "url_name"), ...] shown in header
-    filters = ()              # [("param", "Label", [(value, label), ...]), ...]
+    extra_actions = ()  # [("Label", "url_name")] or [("Label", "url_name", "app.perm")]
+    row_forms = ()  # [("Label", "url_name", "app.perm", "confirm text")] POST buttons per row
+    filters = ()  # [("param", "Label", [(value, label), ...]), ...]
     empty_message = "No records found."
+
+    def visible_actions(self):
+        """Header links the current user may actually open, so no action ever leads to a 403."""
+        visible = []
+        for action in self.extra_actions:
+            label, name = action[0], action[1]
+            permission = action[2] if len(action) > 2 else None
+            if permission is None or self.request.user.has_perm(permission):
+                visible.append((label, reverse(name)))
+        return visible
 
     def get_filter_choices(self):
         return self.filters
@@ -39,17 +51,26 @@ class ERPListView(SchoolScopedMixin, ListView):
         model = self.model
         app = model._meta.app_label
         stem = model._meta.model_name
-        ctx.update({
-            "columns": self.columns,
-            "create_url": reverse(self.create_url_name) if self.create_url_name and self.request.user.has_perm(f"{app}.add_{stem}") else None,
-            "update_url_name": self.update_url_name if self.request.user.has_perm(f"{app}.change_{stem}") else None,
-            "delete_url_name": self.delete_url_name if self.request.user.has_perm(f"{app}.delete_{stem}") else None,
-            "detail_url_name": self.detail_url_name,
-            "extra_actions": [(label, reverse(name)) for label, name in self.extra_actions],
-            "filters": self.get_filter_choices(),
-            "empty_message": self.empty_message,
-            "has_search": bool(self.search_fields),
-        })
+        ctx.update(
+            {
+                "columns": self.columns,
+                "create_url": reverse(self.create_url_name)
+                if self.create_url_name and self.request.user.has_perm(f"{app}.add_{stem}")
+                else None,
+                "update_url_name": self.update_url_name if self.request.user.has_perm(f"{app}.change_{stem}") else None,
+                "delete_url_name": self.delete_url_name if self.request.user.has_perm(f"{app}.delete_{stem}") else None,
+                "detail_url_name": self.detail_url_name,
+                "extra_actions": self.visible_actions(),
+                "row_forms": [
+                    (label, name, confirm)
+                    for label, name, permission, confirm in self.row_forms
+                    if self.request.user.has_perm(permission)
+                ],
+                "filters": self.get_filter_choices(),
+                "empty_message": self.empty_message,
+                "has_search": bool(self.search_fields),
+            }
+        )
         return ctx
 
 
@@ -60,23 +81,12 @@ class ERPFormMixin(SchoolScopedMixin):
 
     def form_valid(self, form):
         from django.core.exceptions import ValidationError
-        from django.db import transaction, IntegrityError
+        from django.db import IntegrityError, transaction
+
         from .models import audit
-        obj = form.instance
+
         try:
             with transaction.atomic():
-                if obj._meta.label_lower == "examinations.exam" and obj.pk:
-                    from examinations.models import Exam
-                    old = Exam.objects.select_for_update().get(pk=obj.pk)
-                    if old.publication_version:
-                        raise ValidationError("Published exam configuration is locked.")
-                if obj._meta.label_lower == "examinations.examschedule":
-                    from examinations.models import Exam, ExamSchedule
-                    ids = [obj.exam_id]
-                    if obj.pk:
-                        ids.append(ExamSchedule.objects.get(pk=obj.pk).exam_id)
-                    if any(e.publication_version for e in Exam.objects.select_for_update().filter(pk__in=ids)):
-                        raise ValidationError("Schedules of published exams cannot be changed.")
                 response = super().form_valid(form)
                 audit(self.request, "record.saved", self.object)
                 return response
@@ -93,7 +103,11 @@ class ERPFormMixin(SchoolScopedMixin):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx["cancel_url"] = reverse(self.cancel_url_name or self.success_url_name) if (self.cancel_url_name or self.success_url_name) else None
+        ctx["cancel_url"] = (
+            reverse(self.cancel_url_name or self.success_url_name)
+            if (self.cancel_url_name or self.success_url_name)
+            else None
+        )
         return ctx
 
 

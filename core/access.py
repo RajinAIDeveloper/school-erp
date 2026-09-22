@@ -1,4 +1,5 @@
 """Shared object access rules. Querysets are always limited to the user's school."""
+
 from functools import wraps
 
 from django.contrib.auth.decorators import login_required
@@ -18,7 +19,9 @@ def require_permission(permission):
             if permission and not request.user.has_perm(permission):
                 raise PermissionDenied
             return view(request, *args, **kwargs)
+
         return wrapped
+
     return decorate
 
 
@@ -28,6 +31,7 @@ def is_manager(user):
 
 def sections_for(user, school):
     from academics.models import Section
+
     qs = Section.objects.filter(school=school)
     if is_manager(user):
         return qs
@@ -39,6 +43,7 @@ def sections_for(user, school):
 
 def students_for(user, school):
     from students.models import Student
+
     qs = Student.objects.filter(school=school)
     if is_manager(user) or has_role(user, "Accountant"):
         return qs

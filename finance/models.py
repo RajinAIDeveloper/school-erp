@@ -3,6 +3,7 @@ Double-entry accounting. Every financial event (fee payment, expense, salary, ot
 is a balanced JournalEntry with debit and credit lines. Posted entries are never edited;
 corrections are made with reversing entries.
 """
+
 from decimal import Decimal
 
 from django.conf import settings
@@ -44,7 +45,9 @@ class Account(SchoolScopedModel):
         return self.account_type in (self.Type.ASSET, self.Type.EXPENSE)
 
     def balance(self, start=None, end=None):
-        lines = JournalLine.objects.filter(account=self, entry__status__in=[JournalEntry.Status.POSTED, JournalEntry.Status.REVERSED])
+        lines = JournalLine.objects.filter(
+            account=self, entry__status__in=[JournalEntry.Status.POSTED, JournalEntry.Status.REVERSED]
+        )
         if start:
             lines = lines.filter(entry__date__gte=start)
         if end:
@@ -226,11 +229,14 @@ class Payroll(SchoolScopedModel):
 
 
 @transaction.atomic
-def record_simple_entry(school, date, narration, debit_account, credit_account, amount, *, source, reference="", user=None):
+def record_simple_entry(
+    school, date, narration, debit_account, credit_account, amount, *, source, reference="", user=None
+):
     """Create and post a two-line entry: Dr debit_account / Cr credit_account."""
     amount = Decimal(amount)
     from core.access import assert_school
     from core.models import School
+
     assert_school(school, debit_account, credit_account)
     School.objects.select_for_update().get(pk=school.pk)
     if debit_account.pk == credit_account.pk:

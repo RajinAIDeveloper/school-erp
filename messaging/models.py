@@ -8,6 +8,7 @@ class SMSTemplate(SchoolScopedModel):
     """
     Placeholders available: {school}, {name}, {student}, {class}, {roll}, {amount}, {date}, {invoice}
     """
+
     name = models.CharField(max_length=100)
     body = models.TextField(max_length=480)
 
@@ -27,6 +28,7 @@ class SMSTemplate(SchoolScopedModel):
 
 class SMSBatch(SchoolScopedModel):
     """One 'send' action; groups the individual messages for reporting."""
+
     class Recipients(models.TextChoices):
         CLASS = "class", "A class / section (guardians)"
         ALL_GUARDIANS = "all_guardians", "All guardians"

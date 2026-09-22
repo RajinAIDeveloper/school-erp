@@ -3,9 +3,7 @@ from django.db import models
 
 
 class User(AbstractUser):
-    school = models.ForeignKey(
-        "core.School", null=True, blank=True, on_delete=models.PROTECT, related_name="users"
-    )
+    school = models.ForeignKey("core.School", null=True, blank=True, on_delete=models.PROTECT, related_name="users")
     phone = models.CharField(max_length=25, blank=True)
     avatar = models.ImageField(upload_to="users/avatars/", blank=True)
 
@@ -18,5 +16,3 @@ class User(AbstractUser):
     @property
     def role_names(self):
         return ", ".join(self.groups.values_list("name", flat=True))
-
-

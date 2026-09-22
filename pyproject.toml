@@ -1,0 +1,22 @@
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+exclude = [".venv", "*/migrations/*", "staticfiles", "media", "tools"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "DJ"]
+ignore = [
+    "E501",    # line length is handled by the formatter
+    "B008",    # Django idiom: callables in field defaults
+    "DJ001",   # null=True on CharField is deliberate where a value may be absent
+    "UP038",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E402", "F401"]
+"*/models.py" = ["DJ012"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["core", "users", "academics", "students", "employees", "attendance",
+                     "fees", "finance", "examinations", "timetable", "downloads",
+                     "messaging", "holidays", "reports", "config"]

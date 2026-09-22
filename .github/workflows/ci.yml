@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Lint
+        run: |
+          ruff check .
+          ruff format --check .
+
+      - name: Django checks
+        run: |
+          python manage.py check
+          python manage.py makemigrations --check --dry-run
+
+      - name: Tests
+        run: pytest -q --cov=. --cov-report=term:skip-covered --cov-fail-under=87
+
+      - name: Tailwind stylesheet is up to date
+        run: |
+          curl -fsSL -o tailwindcss \
+            https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64
+          chmod +x tailwindcss
+          ./tailwindcss -i static/src/input.css -o /tmp/app.css --minify
+          # The committed stylesheet must match a fresh build, or the deployed UI drifts
+          # from the templates that generated it.
+          cmp /tmp/app.css static/css/app.css \
+            || (echo "static/css/app.css is stale - rebuild and commit it" && exit 1)
+
+      - name: Deploy checklist
+        env:
+          DJANGO_DEBUG: "0"
+          DJANGO_SECRET_KEY: ci-only-key-Xq7&vP2mZr9!tLw4NcJ8eHb3UyKd6AsG5FoTi1VnQxRp0ZlMwE
+          DJANGO_ALLOWED_HOSTS: example.test
+        run: python manage.py check --deploy --fail-level WARNING

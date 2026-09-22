@@ -2,11 +2,11 @@
 Reusable view mixins. All ERP views use SchoolScopedMixin so that every query is
 automatically restricted to request.school - tenant isolation can never be forgotten.
 """
+
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
-from django.urls import reverse
 
 
 class ERPPermissionMixin(LoginRequiredMixin, PermissionRequiredMixin):
@@ -25,6 +25,7 @@ class SchoolScopedMixin(ERPPermissionMixin):
     - forms receive a `school` kwarg so FK choices are limited to the tenant
     - on create, instance.school is set automatically
     """
+
     search_fields = ()
     select_related = ()
     page_title = ""
@@ -36,10 +37,7 @@ class SchoolScopedMixin(ERPPermissionMixin):
         return super().dispatch(request, *args, **kwargs)
 
     def get_queryset(self):
-        qs = super().get_queryset().filter(school=self.request.school)
-        if qs.model._meta.label_lower in ("students.enrollment", "students.studentdocument"):
-            from .access import students_for
-            qs = qs.filter(student__in=students_for(self.request.user, self.request.school))
+        qs = self.scope_queryset(super().get_queryset().filter(school=self.request.school))
         if self.select_related:
             qs = qs.select_related(*self.select_related)
         q = self.request.GET.get("q", "").strip()
@@ -48,6 +46,10 @@ class SchoolScopedMixin(ERPPermissionMixin):
             for f in self.search_fields:
                 cond |= Q(**{f"{f}__icontains": q})
             qs = qs.filter(cond)
+        return qs
+
+    def scope_queryset(self, qs):
+        """Override to narrow records beyond the tenant, e.g. to a teacher's own sections."""
         return qs
 
     def get_form_kwargs(self):
@@ -68,12 +70,3 @@ class SchoolScopedMixin(ERPPermissionMixin):
         ctx.setdefault("page_title", self.page_title)
         ctx["q"] = self.request.GET.get("q", "")
         return ctx
-
-
-class SuccessUrlNameMixin:
-    success_url_name = None
-
-    def get_success_url(self):
-        if self.success_url_name:
-            return reverse(self.success_url_name)
-        return super().get_success_url()
