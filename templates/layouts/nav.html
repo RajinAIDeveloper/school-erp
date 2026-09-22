@@ -33,7 +33,10 @@
 {% endif %}
 
 {% if perms.attendance.view_leaverequest %}
-<a href="{% url 'attendance:leave_list' %}" class="{{ base }}">My leave</a>
+<a href="{% url 'attendance:leave_list' %}" class="{{ base }} {% active request 'leave_list' 'leave_create' %}">
+  <span class="w-5 text-center">🌴</span> Leave
+  {% if pending_leave_count %}<span class="ml-auto rounded-full bg-amber-500 px-2 text-xs font-semibold text-white">{{ pending_leave_count }}</span>{% endif %}
+</a>
 {% endif %}
 
 {% if perms.fees.view_feeinvoice or perms.finance.view_journalentry %}

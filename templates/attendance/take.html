@@ -4,6 +4,10 @@
   <a href="{% if staff %}{% url 'attendance:staff_report' %}{% else %}{% url 'attendance:student_report' %}{% endif %}" class="btn-secondary btn-sm">Monthly report</a>
   {% if not staff %}<a href="{% url 'attendance:daily_summary' %}" class="btn-secondary btn-sm">Today's summary</a>{% endif %}
   {% if perms.attendance.view_leaverequest %}<a href="{% url 'attendance:leave_list' %}" class="btn-secondary btn-sm">Leave</a>{% endif %}
+  {% if staff and current_school.staff_self_checkin and user.employee_profile %}
+    <form method="post" action="{% url 'attendance:check_in' %}" class="inline">{% csrf_token %}
+      <button class="btn-success btn-sm">Check in / out</button></form>
+  {% endif %}
 {% endblock %}
 {% block content %}
 <form method="get" class="card card-body mb-4">

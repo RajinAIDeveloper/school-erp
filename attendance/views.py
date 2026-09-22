@@ -5,6 +5,7 @@ from django.contrib import messages
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.db.models import Count, Q
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -16,7 +17,16 @@ from core.models import audit
 from employees.models import Employee
 
 from .models import AttendanceStatus, LeaveRequest, StaffAttendance, StudentAttendance
-from .services import enrollments_for, monthly_matrix, save_register
+from .services import (
+    apply_leave,
+    enrollments_for,
+    leave_balance,
+    monthly_matrix,
+    overlapping_leave,
+    save_register,
+    self_check,
+    withdraw_leave,
+)
 
 
 def _parse_date(raw):
@@ -174,6 +184,39 @@ class LeaveForm(SchoolModelForm):
         model = LeaveRequest
         fields = ["employee", "leave_type", "start_date", "end_date", "reason"]
 
+    def clean(self):
+        """
+        Two rules a school actually cares about: nobody books the same day twice, and
+        nobody books past their entitlement without someone deciding to allow it.
+        """
+        data = super().clean()
+        employee = data.get("employee")
+        leave_type = data.get("leave_type")
+        start, end = data.get("start_date"), data.get("end_date")
+        if not (employee and start and end):
+            return data
+        if end < start:
+            self.add_error("end_date", "The last day cannot be before the first.")
+            return data
+        clash = overlapping_leave(employee, start, end, exclude_pk=self.instance.pk).first()
+        if clash:
+            self.add_error(
+                None,
+                f"{employee.full_name} already has leave from {clash.start_date:%d %b} "
+                f"to {clash.end_date:%d %b} ({clash.get_status_display().lower()}).",
+            )
+        if leave_type:
+            requested = (end - start).days + 1
+            balance = next(
+                (row for row in leave_balance(employee, start.year) if row["leave_type"] == leave_type), None
+            )
+            if balance and requested > balance["remaining"]:
+                self.add_error(
+                    "leave_type",
+                    f"{balance['remaining']} day(s) of {leave_type} remain this year, but {requested} were asked for.",
+                )
+        return data
+
 
 @require_permission("attendance.view_studentattendance")
 def student_history(request, pk):
@@ -263,13 +306,27 @@ def daily_summary(request):
 
 @require_permission("attendance.view_leaverequest")
 def leaves(request):
-    qs = LeaveRequest.objects.filter(school=request.school).select_related("employee", "leave_type")
-    if not is_manager(request.user):
+    """Managers see the school's requests; everyone else sees their own."""
+    qs = LeaveRequest.objects.filter(school=request.school).select_related("employee", "leave_type", "reviewed_by")
+    mine = getattr(request.user, "employee_profile", None)
+    can_review = is_manager(request.user) and request.user.has_perm("attendance.change_leaverequest")
+    if not can_review:
         qs = qs.filter(employee__user=request.user)
+    status = request.GET.get("status", "")
+    if status in dict(LeaveRequest.Status.choices):
+        qs = qs.filter(status=status)
     return render(
         request,
         "attendance/leaves.html",
-        {"rows": qs, "page_title": "Leave requests", "can_review": is_manager(request.user)},
+        {
+            "rows": qs,
+            "page_title": "Leave requests",
+            "can_review": can_review,
+            "status": status,
+            "statuses": LeaveRequest.Status.choices,
+            "pending_count": LeaveRequest.objects.filter(school=request.school, status="pending").count(),
+            "balances": leave_balance(mine, timezone.localdate().year) if mine else [],
+        },
     )
 
 
@@ -294,9 +351,38 @@ def leave_review(request, pk):
     if status not in ("approved", "rejected"):
         raise ValidationError("Invalid review decision.")
     with transaction.atomic():
+        was_approved = obj.status == LeaveRequest.Status.APPROVED
         obj.status = status
         obj.reviewed_by = request.user
         obj.reviewed_at = timezone.now()
+        obj.review_note = request.POST.get("note", "")[:200]
         obj.save()
-        audit(request, "leave." + status, obj)
+        # An approval marks those days as leave on the register; reversing a decision
+        # removes only the rows it created, never a manual entry.
+        if status == LeaveRequest.Status.APPROVED:
+            days = apply_leave(obj, request.user)
+            messages.success(request, f"Approved. {days} day(s) marked as leave on the register.")
+        else:
+            if was_approved:
+                withdraw_leave(obj, request.user)
+            messages.success(request, "Request rejected.")
+        audit(request, "leave." + status, obj, obj.review_note)
     return redirect("attendance:leave_list")
+
+
+@require_permission(None)
+@require_POST
+def check_in(request):
+    """Staff record their own arrival, then departure, when the school allows it."""
+    employee = getattr(request.user, "employee_profile", None)
+    if employee is None:
+        raise Http404("Your account is not linked to an employee record.")
+    try:
+        row = self_check(employee, request.user)
+        if row.check_out:
+            messages.success(request, f"Checked out at {row.check_out:%H:%M}.")
+        else:
+            messages.success(request, f"Checked in at {row.check_in:%H:%M}.")
+    except ValidationError as exc:
+        messages.error(request, " ".join(exc.messages))
+    return redirect(request.POST.get("next") or "attendance:staff_take")

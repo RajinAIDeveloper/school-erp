@@ -10,6 +10,7 @@ urlpatterns = [
     path("student/<int:pk>/", views.student_history, name="student_history"),
     path("staff/", views.staff_take, name="staff_take"),
     path("staff/report/", views.report, {"staff": True}, name="staff_report"),
+    path("staff/check-in/", views.check_in, name="check_in"),
     path("leave/", views.leaves, name="leave_list"),
     path("leave/new/", views.leave_create, name="leave_create"),
     path("leave/<int:pk>/review/", views.leave_review, name="leave_review"),

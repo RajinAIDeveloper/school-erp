@@ -1,6 +1,85 @@
-{% extends "layouts/base.html" %}{% block content %}
-<a class="btn-primary mb-4" href="{% url 'attendance:leave_create' %}">Request leave</a>
-<div class="card overflow-x-auto"><table class="table"><thead><tr><th>Employee</th><th>Type</th><th>Dates</th><th>Reason</th><th>Status</th><th>Review</th></tr></thead><tbody>
-{% for r in rows %}<tr><td>{{ r.employee }}</td><td>{{ r.leave_type }}</td><td>{{ r.start_date }} · {{ r.end_date }}</td><td>{{ r.reason }}</td><td>{{ r.status }}</td><td>
-{% if can_review and r.status == "pending" %}<form method="post" action="{% url 'attendance:leave_review' r.pk %}">{% csrf_token %}<button class="btn-secondary" name="status" value="approved">Approve</button><button class="btn-secondary" name="status" value="rejected">Reject</button></form>{% endif %}
-</td></tr>{% empty %}<tr><td>No requests.</td></tr>{% endfor %}</tbody></table></div>{% endblock %}
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block header_actions %}
+  {% if perms.attendance.add_leaverequest %}<a href="{% url 'attendance:leave_create' %}" class="btn-primary btn-sm">Request leave</a>{% endif %}
+  {% if perms.attendance.view_staffattendance %}<a href="{% url 'attendance:staff_take' %}" class="btn-secondary btn-sm">Staff register</a>{% endif %}
+{% endblock %}
+{% block content %}
+{% if can_review and pending_count %}
+  <div class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+    {{ pending_count }} request{{ pending_count|pluralize }} waiting for a decision.
+  </div>
+{% endif %}
+
+{% if balances %}
+<div class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+  {% for row in balances %}
+    <div class="stat">
+      <p class="text-sm text-slate-500">{{ row.leave_type }}</p>
+      <p class="mt-1 text-2xl font-bold {% if row.remaining <= 0 %}text-red-600{% endif %}">{{ row.remaining }}</p>
+      <p class="mt-1 text-xs text-slate-500">{{ row.used }} of {{ row.entitlement }} days used</p>
+    </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<form method="get" class="card card-body mb-4 flex flex-wrap items-end gap-3" data-autosubmit>
+  <div>
+    <label class="label" for="status">Status</label>
+    <select id="status" name="status" class="input w-48">
+      <option value="">All</option>
+      {% for value, label in statuses %}
+        <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button class="btn-secondary">Filter</button>
+</form>
+
+<div class="card overflow-x-auto">
+  <table class="table">
+    <thead>
+      <tr><th>Employee</th><th>Type</th><th>From</th><th>To</th><th>Days</th><th>Reason</th>
+        <th>Status</th>{% if can_review %}<th class="text-right">Decision</th>{% endif %}</tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+        <tr>
+          <td>{{ row.employee.full_name }}</td>
+          <td>{{ row.leave_type }}</td>
+          <td class="whitespace-nowrap">{{ row.start_date|date:"d M Y" }}</td>
+          <td class="whitespace-nowrap">{{ row.end_date|date:"d M Y" }}</td>
+          <td>{{ row.days }}</td>
+          <td class="text-sm text-slate-600">{{ row.reason|default:"—" }}</td>
+          <td>
+            {{ row.status|status_badge }}
+            {% if row.reviewed_by %}<p class="mt-1 text-xs text-slate-500">by {{ row.reviewed_by }}</p>{% endif %}
+            {% if row.review_note %}<p class="text-xs text-slate-500">{{ row.review_note }}</p>{% endif %}
+          </td>
+          {% if can_review %}
+            <td class="text-right">
+              {% if row.status == "pending" %}
+                <form method="post" action="{% url 'attendance:leave_review' row.pk %}" class="flex flex-wrap items-end justify-end gap-2">
+                  {% csrf_token %}
+                  <input name="note" maxlength="200" class="input w-40 py-1 text-xs" placeholder="Note (optional)">
+                  <button name="status" value="approved" class="btn-success btn-sm">Approve</button>
+                  <button name="status" value="rejected" class="btn-secondary btn-sm">Reject</button>
+                </form>
+              {% elif row.status == "approved" %}
+                <form method="post" action="{% url 'attendance:leave_review' row.pk %}"
+                      data-confirm="Withdraw this approval? The leave days come off the register.">
+                  {% csrf_token %}
+                  <button name="status" value="rejected" class="link text-xs">Withdraw approval</button>
+                </form>
+              {% endif %}
+            </td>
+          {% endif %}
+        </tr>
+      {% empty %}
+        <tr><td colspan="{% if can_review %}8{% else %}7{% endif %}">
+          {% include "components/empty.html" with message="No leave requests." %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

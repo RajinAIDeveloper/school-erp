@@ -115,8 +115,8 @@ def test_student_list_stays_within_a_query_budget(admin_client, erp, django_asse
             section=erp.section,
             roll_number=n,
         )
-    # The count is flat: filters and auth cost a fixed number, rows cost none.
-    with django_assert_max_num_queries(20):
+    # The count is flat: filters, auth and the sidebar cost a fixed number; rows cost none.
+    with django_assert_max_num_queries(22):
         assert admin_client.get("/students/").status_code == 200
 
 
