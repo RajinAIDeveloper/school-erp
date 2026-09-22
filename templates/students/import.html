@@ -1,0 +1,71 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block content %}
+<div class="mx-auto max-w-4xl space-y-6">
+  <div class="card">
+    <form method="post" enctype="multipart/form-data" class="card-body">
+      {% csrf_token %}
+      <h2 class="mb-1 font-semibold">Step 1 &middot; choose a file</h2>
+      <p class="mb-4 text-sm text-slate-600">Nothing is written until you confirm the preview below.</p>
+      {% render_form form %}
+      <div class="mt-5 flex justify-end gap-3">
+        <a href="{% url 'students:list' %}" class="btn-secondary">Cancel</a>
+        <button class="btn-primary">Check file</button>
+      </div>
+    </form>
+  </div>
+
+  {% if preview %}
+    <div class="card">
+      <div class="card-header">
+        <h2 class="font-semibold">Step 2 &middot; preview</h2>
+        <span class="text-sm {% if preview.valid %}text-emerald-700{% else %}text-red-700{% endif %}">
+          {{ preview.total }} row{{ preview.total|pluralize }} read{% if preview.errors %} &middot; {{ preview.errors|length }} problem{{ preview.errors|length|pluralize }}{% endif %}
+        </span>
+      </div>
+
+      {% if preview.errors %}
+        <div class="border-b border-red-200 bg-red-50 px-5 py-4 text-sm text-red-800">
+          <p class="mb-2 font-medium">Fix these rows and upload the file again. Nothing has been imported.</p>
+          <ul class="list-inside list-disc space-y-0.5">
+            {% for error in preview.errors|slice:":25" %}<li>{{ error }}</li>{% endfor %}
+          </ul>
+          {% if preview.errors|length > 25 %}<p class="mt-2">…and {{ preview.errors|length|add:"-25" }} more.</p>{% endif %}
+        </div>
+      {% endif %}
+
+      <div class="overflow-x-auto">
+        <table class="table">
+          <thead><tr><th>Row</th><th>Student ID</th><th>Name</th><th>Gender</th><th>Date of birth</th><th>Class</th><th>Guardian</th><th></th></tr></thead>
+          <tbody>
+            {% for row in preview.rows %}
+              <tr class="{% if not row.valid %}bg-red-50{% endif %}">
+                <td>{{ row.number }}</td>
+                <td>{{ row.data.student_id }}</td>
+                <td>{{ row.data.first_name }} {{ row.data.last_name }}</td>
+                <td>{{ row.data.gender }}</td>
+                <td>{{ row.data.date_of_birth }}</td>
+                <td>{{ row.extra.class_level }} {{ row.extra.section }}</td>
+                <td>{{ row.extra.guardian_name }}</td>
+                <td>{% if row.valid %}<span class="text-emerald-600">&#10004;</span>{% else %}<span class="text-red-600">&#10008;</span>{% endif %}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if preview.total > preview.rows|length %}
+        <p class="px-5 py-2 text-xs text-slate-500">Showing the first {{ preview.rows|length }} of {{ preview.total }} rows.</p>
+      {% endif %}
+
+      {% if preview.valid %}
+        <form method="post" class="flex justify-end gap-3 border-t border-slate-200 px-5 py-4"
+              data-confirm="Import {{ preview.total }} students?">
+          {% csrf_token %}
+          <input type="hidden" name="confirm" value="1">
+          <button class="btn-primary">Import {{ preview.total }} student{{ preview.total|pluralize }}</button>
+        </form>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

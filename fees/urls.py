@@ -13,6 +13,7 @@ urlpatterns = [
     path("receipts/<int:pk>.pdf", views.receipt, name="receipt"),
     path("payments/<int:pk>/cancel/", views.cancel, name="cancel"),
     path("reports/", views.report, name="report"),
+    path("statement/<int:student_pk>/", views.statement, name="statement"),
 ]
 for model, key, fields, columns in [
     (

@@ -1,12 +1,15 @@
+from datetime import date, datetime
+
 from django import forms
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
+from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from core.access import is_manager, require_permission, sections_for
+from core.access import is_manager, require_permission, sections_for, students_for
 from core.exports import spreadsheet
 from core.forms import SchoolModelForm, TailwindFormMixin
 from core.models import audit
@@ -14,6 +17,25 @@ from employees.models import Employee
 
 from .models import AttendanceStatus, LeaveRequest, StaffAttendance, StudentAttendance
 from .services import enrollments_for, monthly_matrix, save_register
+
+
+def _parse_date(raw):
+    """A YYYY-MM-DD query parameter, or None when it is missing or malformed."""
+    try:
+        return datetime.strptime(raw, "%Y-%m-%d").date()
+    except (TypeError, ValueError):
+        return None
+
+
+def _month_anchor(raw):
+    """First day of the requested YYYY-MM, falling back to the current month."""
+    try:
+        year, month = (int(part) for part in str(raw).split("-")[:2])
+        if 1900 <= year <= 2999 and 1 <= month <= 12:
+            return date(year, month, 1)
+    except (TypeError, ValueError):
+        pass
+    return timezone.localdate().replace(day=1)
 
 
 class RegisterFilter(TailwindFormMixin, forms.Form):
@@ -151,6 +173,92 @@ class LeaveForm(SchoolModelForm):
     class Meta:
         model = LeaveRequest
         fields = ["employee", "leave_type", "start_date", "end_date", "reason"]
+
+
+@require_permission("attendance.view_studentattendance")
+def student_history(request, pk):
+    """One student's month, for the office and for the family that asks about it."""
+    from students.models import Enrollment
+
+    student = get_object_or_404(students_for(request.user, request.school), pk=pk)
+    day = _month_anchor(request.GET.get("month"))
+    enrollments = list(
+        Enrollment.objects.filter(school=request.school, student=student)
+        .select_related("academic_year", "section__class_level")
+        .filter(academic_year__start_date__lte=day, academic_year__end_date__gte=day)
+    )
+    days, rows = monthly_matrix(request.school, enrollments, day.year, day.month)
+    if request.GET.get("format") in ("csv", "xlsx"):
+        return spreadsheet(
+            f"attendance-{student.student_id}",
+            ["Name", *[str(d.day) for d in days], "Present", "Working days", "Percent"],
+            [[r["name"], *r["cells"], r["present"], r["working"], r["pct"]] for r in rows],
+            request.GET["format"],
+        )
+    return render(
+        request,
+        "attendance/student_history.html",
+        {
+            "student": student,
+            "days": days,
+            "rows": rows,
+            "month": f"{day.year:04d}-{day.month:02d}",
+            "page_title": f"Attendance · {student.full_name}",
+        },
+    )
+
+
+@require_permission("attendance.view_studentattendance")
+def daily_summary(request):
+    """Which sections have been marked today, and how many were present in each."""
+    day = _parse_date(request.GET.get("date")) or timezone.localdate()
+    sections = sections_for(request.user, request.school).select_related("class_level")
+    records = (
+        StudentAttendance.objects.filter(school=request.school, date=day, enrollment__section__in=sections)
+        .values("enrollment__section")
+        .annotate(
+            total=Count("id"),
+            present=Count("id", filter=Q(status__in=["present", "late"])),
+            absent=Count("id", filter=Q(status="absent")),
+            leave=Count("id", filter=Q(status="leave")),
+        )
+    )
+    by_section = {row["enrollment__section"]: row for row in records}
+    from students.models import Enrollment
+
+    rolls = dict(
+        Enrollment.objects.filter(school=request.school, section__in=sections, status="enrolled")
+        .values_list("section")
+        .annotate(n=Count("id"))
+    )
+    rows = []
+    for section in sections:
+        row = by_section.get(section.pk)
+        rows.append(
+            [
+                str(section),
+                rolls.get(section.pk, 0),
+                row["total"] if row else 0,
+                row["present"] if row else 0,
+                row["absent"] if row else 0,
+                row["leave"] if row else 0,
+                "Taken" if row else "Not taken",
+            ]
+        )
+    headers = ["Section", "On roll", "Recorded", "Present", "Absent", "On leave", "Register"]
+    if request.GET.get("format") in ("csv", "xlsx"):
+        return spreadsheet(f"attendance-summary-{day}", headers, rows, request.GET["format"])
+    return render(
+        request,
+        "generic/report.html",
+        {
+            "page_title": f"Attendance summary · {day:%d %b %Y}",
+            "headers": headers,
+            "rows": rows,
+            "form": None,
+            "intro": "Sections marked 'Not taken' still need a register for this date.",
+        },
+    )
 
 
 @require_permission("attendance.view_leaverequest")

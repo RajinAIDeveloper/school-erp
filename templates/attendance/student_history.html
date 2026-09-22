@@ -1,0 +1,41 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block header_actions %}
+  <a href="?month={{ month }}&amp;format=csv" class="btn-secondary btn-sm">CSV</a>
+  <a href="?month={{ month }}&amp;format=xlsx" class="btn-secondary btn-sm">Excel</a>
+{% endblock %}
+{% block content %}
+<form method="get" class="card card-body mb-4 flex flex-wrap items-end gap-3" data-autosubmit>
+  <div>
+    <label class="label" for="month">Month</label>
+    <input type="month" id="month" name="month" value="{{ month }}" class="input w-48">
+  </div>
+  <button class="btn-secondary">Show</button>
+  <a href="{% url 'students:detail' student.pk %}" class="link ml-auto text-sm">Back to {{ student.full_name }}</a>
+</form>
+
+{% for row in rows %}
+<div class="card mb-4">
+  <div class="card-header">
+    <h2 class="font-semibold">{{ row.object.section }} &middot; Roll {{ row.object.roll_number }}</h2>
+    <p class="text-sm {% if row.pct is None %}text-slate-500{% elif row.pct >= 90 %}text-emerald-700{% elif row.pct >= 75 %}text-amber-700{% else %}text-red-700{% endif %}">
+      Present {{ row.present }} of {{ row.working }} working days{% if row.pct is not None %} &middot; {{ row.pct }}%{% endif %}
+    </p>
+  </div>
+  <div class="card-body overflow-x-auto">
+    <div class="flex flex-wrap gap-1">
+      {% for day in days %}
+        {% with status=row.cells|index:forloop.counter0 %}
+        <div class="w-12 rounded border border-slate-200 p-1 text-center">
+          <p class="text-[10px] text-slate-500">{{ day|date:"d M" }}</p>
+          {% if status == "?" %}<p class="text-xs text-slate-300">—</p>{% else %}{{ status|status_badge }}{% endif %}
+        </div>
+        {% endwith %}
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% empty %}
+  {% include "components/empty.html" with message="No enrollment covers this month for this student." %}
+{% endfor %}
+{% endblock %}

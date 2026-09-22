@@ -4,25 +4,9 @@ from django import template
 from django.conf import settings
 from django.utils.safestring import mark_safe
 
+from core.money import group_bd as bd_group
+
 register = template.Library()
-
-
-def bd_group(number: Decimal) -> str:
-    """150000.50 -> 1,50,000.50 (Bangladeshi lakh/crore grouping)."""
-    negative = number < 0
-    number = abs(number)
-    whole, _, frac = f"{number:.2f}".partition(".")
-    if len(whole) > 3:
-        head, tail = whole[:-3], whole[-3:]
-        parts = []
-        while len(head) > 2:
-            parts.insert(0, head[-2:])
-            head = head[:-2]
-        if head:
-            parts.insert(0, head)
-        whole = ",".join(parts) + "," + tail
-    result = f"{whole}.{frac}"
-    return f"-{result}" if negative else result
 
 
 @register.simple_tag(takes_context=True)
@@ -190,3 +174,12 @@ def url_for(name, obj=None):
     if obj is None:
         return reverse(name)
     return reverse(name, args=[obj.pk])
+
+
+@register.filter
+def index(sequence, position):
+    """Positional lookup for parallel lists, e.g. an attendance row against its day list."""
+    try:
+        return sequence[int(position)]
+    except (IndexError, ValueError, TypeError, KeyError):
+        return None

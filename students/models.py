@@ -66,6 +66,11 @@ class Student(SchoolScopedModel):
 
     @property
     def current_enrollment(self):
+        # A list view prefetches this as `current_enrollments`; without that the property
+        # would issue one query per row.
+        prefetched = getattr(self, "current_enrollments", None)
+        if prefetched is not None:
+            return prefetched[0] if prefetched else None
         return (
             self.enrollments.filter(academic_year__is_current=True)
             .select_related("section__class_level", "academic_year")
@@ -74,6 +79,9 @@ class Student(SchoolScopedModel):
 
     @property
     def primary_guardian(self):
+        prefetched = getattr(self, "ordered_guardian_links", None)
+        if prefetched is not None:
+            return prefetched[0].guardian if prefetched else None
         link = self.guardian_links.filter(is_primary=True).select_related("guardian").first()
         if link is None:
             link = self.guardian_links.select_related("guardian").first()

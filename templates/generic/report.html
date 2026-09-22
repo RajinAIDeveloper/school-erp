@@ -1,4 +1,5 @@
 {% extends "layouts/base.html" %}{% load erp %}{% block content %}
+{% if intro %}<p class="mb-4 text-sm text-slate-600">{{ intro }}</p>{% endif %}
 {% if form %}<form method="get" class="card card-body mb-4">{% render_form form %}<div class="mt-4 flex gap-3"><button class="btn-primary">Apply</button><button name="format" value="csv" class="btn-secondary">CSV</button><button name="format" value="xlsx" class="btn-secondary">Excel</button></div></form>{% endif %}
 <div class="card overflow-x-auto"><table class="table"><thead><tr>{% for h in headers %}<th>{{ h }}</th>{% endfor %}</tr></thead><tbody>
 {% for row in rows %}<tr>{% for cell in row %}<td>{{ cell|default_if_none:"—" }}</td>{% endfor %}</tr>{% empty %}<tr><td>No records.</td></tr>{% endfor %}</tbody></table></div>{% endblock %}

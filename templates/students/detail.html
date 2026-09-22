@@ -1,20 +1,133 @@
 {% extends "layouts/base.html" %}
+{% load erp %}
+{% block header_actions %}
+  <a href="{% url 'students:id_card' student.pk %}" class="btn-secondary btn-sm">ID card</a>
+  {% if perms.students.change_student %}
+    <a href="{% url 'students:update' student.pk %}" class="btn-secondary btn-sm">Edit</a>
+    {% if student.status == "active" %}<a href="{% url 'students:leaving' student.pk %}" class="btn-secondary btn-sm">Record leaving</a>{% endif %}
+  {% endif %}
+{% endblock %}
 {% block content %}
-<div class="card card-body mb-4"><h2 class="text-xl font-semibold">{{ student.full_name }}</h2>
-<p>{{ student.student_id }} · {{ student.get_status_display }} · {{ student.phone }}</p><p>{{ student.present_address }}</p>
-<a class="link" href="{% url 'students:id_card' student.pk %}">ID card PDF</a>
-{% if perms.students.change_student %}<a class="link ml-4" href="{% url 'students:update' student.pk %}">Edit profile</a>{% endif %}</div>
-<div class="grid gap-4 md:grid-cols-2">
-<div class="card card-body"><h3 class="font-semibold">Enrollment history</h3>
-{% for e in enrollments %}<p>{{ e.academic_year }} · {{ e.section }} · Roll {{ e.roll_number }} · {{ e.status }}</p>{% empty %}<p>No enrollments.</p>{% endfor %}
-{% if perms.students.add_enrollment %}<a class="link" href="{% url 'students:enrollment_create' %}">Add enrollment</a>{% endif %}</div>
-<div class="card card-body"><h3 class="font-semibold">Guardians</h3>
-{% for link in guardians %}<p>{{ link.guardian.full_name }} · {{ link.get_relation_display }} · {{ link.guardian.phone }}</p>{% empty %}<p>No guardians linked.</p>{% endfor %}
-{% if perms.students.add_guardian %}<a class="link" href="{% url 'students:guardian_create' student.pk %}">Add guardian</a>{% endif %}</div>
-<div class="card card-body"><h3 class="font-semibold">Documents</h3>
-{% for doc in documents %}<p><a class="link" href="{% url 'students:document' doc.pk %}">{{ doc.title }}</a></p>{% empty %}<p>No documents.</p>{% endfor %}
-{% if perms.students.add_studentdocument %}<a class="link" href="{% url 'students:document_upload' student.pk %}">Upload document</a>{% endif %}</div>
-{% if perms.fees.view_feeinvoice or student.user_id == user.id or user.guardian_profile %}<div class="card card-body"><h3 class="font-semibold">Fees</h3>
-{% for inv in invoices %}<p><a class="link" href="{% url 'fees:invoice_detail' inv.pk %}">{{ inv.invoice_no }}</a> · Due {{ inv.balance }}</p>{% empty %}<p>No invoices.</p>{% endfor %}</div>{% endif %}
+<div class="card mb-6">
+  <div class="card-body flex flex-wrap items-start gap-5">
+    {% if student.photo %}
+      <img src="{% url 'protected_image' student.photo.name %}" alt="" class="h-24 w-20 rounded object-cover">
+    {% else %}
+      <div class="flex h-24 w-20 items-center justify-center rounded bg-indigo-100 text-2xl font-bold text-indigo-700">{{ student.first_name|slice:":1" }}</div>
+    {% endif %}
+    <div class="min-w-0 flex-1">
+      <h2 class="text-xl font-semibold">{{ student.full_name }} {{ student.status|status_badge }}</h2>
+      {% if student.name_bn %}<p class="text-slate-600">{{ student.name_bn }}</p>{% endif %}
+      <dl class="mt-3 grid gap-x-8 gap-y-1 text-sm sm:grid-cols-2 lg:grid-cols-3">
+        <div class="flex gap-2"><dt class="text-slate-500">Student ID</dt><dd class="font-medium">{{ student.student_id }}</dd></div>
+        <div class="flex gap-2"><dt class="text-slate-500">Class</dt><dd class="font-medium">{% if current %}{{ current.section }} · Roll {{ current.roll_number }}{% else %}Not enrolled this year{% endif %}</dd></div>
+        <div class="flex gap-2"><dt class="text-slate-500">Gender</dt><dd>{{ student.get_gender_display }}</dd></div>
+        <div class="flex gap-2"><dt class="text-slate-500">Date of birth</dt><dd>{{ student.date_of_birth|date:"d M Y" }}</dd></div>
+        {% if student.blood_group %}<div class="flex gap-2"><dt class="text-slate-500">Blood group</dt><dd>{{ student.blood_group }}</dd></div>{% endif %}
+        {% if student.religion %}<div class="flex gap-2"><dt class="text-slate-500">Religion</dt><dd>{{ student.get_religion_display }}</dd></div>{% endif %}
+        {% if student.phone %}<div class="flex gap-2"><dt class="text-slate-500">Phone</dt><dd>{{ student.phone }}</dd></div>{% endif %}
+        {% if student.birth_registration_no %}<div class="flex gap-2"><dt class="text-slate-500">Birth reg.</dt><dd>{{ student.birth_registration_no }}</dd></div>{% endif %}
+        <div class="flex gap-2"><dt class="text-slate-500">Admitted</dt><dd>{{ student.admission_date|date:"d M Y" }}</dd></div>
+      </dl>
+      {% if student.present_address %}<p class="mt-2 text-sm text-slate-600">{{ student.present_address }}</p>{% endif %}
+    </div>
+    <div class="grid shrink-0 grid-cols-2 gap-4 text-center">
+      <div class="rounded-lg bg-slate-50 px-4 py-3">
+        <p class="text-xs text-slate-500">Attendance</p>
+        <p class="text-2xl font-bold {% if attendance_pct is None %}text-slate-400{% elif attendance_pct >= 90 %}text-emerald-600{% elif attendance_pct >= 75 %}text-amber-600{% else %}text-red-600{% endif %}">{% if attendance_pct is not None %}{{ attendance_pct }}%{% else %}—{% endif %}</p>
+        <p class="text-xs text-slate-500">{{ attendance_present }}/{{ attendance_total }} days</p>
+      </div>
+      {% if may_see_fees %}
+      <div class="rounded-lg bg-slate-50 px-4 py-3">
+        <p class="text-xs text-slate-500">Fees due</p>
+        <p class="text-2xl font-bold {% if outstanding > 0 %}text-red-600{% else %}text-emerald-600{% endif %}">{% money outstanding %}</p>
+        <p class="text-xs text-slate-500">{{ invoices|length }} invoice{{ invoices|length|pluralize }}</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="grid gap-6 lg:grid-cols-2">
+  <section class="card">
+    <div class="card-header"><h3 class="font-semibold">Enrollment history</h3>
+      {% if perms.students.add_enrollment %}<a href="{% url 'students:enrollment_create' %}" class="link text-sm">Add</a>{% endif %}</div>
+    <table class="table">
+      <thead><tr><th>Year</th><th>Class / section</th><th>Roll</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for e in enrollments %}
+          <tr><td>{{ e.academic_year }}</td><td>{{ e.section }}</td><td>{{ e.roll_number }}</td><td>{{ e.status|status_badge }}</td></tr>
+        {% empty %}<tr><td colspan="4">{% include "components/empty.html" with message="No enrollments yet." %}</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="card">
+    <div class="card-header"><h3 class="font-semibold">Guardians</h3>
+      {% if perms.students.add_guardian %}<a href="{% url 'students:guardian_create' student.pk %}" class="link text-sm">Add</a>{% endif %}</div>
+    <table class="table">
+      <thead><tr><th>Name</th><th>Relation</th><th>Phone</th><th>Primary</th></tr></thead>
+      <tbody>
+        {% for link in guardians %}
+          <tr><td>{{ link.guardian.full_name }}</td><td>{{ link.get_relation_display }}</td><td>{{ link.guardian.phone }}</td>
+            <td>{% if link.is_primary %}<span class="text-emerald-600">&#10004;</span>{% endif %}</td></tr>
+        {% empty %}<tr><td colspan="4">{% include "components/empty.html" with message="No guardian linked. Add one so the school can reach this family." %}</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="card">
+    <div class="card-header"><h3 class="font-semibold">Recent attendance</h3>
+      {% if perms.attendance.view_studentattendance %}<a href="{% url 'attendance:student_history' student.pk %}" class="link text-sm">Full history</a>{% endif %}</div>
+    <div class="card-body">
+      {% if recent_attendance %}
+        <div class="flex flex-wrap gap-1">
+          {% for a in recent_attendance %}<span title="{{ a.date|date:'d M Y' }}">{{ a.status|status_badge }}</span>{% endfor %}
+        </div>
+      {% else %}<p class="text-sm text-slate-500">No attendance recorded yet.</p>{% endif %}
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-header"><h3 class="font-semibold">Documents</h3>
+      {% if perms.students.add_studentdocument %}<a href="{% url 'students:document_upload' student.pk %}" class="link text-sm">Upload</a>{% endif %}</div>
+    <ul class="divide-y divide-slate-100 text-sm">
+      {% for doc in documents %}
+        <li class="flex items-center justify-between px-5 py-2.5">
+          <a href="{% url 'students:document' doc.pk %}" class="link">{{ doc.title }}</a>
+          <span class="text-xs text-slate-500">{{ doc.created_at|date:"d M Y" }}</span>
+        </li>
+      {% empty %}<li class="px-5 py-6 text-center text-slate-500">No documents.</li>{% endfor %}
+    </ul>
+  </section>
+
+  {% if may_see_fees %}
+  <section class="card">
+    <div class="card-header"><h3 class="font-semibold">Fees</h3>
+      <a href="{% url 'fees:statement' student.pk %}" class="link text-sm">Statement</a></div>
+    <table class="table">
+      <thead><tr><th>Invoice</th><th>Due</th><th>Total</th><th>Balance</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for inv in invoices %}
+          <tr><td><a href="{% url 'fees:invoice_detail' inv.pk %}" class="link">{{ inv.invoice_no }}</a></td>
+            <td>{{ inv.due_date|date:"d M Y" }}</td><td>{% money inv.total %}</td><td>{% money inv.balance %}</td>
+            <td>{{ inv.status|status_badge }}</td></tr>
+        {% empty %}<tr><td colspan="5">{% include "components/empty.html" with message="No invoices." %}</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </section>
+  {% endif %}
+
+  <section class="card">
+    <div class="card-header"><h3 class="font-semibold">Published results</h3></div>
+    <ul class="divide-y divide-slate-100 text-sm">
+      {% for exam in published_exams %}
+        <li class="flex items-center justify-between px-5 py-2.5">
+          <span>{{ exam.name }} <span class="text-xs text-slate-500">{{ exam.academic_year }}</span></span>
+          <a href="{% url 'examinations:report_card' exam.pk student.pk %}" class="link text-xs">Report card</a>
+        </li>
+      {% empty %}<li class="px-5 py-6 text-center text-slate-500">No results published yet.</li>{% endfor %}
+    </ul>
+  </section>
 </div>
 {% endblock %}

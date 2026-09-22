@@ -1,10 +1,12 @@
+from decimal import Decimal
+
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from core.access import require_permission, students_for
-from core.exports import pdf_response, spreadsheet
+from core.exports import spreadsheet
 from core.generic import ERPListView
 
 from .forms import GenerateInvoicesForm, PaymentForm
@@ -88,21 +90,59 @@ def detail(request, pk):
 
 @require_permission(None)
 def receipt(request, pk):
-    p = get_object_or_404(FeePayment, pk=pk, school=request.school, invoice__in=invoice_queryset(request))
-    return pdf_response(
-        "Fee receipt " + p.receipt_no,
-        ["Invoice", "Student", "Date", "Method", "Amount", "Status"],
-        [
-            [
-                p.invoice.invoice_no,
-                p.invoice.student.full_name,
-                str(p.date),
-                p.method,
-                p.amount,
-                "CANCELLED" if p.is_cancelled else "Received",
-            ]
-        ],
-        request.school.name,
+    from .documents import receipt_pdf
+
+    payment = get_object_or_404(
+        FeePayment.objects.select_related("invoice__student", "invoice__enrollment__section", "received_by"),
+        pk=pk,
+        school=request.school,
+        invoice__in=invoice_queryset(request),
+    )
+    return receipt_pdf(request.school, payment, copy=request.GET.get("copy") == "1")
+
+
+@require_permission(None)
+def statement(request, student_pk):
+    """Every charge and receipt for one student, for the office or the family."""
+    from students.models import Student
+
+    from .documents import statement_pdf
+
+    visible = students_for(request.user, request.school)
+    student = get_object_or_404(visible, pk=student_pk)
+    invoices = (
+        FeeInvoice.objects.filter(school=request.school, student=student)
+        .exclude(status="cancelled")
+        .with_totals()
+        .order_by("issue_date")
+    )
+    payments = (
+        FeePayment.objects.filter(school=request.school, invoice__student=student)
+        .select_related("invoice")
+        .order_by("date")
+    )
+    year = request.GET.get("year", "")
+    if year:
+        invoices = invoices.filter(academic_year__name=year)
+        payments = payments.filter(invoice__academic_year__name=year)
+    if request.GET.get("format") == "pdf":
+        return statement_pdf(request.school, student, list(invoices), list(payments), period=year)
+    charged = sum((i.total for i in invoices), start=Decimal("0.00"))
+    received = sum((p.amount for p in payments if not p.is_cancelled), start=Decimal("0.00"))
+    return render(
+        request,
+        "fees/statement.html",
+        {
+            "student": student,
+            "invoices": invoices,
+            "payments": payments,
+            "charged": charged,
+            "received": received,
+            "balance": charged - received,
+            "year": year,
+            "years": Student.objects.none(),
+            "page_title": f"Fee statement · {student.full_name}",
+        },
     )
 
 

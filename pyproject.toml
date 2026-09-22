@@ -9,7 +9,7 @@ ignore = [
     "E501",    # line length is handled by the formatter
     "B008",    # Django idiom: callables in field defaults
     "DJ001",   # null=True on CharField is deliberate where a value may be absent
-    "UP038",
+
 ]
 
 [tool.ruff.lint.per-file-ignores]

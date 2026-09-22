@@ -2,10 +2,11 @@ from decimal import Decimal
 
 from django.conf import settings
 from django.db import models, transaction
-from django.db.models import Sum
+from django.db.models import DecimalField, F, OuterRef, Q, Subquery, Sum, Value
+from django.db.models.functions import Coalesce
 
 from academics.models import AcademicYear, ClassLevel
-from core.models import SchoolScopedModel
+from core.models import SchoolQuerySet, SchoolScopedModel
 from students.models import Enrollment, Student
 
 ZERO = Decimal("0.00")
@@ -93,6 +94,48 @@ class FeeConcession(SchoolScopedModel):
         return max(discounted, ZERO)
 
 
+class FeeInvoiceQuerySet(SchoolQuerySet):
+    def with_totals(self):
+        """
+        Annotate subtotal, paid and balance in SQL.
+
+        The model properties are correct but cost three queries per row, which turns any
+        invoice list or dues report into hundreds of round trips. Lists and reports use
+        this; single-object screens can still read the properties.
+        """
+        money = DecimalField(max_digits=14, decimal_places=2)
+        items = (
+            FeeInvoiceItem.objects.filter(invoice=OuterRef("pk"))
+            .order_by()
+            .values("invoice")
+            .annotate(total=Sum("amount"))
+            .values("total")
+        )
+        payments = (
+            FeePayment.objects.filter(invoice=OuterRef("pk"), is_cancelled=False)
+            .order_by()
+            .values("invoice")
+            .annotate(total=Sum("amount"))
+            .values("total")
+        )
+        zero = Value(ZERO, output_field=money)
+        return (
+            self.annotate(
+                subtotal_amount=Coalesce(Subquery(items, output_field=money), zero),
+                paid_amount=Coalesce(Subquery(payments, output_field=money), zero),
+            )
+            .annotate(
+                total_amount=F("subtotal_amount") - F("discount") + F("late_fee"),
+            )
+            .annotate(
+                balance_amount=F("total_amount") - F("paid_amount"),
+            )
+        )
+
+    def outstanding(self):
+        return self.with_totals().filter(~Q(status="cancelled"), balance_amount__gt=ZERO)
+
+
 class FeeInvoice(SchoolScopedModel):
     class Status(models.TextChoices):
         UNPAID = "unpaid", "Unpaid"
@@ -113,6 +156,8 @@ class FeeInvoice(SchoolScopedModel):
     notes = models.CharField(max_length=200, blank=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
 
+    objects = FeeInvoiceQuerySet.as_manager()
+
     class Meta:
         ordering = ["-issue_date", "-id"]
         constraints = [
@@ -129,23 +174,47 @@ class FeeInvoice(SchoolScopedModel):
 
     @property
     def subtotal(self):
+        if hasattr(self, "subtotal_amount"):
+            return self.subtotal_amount
         return self.items.aggregate(s=Sum("amount"))["s"] or ZERO
 
     @property
     def total(self):
+        if hasattr(self, "total_amount"):
+            return self.total_amount
         return self.subtotal - self.discount + self.late_fee
 
     @property
     def paid(self):
+        if hasattr(self, "paid_amount"):
+            return self.paid_amount
         return self.payments.filter(is_cancelled=False).aggregate(s=Sum("amount"))["s"] or ZERO
 
     @property
     def balance(self):
+        if hasattr(self, "balance_amount"):
+            return self.balance_amount
         return self.total - self.paid
+
+    @property
+    def is_overdue(self):
+        from django.utils import timezone
+
+        return self.balance > ZERO and self.status != self.Status.CANCELLED and self.due_date < timezone.localdate()
+
+    @property
+    def days_overdue(self):
+        from django.utils import timezone
+
+        return max((timezone.localdate() - self.due_date).days, 0) if self.is_overdue else 0
 
     def refresh_status(self):
         if self.status == self.Status.CANCELLED:
             return
+        # Recompute from the database: an annotated instance carries the totals it was
+        # loaded with, which are stale the moment a payment is written.
+        for cached in ("subtotal_amount", "paid_amount", "total_amount", "balance_amount"):
+            self.__dict__.pop(cached, None)
         paid, total = self.paid, self.total
         if total <= ZERO:
             self.status = self.Status.PAID

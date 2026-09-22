@@ -1,0 +1,31 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block content %}
+<form method="post" enctype="multipart/form-data" class="mx-auto max-w-5xl space-y-5">
+  {% csrf_token %}
+  {% if form.non_field_errors %}
+    <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+      {% for e in form.non_field_errors %}<p>{{ e }}</p>{% endfor %}
+    </div>
+  {% endif %}
+
+  <p class="text-sm text-slate-600">
+    This creates the student record, the guardian who will be contacted, and the class placement together.
+    Nothing is saved unless every part is valid.
+  </p>
+
+  {% for legend, fields in form.groups %}
+    <section class="card">
+      <div class="card-header"><h2 class="font-semibold">{{ legend }}</h2></div>
+      <div class="card-body grid gap-4 sm:grid-cols-2">
+        {% for field in fields %}{% render_field field %}{% endfor %}
+      </div>
+    </section>
+  {% endfor %}
+
+  <div class="flex items-center justify-end gap-3">
+    <a href="{% url 'students:list' %}" class="btn-secondary">Cancel</a>
+    <button type="submit" class="btn-primary">Admit student</button>
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,58 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block header_actions %}
+  <a href="?year={{ year }}&amp;format=pdf" class="btn-secondary btn-sm">PDF</a>
+  <a href="{% url 'students:detail' student.pk %}" class="btn-secondary btn-sm">Student record</a>
+{% endblock %}
+{% block content %}
+<div class="mb-6 grid gap-4 sm:grid-cols-3">
+  <div class="stat"><p class="text-sm text-slate-500">Charged</p><p class="mt-1 text-2xl font-bold">{% money charged %}</p></div>
+  <div class="stat"><p class="text-sm text-slate-500">Received</p><p class="mt-1 text-2xl font-bold text-emerald-700">{% money received %}</p></div>
+  <div class="stat"><p class="text-sm text-slate-500">Balance</p>
+    <p class="mt-1 text-2xl font-bold {% if balance > 0 %}text-red-600{% else %}text-emerald-700{% endif %}">{% money balance %}</p></div>
+</div>
+
+<div class="grid gap-6 lg:grid-cols-2">
+  <section class="card">
+    <div class="card-header"><h2 class="font-semibold">Invoices</h2></div>
+    <div class="overflow-x-auto">
+      <table class="table">
+        <thead><tr><th>Invoice</th><th>Issued</th><th>Due</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th></tr></thead>
+        <tbody>
+          {% for inv in invoices %}
+            <tr>
+              <td><a href="{% url 'fees:invoice_detail' inv.pk %}" class="link">{{ inv.invoice_no }}</a></td>
+              <td>{{ inv.issue_date|date:"d M Y" }}</td>
+              <td>{{ inv.due_date|date:"d M Y" }}</td>
+              <td>{% money inv.total %}</td>
+              <td>{% money inv.paid %}</td>
+              <td>{% money inv.balance %}</td>
+              <td>{{ inv.status|status_badge }}</td>
+            </tr>
+          {% empty %}<tr><td colspan="7">{% include "components/empty.html" with message="No invoices raised." %}</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-header"><h2 class="font-semibold">Receipts</h2></div>
+    <div class="overflow-x-auto">
+      <table class="table">
+        <thead><tr><th>Receipt</th><th>Date</th><th>Method</th><th>Amount</th><th></th></tr></thead>
+        <tbody>
+          {% for p in payments %}
+            <tr class="{% if p.is_cancelled %}text-slate-400 line-through{% endif %}">
+              <td>{{ p.receipt_no }}</td>
+              <td>{{ p.date|date:"d M Y" }}</td>
+              <td>{{ p.get_method_display }}</td>
+              <td>{% money p.amount %}</td>
+              <td><a href="{% url 'fees:receipt' p.pk %}" class="link text-xs">PDF</a></td>
+            </tr>
+          {% empty %}<tr><td colspan="5">{% include "components/empty.html" with message="No payments received." %}</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+{% endblock %}

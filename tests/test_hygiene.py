@@ -25,9 +25,24 @@ CONVENTIONAL = {"403.html", "404.html", "500.html"}
 
 
 def source_files():
-    for folder in ("core", "users", "academics", "students", "employees", "attendance", "fees",
-                   "finance", "examinations", "timetable", "downloads", "messaging", "holidays",
-                   "reports", "config", "templates"):
+    for folder in (
+        "core",
+        "users",
+        "academics",
+        "students",
+        "employees",
+        "attendance",
+        "fees",
+        "finance",
+        "examinations",
+        "timetable",
+        "downloads",
+        "messaging",
+        "holidays",
+        "reports",
+        "config",
+        "templates",
+    ):
         for path in (ROOT / folder).rglob("*"):
             if path.suffix in (".py", ".html", ".txt") and path.is_file():
                 yield path
@@ -84,8 +99,11 @@ def test_student_cannot_list_staff_only_download_titles(erp, settings, tmp_path)
     settings.MEDIA_ROOT = tmp_path
     category = DownloadCategory.objects.create(school=erp.school, name="Internal")
     DownloadItem.objects.create(
-        school=erp.school, category=category, title="Salary revision circular",
-        audience="staff", file=SimpleUploadedFile("circular.txt", b"staff only"),
+        school=erp.school,
+        category=category,
+        title="Salary revision circular",
+        audience="staff",
+        file=SimpleUploadedFile("circular.txt", b"staff only"),
     )
     client = Client()
     client.force_login(erp.parent)
@@ -103,9 +121,7 @@ def test_routine_slot_management_list_is_for_editors_only(erp):
 
 
 def test_year_switch_sets_current_and_audits(erp):
-    later = AcademicYear.objects.create(
-        school=erp.school, name="2027", start_date="2027-01-01", end_date="2027-12-31"
-    )
+    later = AcademicYear.objects.create(school=erp.school, name="2027", start_date="2027-01-01", end_date="2027-12-31")
     client = Client()
     client.force_login(erp.admin)
     assert client.get(f"/settings/year/{later.pk}/switch/").status_code == 405
@@ -119,9 +135,7 @@ def test_year_switch_sets_current_and_audits(erp):
 
 
 def test_year_switch_cannot_touch_another_school(erp):
-    foreign = AcademicYear.objects.create(
-        school=erp.other, name="2027", start_date="2027-01-01", end_date="2027-12-31"
-    )
+    foreign = AcademicYear.objects.create(school=erp.other, name="2027", start_date="2027-01-01", end_date="2027-12-31")
     client = Client()
     client.force_login(erp.admin)
     assert client.post(f"/settings/year/{foreign.pk}/switch/").status_code == 404
