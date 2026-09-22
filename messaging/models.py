@@ -60,6 +60,10 @@ class SMSBatch(SchoolScopedModel):
     def failed_count(self):
         return self.messages.filter(status=SMSMessage.Status.FAILED).count()
 
+    @property
+    def queued_count(self):
+        return self.messages.filter(status__in=[SMSMessage.Status.QUEUED, SMSMessage.Status.PROCESSING]).count()
+
 
 class SMSMessage(SchoolScopedModel):
     class Status(models.TextChoices):

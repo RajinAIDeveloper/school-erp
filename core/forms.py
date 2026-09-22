@@ -166,4 +166,29 @@ class SMSSettingsForm(TailwindFormMixin, forms.ModelForm):
     class Meta:
         model = School
         fields = ["sms_sender_id", "sms_api_url", "sms_api_key", "sms_extra_params"]
+
+
+class NotificationSettingsForm(TailwindFormMixin, forms.ModelForm):
+    """
+    Which events text a family.
+
+    Every switch is off until a school turns it on: each message costs the school money
+    and lands on a parent's phone, so the default is silence.
+    """
+
+    class Meta:
+        model = School
+        fields = [
+            "notify_absence_sms",
+            "notify_payment_sms",
+            "notify_due_sms",
+            "notify_results_sms",
+            "notify_admission_sms",
+        ]
+
+
+class FinancePolicyForm(TailwindFormMixin, forms.ModelForm):
+    class Meta:
+        model = School
+        fields = ["late_fee_per_day", "late_fee_cap", "books_locked_until", "staff_self_checkin"]
         widgets = {"sms_api_key": forms.PasswordInput(render_value=True)}

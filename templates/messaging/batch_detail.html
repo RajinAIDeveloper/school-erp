@@ -1,0 +1,51 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block header_actions %}
+  <a href="{% url 'messaging:batch_list' %}" class="btn-secondary btn-sm">All batches</a>
+  {% if batch.failed_count and perms.messaging.add_smsmessage %}
+    <form method="post" action="{% url 'messaging:retry_batch' batch.pk %}" class="inline">{% csrf_token %}
+      <button class="btn-secondary btn-sm">Retry {{ batch.failed_count }} failed</button></form>
+  {% endif %}
+{% endblock %}
+{% block content %}
+<div class="card mb-6">
+  <div class="card-body">
+    <div class="flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <h2 class="text-lg font-semibold">{{ batch.title }}</h2>
+        <p class="text-sm text-slate-500">
+          {{ batch.get_recipients_display }} &middot; queued {{ batch.created_at|date:"d M Y, H:i" }}
+          {% if batch.sent_by %}by {{ batch.sent_by }}{% endif %} &middot; {{ parts }} SMS part{{ parts|pluralize }} each
+        </p>
+      </div>
+      <div class="grid grid-cols-3 gap-4 text-center">
+        <div><p class="text-xs text-slate-500">Sent</p><p class="text-xl font-bold text-emerald-700">{{ batch.sent_count }}</p></div>
+        <div><p class="text-xs text-slate-500">Queued</p><p class="text-xl font-bold">{{ batch.queued_count }}</p></div>
+        <div><p class="text-xs text-slate-500">Failed</p>
+          <p class="text-xl font-bold {% if batch.failed_count %}text-red-600{% endif %}">{{ batch.failed_count }}</p></div>
+      </div>
+    </div>
+    <div class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+      <p class="whitespace-pre-wrap text-sm">{{ batch.body }}</p>
+    </div>
+  </div>
+</div>
+
+<div class="card overflow-x-auto">
+  <table class="table">
+    <thead><tr><th>Recipient</th><th>Message as sent</th><th>Status</th><th>Tries</th><th>Sent</th></tr></thead>
+    <tbody>
+      {% for m in rows %}
+        <tr>
+          <td><p class="font-medium">{{ m.recipient_name|default:"—" }}</p><p class="text-xs text-slate-500">{{ m.phone }}</p></td>
+          <td class="max-w-md text-sm">{{ m.body }}</td>
+          <td>{{ m.status|status_badge }}
+            {% if m.provider_response and m.status == "failed" %}<p class="mt-1 max-w-xs text-xs text-red-600">{{ m.provider_response|truncatechars:80 }}</p>{% endif %}</td>
+          <td class="text-slate-500">{{ m.attempts }}</td>
+          <td class="text-xs text-slate-500">{{ m.sent_at|date:"d M, H:i"|default:"—" }}</td>
+        </tr>
+      {% empty %}<tr><td colspan="5">{% include "components/empty.html" with message="No messages in this batch." %}</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

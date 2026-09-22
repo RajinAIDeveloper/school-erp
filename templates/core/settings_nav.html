@@ -12,6 +12,9 @@
   <a href="{% url 'settings:designation_list' %}" class="{{ tab }} {% if 'designation' in request.resolver_match.url_name %}{{ on }}{% else %}{{ off }}{% endif %}">Designations</a>
   <a href="{% url 'settings:leave_type_list' %}" class="{{ tab }} {% if 'leave_type' in request.resolver_match.url_name %}{{ on }}{% else %}{{ off }}{% endif %}">Leave types</a>
   <a href="{% url 'settings:sms' %}" class="{{ tab }} {% if request.resolver_match.url_name == 'sms' %}{{ on }}{% else %}{{ off }}{% endif %}">SMS gateway</a>
+  <a href="{% url 'messaging:gateway_test' %}" class="{{ tab }} {% if request.resolver_match.url_name == 'gateway_test' %}{{ on }}{% else %}{{ off }}{% endif %}">Gateway test</a>
+  <a href="{% url 'settings:notifications' %}" class="{{ tab }} {% if request.resolver_match.url_name == 'notifications' %}{{ on }}{% else %}{{ off }}{% endif %}">Notifications</a>
+  <a href="{% url 'settings:policy' %}" class="{{ tab }} {% if request.resolver_match.url_name == 'policy' %}{{ on }}{% else %}{{ off }}{% endif %}">Policy</a>
   <a href="{% url 'settings:audit' %}" class="{{ tab }} {% if request.resolver_match.url_name == 'audit' %}{{ on }}{% else %}{{ off }}{% endif %}">Audit log</a>
   {% endwith %}
 </div>

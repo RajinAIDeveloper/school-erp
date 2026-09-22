@@ -11,7 +11,7 @@ from fees.models import FeePayment
 from holidays.models import Holiday
 
 from .access import require_permission
-from .forms import SchoolForm, SMSSettingsForm
+from .forms import FinancePolicyForm, NotificationSettingsForm, SchoolForm, SMSSettingsForm
 from .mixins import ERPPermissionMixin
 from .models import AuditLog, audit
 
@@ -93,6 +93,34 @@ class SchoolSettingsView(ERPPermissionMixin, UpdateView):
 class SMSSettingsView(SchoolSettingsView):
     form_class = SMSSettingsForm
     template_name = "core/settings_sms.html"
+
+
+class NotificationSettingsView(SchoolSettingsView):
+    form_class = NotificationSettingsForm
+    template_name = "core/settings_notifications.html"
+
+    def form_valid(self, form):
+        from messaging.notifications import ensure_default_templates
+
+        response = super().form_valid(form)
+        created = ensure_default_templates(self.request.school)
+        if created:
+            messages.info(
+                self.request,
+                f"Added {len(created)} message template(s) you can now edit in the school's own words.",
+            )
+        audit(self.request, "settings.notifications_changed", self.request.school)
+        return response
+
+
+class PolicySettingsView(SchoolSettingsView):
+    form_class = FinancePolicyForm
+    template_name = "core/settings_policy.html"
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        audit(self.request, "settings.policy_changed", self.request.school)
+        return response
 
 
 class AuditLogListView(ERPPermissionMixin, ListView):

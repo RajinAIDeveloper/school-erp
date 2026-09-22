@@ -1,0 +1,35 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block header %}Basic Settings{% endblock %}
+{% block content %}
+{% include "core/settings_nav.html" %}
+<div class="mx-auto max-w-3xl space-y-5">
+  <form method="post" class="card">
+    {% csrf_token %}
+    <div class="card-body">
+      <h2 class="font-semibold">Automatic messages</h2>
+      <p class="mb-5 mt-1 text-sm text-slate-600">
+        Each switch is off until you turn it on. Every message costs the school money and lands on a
+        parent's phone, so nothing is sent on your behalf by default. Messages are queued and delivered
+        by the worker; a family who asks not to be texted can be opted out on their guardian record.
+      </p>
+      <div class="space-y-3">
+        {% for field in form %}
+          <label class="flex items-start gap-3 rounded-lg border border-slate-200 px-4 py-3">
+            <div class="pt-0.5">{{ field }}</div>
+            <div>
+              <p class="text-sm font-medium">{{ field.label }}</p>
+              {% if field.help_text %}<p class="text-xs text-slate-500">{{ field.help_text }}</p>{% endif %}
+              {% for e in field.errors %}<p class="text-xs text-red-600">{{ e }}</p>{% endfor %}
+            </div>
+          </label>
+        {% endfor %}
+      </div>
+      <div class="mt-5 flex items-center justify-between border-t border-slate-200 pt-4">
+        <a href="{% url 'messaging:template_list' %}" class="link text-sm">Edit the message wording</a>
+        <button class="btn-primary">Save notifications</button>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}

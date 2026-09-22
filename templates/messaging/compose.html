@@ -1,0 +1,88 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block header_actions %}
+  <a href="{% url 'messaging:template_list' %}" class="btn-secondary btn-sm">Templates</a>
+  <a href="{% url 'messaging:batch_list' %}" class="btn-secondary btn-sm">Batches</a>
+{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-4xl space-y-5">
+  <form method="post" class="card">
+    {% csrf_token %}
+    <div class="card-body">
+      {% if form.non_field_errors %}
+        <div class="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {% for e in form.non_field_errors %}<p>{{ e }}</p>{% endfor %}
+        </div>
+      {% endif %}
+      <div class="grid gap-4 sm:grid-cols-2">
+        {% render_field form.title %}
+        {% render_field form.recipients %}
+        {% render_field form.class_level %}
+        {% render_field form.section %}
+        {% render_field form.template %}
+        {% render_field form.numbers %}
+      </div>
+      <div class="mt-4">{% render_field form.body %}</div>
+      <p id="length-hint" class="mt-1 text-xs text-slate-500"></p>
+
+      <div class="mt-5 flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 pt-4">
+        <p class="mr-auto text-xs text-slate-500">Messages are queued; the worker sends them.</p>
+        <button name="preview" value="1" class="btn-secondary">Preview</button>
+        <button class="btn-primary">Queue messages</button>
+      </div>
+    </div>
+  </form>
+
+  {% if preview %}
+    <div class="card">
+      <div class="card-header">
+        <h2 class="font-semibold">Preview</h2>
+        <span class="text-sm text-slate-600">{{ preview.description }} &middot; {{ preview.parts }} SMS part{{ preview.parts|pluralize }} each</span>
+      </div>
+      <div class="card-body">
+        <p class="text-sm text-slate-600">{{ preview.length }}</p>
+        {% if preview.count %}
+          <div class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <p class="text-xs text-slate-500">To {{ preview.sample_name|default:"a recipient" }} ({{ preview.sample_phone }})</p>
+            <p class="mt-2 whitespace-pre-wrap text-sm">{{ preview.sample_body }}</p>
+          </div>
+          <p class="mt-3 text-xs text-slate-500">
+            {{ preview.count }} message{{ preview.count|pluralize }} will be queued, each with its own names filled in.
+          </p>
+        {% else %}
+          <p class="mt-3 text-sm text-amber-700">
+            Nobody matches these recipients. Check the class, or whether those guardians have a mobile number
+            on file and have not opted out.
+          </p>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  // Fill the body from a chosen template, and keep a live character and part count.
+  (function () {
+    const bodies = {{ template_bodies|safe }};
+    const picker = document.getElementById("id_template");
+    const body = document.getElementById("id_body");
+    const hint = document.getElementById("length-hint");
+    const GSM = /^[@£$¥èéùìòÇØøÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !"#¤%&'()*+,\-./0-9:;<=>?¡A-ZÄÖÑÜ§¿a-zäöñüà\n\r\f\[\]{}\\~^|€]*$/;
+    function update() {
+      const text = body.value;
+      const unicode = !GSM.test(text);
+      const single = unicode ? 70 : 160;
+      const multi = unicode ? 67 : 153;
+      const parts = text.length === 0 ? 0 : (text.length <= single ? 1 : Math.ceil(text.length / multi));
+      hint.textContent = text.length + " characters · " + parts + " SMS part" + (parts === 1 ? "" : "s") +
+        " · " + (unicode ? "Unicode" : "GSM") + " (" + single + " per part)";
+    }
+    picker && picker.addEventListener("change", function () {
+      if (bodies[picker.value]) { body.value = bodies[picker.value]; update(); }
+    });
+    body && body.addEventListener("input", update);
+    update();
+  })();
+</script>
+{% endblock %}

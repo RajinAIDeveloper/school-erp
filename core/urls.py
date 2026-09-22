@@ -11,6 +11,8 @@ app_name = "settings"
 urlpatterns = [
     path("", views.SchoolSettingsView.as_view(), name="school"),
     path("sms/", views.SMSSettingsView.as_view(), name="sms"),
+    path("notifications/", views.NotificationSettingsView.as_view(), name="notifications"),
+    path("policy/", views.PolicySettingsView.as_view(), name="policy"),
     path("audit/", views.AuditLogListView.as_view(), name="audit"),
     path("year/<int:pk>/switch/", views.switch_year, name="year_switch"),
 ]
