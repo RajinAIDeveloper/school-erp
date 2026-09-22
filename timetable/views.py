@@ -1,64 +1,266 @@
+"""Class routine: week grids, a bulk editor and utilisation reports."""
+
 from django import forms
-from django.shortcuts import render
+from django.contrib import messages
+from django.core.exceptions import PermissionDenied
+from django.db.models import Q
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
 
+from academics.models import AcademicYear, Section, Subject
 from core.access import is_manager, require_permission, sections_for, students_for
-from core.exports import pdf_response, spreadsheet
+from core.exports import spreadsheet
 from core.forms import TailwindFormMixin
+from core.pdf import table_document
+from employees.models import Employee
 
-from .models import RoutineSlot
+from .models import WEEKDAYS, Period, Room, RoutineSlot
+from .services import (
+    WeekGridError,
+    all_periods,
+    free_teachers,
+    room_utilisation,
+    save_week,
+    teacher_load,
+    week_grid,
+)
+
+
+class RoutineFilter(TailwindFormMixin, forms.Form):
+    academic_year = forms.ModelChoiceField(queryset=AcademicYear.objects.none(), required=False)
+    section = forms.ModelChoiceField(queryset=Section.objects.none(), required=False)
+    teacher = forms.ModelChoiceField(queryset=Employee.objects.none(), required=False)
+
+    def __init__(self, *args, school, user, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["academic_year"].queryset = AcademicYear.objects.filter(school=school)
+        self.fields["section"].queryset = Section.objects.filter(school=school).select_related("class_level")
+        self.fields["teacher"].queryset = Employee.objects.filter(school=school, employee_type=Employee.Type.TEACHER)
+        if not is_manager(user):
+            self.fields["teacher"].queryset = self.fields["teacher"].queryset.filter(user=user)
+
+
+def _pick(queryset, raw):
+    """A select that was left on its blank option must not become a lookup."""
+    return queryset.filter(pk=int(raw)).first() if str(raw).isdigit() else None
+
+
+def visible_slots(request, queryset):
+    """Managers see the whole school; everyone else sees a routine that concerns them."""
+    if is_manager(request.user):
+        return queryset
+    return queryset.filter(
+        Q(section__in=sections_for(request.user, request.school))
+        | Q(section__enrollments__student__in=students_for(request.user, request.school))
+        | Q(teacher__user=request.user)
+    ).distinct()
 
 
 @require_permission("timetable.view_routineslot")
 def routine(request):
-    from academics.models import AcademicYear, Section
-    from employees.models import Employee
-
-    class Filter(TailwindFormMixin, forms.Form):
-        academic_year = forms.ModelChoiceField(
-            queryset=AcademicYear.objects.filter(school=request.school), required=False
-        )
-        section = forms.ModelChoiceField(queryset=Section.objects.filter(school=request.school), required=False)
-        teacher = forms.ModelChoiceField(
-            queryset=Employee.objects.filter(school=request.school, employee_type="teacher"), required=False
-        )
-
-    form = Filter(request.GET or None)
-    qs = RoutineSlot.objects.filter(school=request.school).select_related(
-        "academic_year", "section__class_level", "teacher", "subject", "room", "period"
-    )
-    if not is_manager(request.user):
-        from django.db.models import Q
-
-        qs = qs.filter(
-            Q(section__in=sections_for(request.user, request.school))
-            | Q(section__enrollments__student__in=students_for(request.user, request.school))
-        ).distinct()
+    """The week as a grid, for a class or for a teacher."""
+    form = RoutineFilter(request.GET or None, school=request.school, user=request.user)
+    year = section = teacher = None
     if form.is_bound and form.is_valid():
-        for name, value in form.cleaned_data.items():
-            if value:
-                qs = qs.filter(**{name: value})
-    else:
-        qs = qs.filter(academic_year__is_current=True)
-    headers = ["Year", "Day", "Period", "Class / section", "Subject", "Teacher", "Room"]
-    rows = [
-        [
-            str(r.academic_year),
-            r.get_weekday_display(),
-            str(r.period),
-            str(r.section),
-            str(r.subject),
-            str(r.teacher or ""),
-            str(r.room or ""),
-        ]
-        for r in qs
-    ]
+        year = form.cleaned_data["academic_year"]
+        section = form.cleaned_data["section"]
+        teacher = form.cleaned_data["teacher"]
+    year = year or AcademicYear.current_for(request.school)
+
+    # A student or guardian with no filter chosen still gets their own class.
+    if section is None and teacher is None and not is_manager(request.user):
+        own = sections_for(request.user, request.school).first()
+        if own is None:
+            enrolled = students_for(request.user, request.school).values_list("enrollments__section", flat=True)
+            own = Section.objects.filter(school=request.school, pk__in=[s for s in enrolled if s]).first()
+        section = own
+
+    grid = week_grid(request.school, year, section=section, teacher=teacher) if year else None
+    if grid and not is_manager(request.user):
+        allowed = set(
+            visible_slots(request, RoutineSlot.objects.filter(school=request.school)).values_list("pk", flat=True)
+        )
+        for row in grid["rows"]:
+            for cell in row["cells"]:
+                cell["slots"] = [slot for slot in cell["slots"] if slot.pk in allowed]
+
+    slots = (
+        visible_slots(
+            request,
+            RoutineSlot.objects.filter(school=request.school, academic_year=year).select_related(
+                "academic_year", "section__class_level", "teacher", "subject", "room", "period"
+            ),
+        )
+        if year
+        else RoutineSlot.objects.none()
+    )
+    if section:
+        slots = slots.filter(section=section)
+    if teacher:
+        slots = slots.filter(teacher=teacher)
+
     fmt = request.GET.get("format")
-    if fmt == "pdf":
-        return pdf_response("Class routine", headers, rows, request.school.name)
-    if fmt in ("csv", "xlsx"):
-        return spreadsheet("routine", headers, rows, fmt)
+    if fmt:
+        headers = ["Day", "Period", "Class / section", "Subject", "Teacher", "Room"]
+        rows = [
+            [
+                s.get_weekday_display(),
+                str(s.period),
+                str(s.section),
+                str(s.subject),
+                str(s.teacher or ""),
+                str(s.room or ""),
+            ]
+            for s in slots.order_by("weekday", "period__order")
+        ]
+        title = "Class routine"
+        if section:
+            title = f"Routine - {section}"
+        elif teacher:
+            title = f"Routine - {teacher.full_name}"
+        if fmt == "pdf":
+            return table_document(
+                request.school, title, headers, rows, subtitle=str(year or ""), filename="routine.pdf"
+            )
+        if fmt in ("csv", "xlsx"):
+            return spreadsheet("routine", headers, rows, fmt)
+
     return render(
         request,
         "timetable/routine.html",
-        {"form": form, "headers": headers, "rows": rows, "page_title": "Class routine"},
+        {
+            "form": form,
+            "grid": grid,
+            "year": year,
+            "section": section,
+            "teacher": teacher,
+            "can_edit": request.user.has_perm("timetable.change_routineslot"),
+            "page_title": "Class routine",
+        },
+    )
+
+
+@require_permission("timetable.change_routineslot")
+def grid_edit(request):
+    """Set a whole week for one section on one screen."""
+    year_pk = request.POST.get("academic_year") or request.GET.get("academic_year")
+    section_pk = request.POST.get("section") or request.GET.get("section")
+    year = (
+        get_object_or_404(AcademicYear, school=request.school, pk=year_pk)
+        if str(year_pk).isdigit()
+        else AcademicYear.current_for(request.school)
+    )
+    section = get_object_or_404(Section, school=request.school, pk=section_pk) if str(section_pk).isdigit() else None
+    periods = all_periods(request.school)
+    subjects = Subject.objects.filter(school=request.school).order_by("name")
+    teachers = Employee.objects.filter(
+        school=request.school, employee_type=Employee.Type.TEACHER, status=Employee.Status.ACTIVE
+    ).order_by("first_name")
+    rooms = Room.objects.filter(school=request.school).order_by("name")
+    cell_errors = {}
+
+    if request.method == "POST" and section and year:
+        cells = {}
+        for period in periods:
+            if period.is_break:
+                continue
+            for weekday, _label in WEEKDAYS:
+                prefix = f"{weekday}-{period.pk}"
+                subject_pk = request.POST.get(f"{prefix}-subject", "")
+                if not subject_pk:
+                    cells[(weekday, period.pk)] = None
+                    continue
+                cells[(weekday, period.pk)] = {
+                    "subject": _pick(subjects, subject_pk),
+                    "teacher": _pick(teachers, request.POST.get(f"{prefix}-teacher", "")),
+                    "room": _pick(rooms, request.POST.get(f"{prefix}-room", "")),
+                }
+        try:
+            saved, cleared = save_week(
+                school=request.school, user=request.user, academic_year=year, section=section, cells=cells
+            )
+            messages.success(request, f"Saved {saved} period(s); cleared {cleared}.")
+            return redirect(f"/routine/?academic_year={year.pk}&section={section.pk}")
+        except WeekGridError as exc:
+            cell_errors = exc.errors
+            messages.error(request, "Nothing was saved. The cells marked below clash with another class.")
+
+    current = {}
+    if section and year:
+        for slot in RoutineSlot.objects.filter(school=request.school, academic_year=year, section=section):
+            current[(slot.weekday, slot.period_id)] = slot
+
+    rows = []
+    for period in periods:
+        cells = []
+        for weekday, label in WEEKDAYS:
+            slot = current.get((weekday, period.pk))
+            cells.append(
+                {
+                    "weekday": weekday,
+                    "label": label,
+                    "prefix": f"{weekday}-{period.pk}",
+                    "slot": slot,
+                    "error": cell_errors.get((weekday, period.pk)),
+                }
+            )
+        rows.append({"period": period, "cells": cells})
+
+    return render(
+        request,
+        "timetable/grid_edit.html",
+        {
+            "year": year,
+            "section": section,
+            "sections": Section.objects.filter(school=request.school).select_related("class_level"),
+            "years": AcademicYear.objects.filter(school=request.school),
+            "weekdays": WEEKDAYS,
+            "rows": rows,
+            "subjects": subjects,
+            "teachers": teachers,
+            "rooms": rooms,
+            "page_title": f"Edit routine{f' - {section}' if section else ''}",
+        },
+    )
+
+
+@require_permission("timetable.view_routineslot")
+def free_teachers_json(request):
+    """Who is free in a given slot, for the editor's helper."""
+    year = AcademicYear.current_for(request.school)
+    weekday = request.GET.get("weekday", "")
+    period = Period.objects.filter(school=request.school, pk=request.GET.get("period", 0)).first()
+    if not (year and period and weekday.isdigit()):
+        return JsonResponse([], safe=False)
+    rows = free_teachers(request.school, year, int(weekday), period)
+    return JsonResponse([{"id": t.pk, "name": t.full_name} for t in rows], safe=False)
+
+
+@require_permission("timetable.view_routineslot")
+def utilisation(request):
+    """Room use and teacher load for the current year."""
+    if not is_manager(request.user) and not request.user.has_perm("timetable.change_routineslot"):
+        raise PermissionDenied("This report is for staff who plan the timetable.")
+    year = AcademicYear.current_for(request.school)
+    rooms = room_utilisation(request.school, year) if year else []
+    load = teacher_load(request.school, year) if year else []
+    fmt = request.GET.get("format")
+    if fmt in ("csv", "xlsx", "pdf"):
+        headers = ["Room", "Capacity", "Periods used", "Periods free", "Use %"]
+        rows = [[r["room"].name, r["capacity"], r["used"], r["available"], r["percent"]] for r in rooms]
+        if fmt == "pdf":
+            return table_document(
+                request.school,
+                "Room utilisation",
+                headers,
+                rows,
+                subtitle=str(year or ""),
+                filename="room-utilisation.pdf",
+                align_right=(1, 2, 3, 4),
+            )
+        return spreadsheet("room-utilisation", headers, rows, fmt)
+    return render(
+        request,
+        "timetable/utilisation.html",
+        {"rooms": rooms, "load": load, "year": year, "page_title": "Routine utilisation"},
     )

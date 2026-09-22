@@ -2,11 +2,24 @@ from django.urls import path
 
 from core.crud import crud
 
+from . import views
 from .models import Period, Room, RoutineSlot
-from .views import routine
 
 app_name = "timetable"
-urlpatterns = [path("", routine, name="routine")]
+
+ROUTINE_ACTIONS = (
+    ("Routine", "timetable:routine", "timetable.view_routineslot"),
+    ("Edit week", "timetable:grid_edit", "timetable.change_routineslot"),
+    ("Utilisation", "timetable:utilisation", "timetable.view_routineslot"),
+)
+
+urlpatterns = [
+    path("", views.routine, name="routine"),
+    path("edit/", views.grid_edit, name="grid_edit"),
+    path("free-teachers.json", views.free_teachers_json, name="free_teachers"),
+    path("utilisation/", views.utilisation, name="utilisation"),
+]
+
 for model, key, fields, cols in [
     (
         Period,
@@ -35,6 +48,6 @@ for model, key, fields, cols in [
         key,
         fields,
         cols,
-        actions=(("Routine", "timetable:routine", "timetable.view_routineslot"),),
+        actions=ROUTINE_ACTIONS,
         list_permission=f"timetable.change_{model._meta.model_name}",
     )

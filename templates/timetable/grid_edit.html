@@ -1,0 +1,86 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block content %}
+<form method="get" class="card card-body mb-4 flex flex-wrap items-end gap-3">
+  <div><label class="label" for="academic_year">Academic year</label>
+    <select id="academic_year" name="academic_year" class="input w-48">
+      {% for y in years %}<option value="{{ y.pk }}" {% if year.pk == y.pk %}selected{% endif %}>{{ y }}</option>{% endfor %}
+    </select></div>
+  <div><label class="label" for="section">Section</label>
+    <select id="section" name="section" class="input w-64">
+      <option value="">Choose a section</option>
+      {% for s in sections %}<option value="{{ s.pk }}" {% if section.pk == s.pk %}selected{% endif %}>{{ s }}</option>{% endfor %}
+    </select></div>
+  <button class="btn-secondary">Load week</button>
+</form>
+
+{% if section %}
+<form method="post" class="card">
+  {% csrf_token %}
+  <input type="hidden" name="academic_year" value="{{ year.pk }}">
+  <input type="hidden" name="section" value="{{ section.pk }}">
+  <div class="card-header">
+    <h2 class="font-semibold">{{ section }} &middot; {{ year }}</h2>
+    <p class="text-sm text-slate-500">Leaving a subject blank clears that period.</p>
+  </div>
+
+  <div class="overflow-x-auto">
+    <table class="table">
+      <thead>
+        <tr><th class="w-36">Period</th>{% for weekday, label in weekdays %}<th>{{ label }}</th>{% endfor %}</tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          <tr class="{% if row.period.is_break %}bg-slate-50{% endif %}">
+            <td class="align-top">
+              <p class="font-medium">{{ row.period.name }}</p>
+              <p class="text-xs text-slate-500">{{ row.period.start_time|time:"H:i" }}–{{ row.period.end_time|time:"H:i" }}</p>
+            </td>
+            {% if row.period.is_break %}
+              <td colspan="{{ weekdays|length }}" class="text-center text-sm italic text-slate-500">Break — not taught</td>
+            {% else %}
+              {% for cell in row.cells %}
+                <td class="align-top {% if cell.error %}bg-red-50{% endif %}">
+                  <select name="{{ cell.prefix }}-subject" class="input mb-1 py-1 text-xs">
+                    <option value="">—</option>
+                    {% for subject in subjects %}
+                      <option value="{{ subject.pk }}" {% if cell.slot.subject_id == subject.pk %}selected{% endif %}>{{ subject.name }}</option>
+                    {% endfor %}
+                  </select>
+                  <select name="{{ cell.prefix }}-teacher" class="input mb-1 py-1 text-xs">
+                    <option value="">No teacher</option>
+                    {% for t in teachers %}
+                      <option value="{{ t.pk }}" {% if cell.slot.teacher_id == t.pk %}selected{% endif %}>{{ t.full_name }}</option>
+                    {% endfor %}
+                  </select>
+                  <select name="{{ cell.prefix }}-room" class="input py-1 text-xs">
+                    <option value="">No room</option>
+                    {% for r in rooms %}
+                      <option value="{{ r.pk }}" {% if cell.slot.room_id == r.pk %}selected{% endif %}>{{ r.name }}</option>
+                    {% endfor %}
+                  </select>
+                  {% if cell.error %}<p class="mt-1 text-xs text-red-700">{{ cell.error }}</p>{% endif %}
+                </td>
+              {% endfor %}
+            {% endif %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="flex items-center justify-between border-t border-slate-200 px-5 py-4">
+    <p class="text-xs text-slate-500">
+      The whole week is checked against the rest of the school before anything is saved, so a clash
+      never leaves half a timetable behind.
+    </p>
+    <div class="flex gap-3">
+      <a href="{% url 'timetable:routine' %}?section={{ section.pk }}&amp;academic_year={{ year.pk }}" class="btn-secondary">Cancel</a>
+      <button class="btn-primary">Save week</button>
+    </div>
+  </div>
+</form>
+{% else %}
+  {% include "components/empty.html" with message="Choose a section to edit its week." %}
+{% endif %}
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block header_actions %}
+  <a href="?format=csv" class="btn-secondary btn-sm">CSV</a>
+  <a href="?format=pdf" class="btn-secondary btn-sm">PDF</a>
+  <a href="{% url 'timetable:routine' %}" class="btn-secondary btn-sm">Routine</a>
+{% endblock %}
+{% block content %}
+<div class="grid gap-6 lg:grid-cols-2">
+  <section class="card overflow-x-auto">
+    <div class="card-header"><h2 class="font-semibold">Rooms</h2><span class="text-sm text-slate-500">{{ year }}</span></div>
+    <table class="table">
+      <thead><tr><th>Room</th><th class="text-right">Capacity</th><th class="text-right">Used</th>
+        <th class="text-right">Free</th><th class="text-right">Use</th></tr></thead>
+      <tbody>
+        {% for row in rooms %}
+          <tr><td>{{ row.room.name }}</td><td class="text-right">{{ row.capacity }}</td>
+            <td class="text-right">{{ row.used }}</td><td class="text-right">{{ row.available }}</td>
+            <td class="text-right {% if row.percent >= 90 %}text-red-600 font-medium{% endif %}">{{ row.percent|default:"—" }}%</td></tr>
+        {% empty %}<tr><td colspan="5">{% include "components/empty.html" with message="No rooms configured." %}</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="card overflow-x-auto">
+    <div class="card-header"><h2 class="font-semibold">Teacher load</h2>
+      <span class="text-sm text-slate-500">periods per week</span></div>
+    <table class="table">
+      <thead><tr><th>Teacher</th><th class="text-right">Periods</th></tr></thead>
+      <tbody>
+        {% for row in load %}
+          <tr><td><a href="{% url 'timetable:routine' %}?teacher={{ row.teacher.pk }}" class="link">{{ row.teacher.full_name }}</a></td>
+            <td class="text-right {% if row.periods == 0 %}text-slate-400{% endif %}">{{ row.periods }}</td></tr>
+        {% empty %}<tr><td colspan="2">{% include "components/empty.html" with message="No active teachers." %}</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </section>
+</div>
+{% endblock %}
