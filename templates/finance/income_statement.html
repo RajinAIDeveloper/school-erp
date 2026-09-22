@@ -1,0 +1,42 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block header_actions %}
+  <a href="?{{ request.GET.urlencode }}&amp;format=csv" class="btn-secondary btn-sm">CSV</a>
+  <a href="?{{ request.GET.urlencode }}&amp;format=pdf" class="btn-secondary btn-sm">PDF</a>
+{% endblock %}
+{% block content %}
+<form method="get" class="card card-body mb-4 flex flex-wrap items-end gap-4">
+  {% for field in form %}{% render_field field %}{% endfor %}<button class="btn-secondary">Show</button>
+</form>
+
+<div class="grid gap-6 lg:grid-cols-2">
+  <section class="card">
+    <div class="card-header"><h2 class="font-semibold">Income</h2><span class="font-semibold text-emerald-700">{% money data.total_income %}</span></div>
+    <table class="table">
+      <tbody>
+        {% for row in data.income %}
+          <tr><td><a href="{% url 'finance:ledger' row.account.pk %}" class="link">{{ row.account.name }}</a></td>
+            <td class="text-right">{% money row.amount %}</td></tr>
+        {% empty %}<tr><td colspan="2">{% include "components/empty.html" with message="No income in this period." %}</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="card">
+    <div class="card-header"><h2 class="font-semibold">Expenditure</h2><span class="font-semibold text-red-600">{% money data.total_expense %}</span></div>
+    <table class="table">
+      <tbody>
+        {% for row in data.expense %}
+          <tr><td><a href="{% url 'finance:ledger' row.account.pk %}" class="link">{{ row.account.name }}</a></td>
+            <td class="text-right">{% money row.amount %}</td></tr>
+        {% empty %}<tr><td colspan="2">{% include "components/empty.html" with message="No expenditure in this period." %}</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </section>
+</div>
+
+<div class="stat mt-6 text-center">
+  <p class="text-sm text-slate-500">Surplus for {{ start|date:"d M Y" }} to {{ end|date:"d M Y" }}</p>
+  <p class="mt-1 text-3xl font-bold {% if data.surplus < 0 %}text-red-600{% else %}text-emerald-700{% endif %}">{% money data.surplus %}</p>
+</div>
+{% endblock %}

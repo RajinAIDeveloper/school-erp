@@ -1,0 +1,37 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block header_actions %}
+  <a href="?{{ request.GET.urlencode }}&amp;format=csv" class="btn-secondary btn-sm">CSV</a>
+  <a href="?{{ request.GET.urlencode }}&amp;format=pdf" class="btn-secondary btn-sm">PDF</a>
+{% endblock %}
+{% block content %}
+<form method="get" class="card card-body mb-4 flex flex-wrap items-end gap-4">
+  {% for field in form %}{% render_field field %}{% endfor %}<button class="btn-secondary">Show</button>
+</form>
+
+{% if not data.balanced %}
+  <div class="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+    Debits and credits do not agree. Open the ledger check to find the entry responsible.
+  </div>
+{% endif %}
+
+<div class="card overflow-x-auto">
+  <table class="table">
+    <thead><tr><th>Code</th><th>Account</th><th>Type</th><th class="text-right">Debit</th><th class="text-right">Credit</th></tr></thead>
+    <tbody>
+      {% for row in data.rows %}
+        <tr>
+          <td>{{ row.account.code }}</td>
+          <td><a href="{% url 'finance:ledger' row.account.pk %}" class="link">{{ row.account.name }}</a></td>
+          <td class="text-xs text-slate-500">{{ row.account.get_account_type_display }}</td>
+          <td class="text-right">{% if row.debit %}{% money row.debit %}{% endif %}</td>
+          <td class="text-right">{% if row.credit %}{% money row.credit %}{% endif %}</td>
+        </tr>
+      {% empty %}<tr><td colspan="5">{% include "components/empty.html" with message="Nothing posted in this period." %}</td></tr>{% endfor %}
+    </tbody>
+    <tfoot class="bg-slate-50 font-semibold">
+      <tr><td colspan="3">Total</td><td class="text-right">{% money data.total_debit %}</td><td class="text-right">{% money data.total_credit %}</td></tr>
+    </tfoot>
+  </table>
+</div>
+{% endblock %}

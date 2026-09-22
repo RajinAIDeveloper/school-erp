@@ -33,6 +33,11 @@ class School(TimeStampedModel):
     timezone = models.CharField(max_length=50, default="Asia/Dhaka")
     # Weekend days as comma separated ISO weekday numbers (1=Mon ... 7=Sun). BD default: Fri, Sat
     weekend_days = models.CharField(max_length=20, default="5,6")
+    books_locked_until = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Nothing may be posted on or before this date. Set it once a month has been reported on.",
+    )
     late_fee_per_day = models.DecimalField(
         max_digits=8,
         decimal_places=2,

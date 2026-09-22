@@ -70,6 +70,7 @@ class JournalEntry(SchoolScopedModel):
         INCOME = "income", "Other income"
         SALARY = "salary", "Salary"
         REVERSAL = "reversal", "Reversal"
+        OPENING = "opening", "Opening balance"
 
     entry_no = models.PositiveIntegerField()
     date = models.DateField()
@@ -97,6 +98,16 @@ class JournalEntry(SchoolScopedModel):
     @property
     def total_credit(self):
         return self.lines.aggregate(s=Sum("credit"))["s"] or ZERO
+
+    @property
+    def reversible(self):
+        """Manual, expense and income entries are corrected here; fees and salaries are not."""
+        return self.status == self.Status.POSTED and self.source in (
+            self.Source.MANUAL,
+            self.Source.EXPENSE,
+            self.Source.INCOME,
+            self.Source.OPENING,
+        )
 
     @property
     def is_balanced(self):

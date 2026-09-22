@@ -1,6 +1,73 @@
-{% extends "layouts/base.html" %}{% block content %}
-<div class="flex flex-wrap gap-3 mb-4"><a class="btn-primary" href="{% url 'finance:journal_create' %}">Post journal</a><a class="btn-secondary" href="{% url 'finance:account_list' %}">Chart of accounts</a><a class="btn-secondary" href="{% url 'finance:report' %}">Financial report</a><a class="btn-secondary" href="{% url 'finance:payroll' %}">Payroll</a></div>
-<div class="card overflow-x-auto"><table class="table"><thead><tr><th>Journal</th><th>Date</th><th>Accounts</th><th>Status</th><th>Correction</th></tr></thead><tbody>
-{% for e in entries %}<tr><td>{{ e.entry_no }} · {{ e.narration }}</td><td>{{ e.date }}</td><td>{% for l in e.lines.all %}<p>{{ l.account }} · Dr {{ l.debit }} / Cr {{ l.credit }}</p>{% endfor %}</td><td>{{ e.status }}</td><td>
-{% if perms.finance.change_journalentry and e.status == "posted" and e.source == "manual" %}<form method="post" action="{% url 'finance:reverse' e.pk %}">{% csrf_token %}<input class="input" name="reason" required maxlength="200" placeholder="Correction reason"><button class="btn-secondary">Reverse</button></form>{% endif %}
-</td></tr>{% empty %}<tr><td>No journals posted.</td></tr>{% endfor %}</tbody></table></div>{% endblock %}
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block header_actions %}
+  {% if perms.finance.add_journalentry %}
+    <a href="{% url 'finance:quick_entry' %}" class="btn-primary btn-sm">Expense / income</a>
+    <a href="{% url 'finance:journal_create' %}" class="btn-secondary btn-sm">Journal entry</a>
+  {% endif %}
+  {% if perms.finance.view_account %}<a href="{% url 'finance:trial_balance' %}" class="btn-secondary btn-sm">Statements</a>{% endif %}
+  {% if perms.finance.view_payroll %}<a href="{% url 'finance:payroll' %}" class="btn-secondary btn-sm">Payroll</a>{% endif %}
+{% endblock %}
+{% block content %}
+{% if locked_until %}
+  <div class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+    The books are closed through {{ locked_until|date:"d M Y" }}. Corrections belong in an open period.
+  </div>
+{% endif %}
+
+{% if income %}
+<div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+  <div class="stat"><p class="text-sm text-slate-500">Income this month</p><p class="mt-1 text-2xl font-bold text-emerald-700">{% money income.total_income %}</p></div>
+  <div class="stat"><p class="text-sm text-slate-500">Expenses this month</p><p class="mt-1 text-2xl font-bold text-red-600">{% money income.total_expense %}</p></div>
+  <div class="stat"><p class="text-sm text-slate-500">Surplus</p>
+    <p class="mt-1 text-2xl font-bold {% if income.surplus < 0 %}text-red-600{% else %}text-slate-900{% endif %}">{% money income.surplus %}</p></div>
+  <div class="stat"><p class="text-sm text-slate-500">Cash and bank</p><p class="mt-1 text-2xl font-bold">{% money cash.closing %}</p>
+    <p class="mt-1 text-xs text-slate-500">In {% money cash.total_in %} · out {% money cash.total_out %}</p></div>
+</div>
+
+<div class="mb-6 flex flex-wrap gap-2 text-sm">
+  <a href="{% url 'finance:trial_balance' %}" class="btn-secondary btn-sm">Trial balance</a>
+  <a href="{% url 'finance:income_statement' %}" class="btn-secondary btn-sm">Income &amp; expenditure</a>
+  <a href="{% url 'finance:balance_sheet' %}" class="btn-secondary btn-sm">Balance sheet</a>
+  <a href="{% url 'finance:cash_book' %}" class="btn-secondary btn-sm">Cash book</a>
+  <a href="{% url 'finance:account_list' %}" class="btn-secondary btn-sm">Chart of accounts</a>
+  <a href="{% url 'finance:integrity' %}" class="btn-secondary btn-sm">Ledger check</a>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-header"><h2 class="font-semibold">Recent entries</h2>
+    <a href="{% url 'finance:report' %}" class="link text-sm">Account balances</a></div>
+  <div class="overflow-x-auto">
+    <table class="table">
+      <thead><tr><th>Entry</th><th>Date</th><th>Narration</th><th>Lines</th><th>Status</th><th class="text-right">Correction</th></tr></thead>
+      <tbody>
+        {% for e in entries %}
+          <tr>
+            <td class="whitespace-nowrap font-medium">JE-{{ e.entry_no|stringformat:"05d" }}</td>
+            <td class="whitespace-nowrap">{{ e.date|date:"d M Y" }}</td>
+            <td>{{ e.narration }}{% if e.reference %}<span class="ml-1 text-xs text-slate-500">({{ e.reference }})</span>{% endif %}</td>
+            <td class="text-xs">
+              {% for l in e.lines.all %}
+                <div><a href="{% url 'finance:ledger' l.account.pk %}" class="link">{{ l.account }}</a>
+                  {% if l.debit %}Dr {% money l.debit %}{% else %}Cr {% money l.credit %}{% endif %}</div>
+              {% endfor %}
+            </td>
+            <td>{{ e.status|status_badge }}</td>
+            <td class="text-right">
+              {# Fee and salary entries are reversed from their own screens, so the document and the ledger move together. #}
+              {% if e.reversible and perms.finance.change_journalentry %}
+                <form method="post" action="{% url 'finance:reverse' e.pk %}" class="flex items-end gap-2">
+                  {% csrf_token %}
+                  <input class="input w-48" name="reason" required maxlength="200" placeholder="Reason">
+                  <button class="btn-secondary btn-sm">Reverse</button>
+                </form>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}<tr><td colspan="6">{% include "components/empty.html" with message="Nothing posted yet." %}</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

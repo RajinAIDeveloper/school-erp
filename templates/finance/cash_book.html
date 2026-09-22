@@ -1,0 +1,33 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block header_actions %}
+  <a href="?{{ request.GET.urlencode }}&amp;format=csv" class="btn-secondary btn-sm">CSV</a>
+  <a href="?{{ request.GET.urlencode }}&amp;format=pdf" class="btn-secondary btn-sm">PDF</a>
+{% endblock %}
+{% block content %}
+<form method="get" class="card card-body mb-4 flex flex-wrap items-end gap-4">
+  {% for field in form %}{% render_field field %}{% endfor %}<button class="btn-secondary">Show</button>
+</form>
+
+<div class="mb-4 grid gap-4 sm:grid-cols-4">
+  <div class="stat"><p class="text-sm text-slate-500">Opening</p><p class="mt-1 text-2xl font-bold">{% money data.opening %}</p></div>
+  <div class="stat"><p class="text-sm text-slate-500">Received</p><p class="mt-1 text-2xl font-bold text-emerald-700">{% money data.total_in %}</p></div>
+  <div class="stat"><p class="text-sm text-slate-500">Paid</p><p class="mt-1 text-2xl font-bold text-red-600">{% money data.total_out %}</p></div>
+  <div class="stat"><p class="text-sm text-slate-500">Closing</p><p class="mt-1 text-2xl font-bold">{% money data.closing %}</p></div>
+</div>
+
+<div class="card overflow-x-auto">
+  <table class="table">
+    <thead><tr><th>Date</th><th class="text-right">Received</th><th class="text-right">Paid</th><th class="text-right">Balance</th></tr></thead>
+    <tbody>
+      {% for row in data.rows %}
+        <tr><td>{{ row.date|date:"d M Y" }}</td>
+          <td class="text-right text-emerald-700">{% if row.received %}{% money row.received %}{% endif %}</td>
+          <td class="text-right text-red-600">{% if row.paid %}{% money row.paid %}{% endif %}</td>
+          <td class="text-right font-medium">{% money row.balance %}</td></tr>
+      {% empty %}<tr><td colspan="4">{% include "components/empty.html" with message="No cash movements in this period." %}</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="mt-3 text-sm text-slate-500">Covers {% for a in data.accounts %}{{ a.name }}{% if not forloop.last %}, {% endif %}{% empty %}no cash accounts{% endfor %}.</p>
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block header_actions %}
+  <a href="?{{ request.GET.urlencode }}&amp;format=csv" class="btn-secondary btn-sm">CSV</a>
+  <a href="?{{ request.GET.urlencode }}&amp;format=pdf" class="btn-secondary btn-sm">PDF</a>
+{% endblock %}
+{% block content %}
+<form method="get" class="card card-body mb-4 flex flex-wrap items-end gap-4">
+  {% for field in form %}{% render_field field %}{% endfor %}<button class="btn-secondary">Show</button>
+</form>
+
+{% if not data.balanced %}
+  <div class="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+    The two sides do not agree. Open the ledger check.
+  </div>
+{% endif %}
+
+<div class="grid gap-6 lg:grid-cols-2">
+  <section class="card">
+    <div class="card-header"><h2 class="font-semibold">Assets</h2><span class="font-semibold">{% money data.total_assets %}</span></div>
+    <table class="table"><tbody>
+      {% for row in data.assets %}
+        <tr><td><a href="{% url 'finance:ledger' row.account.pk %}" class="link">{{ row.account.name }}</a></td>
+          <td class="text-right">{% money row.amount %}</td></tr>
+      {% empty %}<tr><td colspan="2">{% include "components/empty.html" with message="No assets recorded." %}</td></tr>{% endfor %}
+    </tbody></table>
+  </section>
+
+  <section class="card">
+    <div class="card-header"><h2 class="font-semibold">Liabilities and funds</h2><span class="font-semibold">{% money data.total_funding %}</span></div>
+    <table class="table"><tbody>
+      {% for row in data.liabilities %}
+        <tr><td>{{ row.account.name }}</td><td class="text-right">{% money row.amount %}</td></tr>
+      {% endfor %}
+      {% for row in data.equity %}
+        <tr><td>{{ row.account.name }}</td><td class="text-right">{% money row.amount %}</td></tr>
+      {% endfor %}
+      <tr><td>Retained surplus</td><td class="text-right">{% money data.surplus %}</td></tr>
+    </tbody></table>
+  </section>
+</div>
+<p class="mt-4 text-sm text-slate-500">As at {{ end|date:"d M Y" }}.</p>
+{% endblock %}

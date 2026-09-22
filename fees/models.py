@@ -303,6 +303,9 @@ class FeePayment(SchoolScopedModel):
         current = FeePayment.objects.select_for_update().get(pk=self.pk)
         if current.journal_entry_id:
             return current.journal_entry
+        from finance.services import assert_period_open
+
+        assert_period_open(self.school, self.date)
         ensure_default_accounts(self.school)
         debit = Account.objects.get(school=self.school, code=self.METHOD_ACCOUNT_CODE[self.method])
         fallback = Account.objects.get(school=self.school, code="4090")

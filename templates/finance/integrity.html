@@ -1,0 +1,35 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block content %}
+<div class="card mb-6">
+  <div class="card-body">
+    <h2 class="font-semibold">Does the ledger hold together?</h2>
+    {% if balance.balanced and not broken %}
+      <p class="mt-2 text-sm text-emerald-700">
+        Yes. Debits and credits agree at {% money balance.total_debit %}, and every posted entry balances.
+      </p>
+    {% else %}
+      <p class="mt-2 text-sm text-red-700">
+        No. Debits total {% money balance.total_debit %} against credits of {% money balance.total_credit %}.
+        Anything listed below was written without a balanced entry and needs investigating.
+      </p>
+    {% endif %}
+  </div>
+</div>
+
+{% if broken %}
+<div class="card overflow-x-auto">
+  <div class="card-header"><h2 class="font-semibold">Entries that do not balance</h2></div>
+  <table class="table">
+    <thead><tr><th>Entry</th><th>Date</th><th>Narration</th><th class="text-right">Debit</th><th class="text-right">Credit</th></tr></thead>
+    <tbody>
+      {% for e in broken %}
+        <tr><td>JE-{{ e.entry_no|stringformat:"05d" }}</td><td>{{ e.date|date:"d M Y" }}</td>
+          <td>{{ e.narration }}</td><td class="text-right">{% money e.debit %}</td>
+          <td class="text-right">{% money e.credit %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

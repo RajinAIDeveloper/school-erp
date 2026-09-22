@@ -1,7 +1,55 @@
-{% extends "layouts/base.html" %}{% block content %}
-<a class="btn-primary mb-4" href="{% url 'finance:payroll_create' %}">Prepare salary</a>
-<div class="card overflow-x-auto"><table class="table"><thead><tr><th>Employee</th><th>Month</th><th>Net</th><th>Paid</th><th>Actions</th></tr></thead><tbody>
-{% for p in rows %}<tr><td>{{ p.employee }}</td><td>{{ p.month|date:"F Y" }}</td><td>{{ p.net }}</td><td>{{ p.paid_on|default:"Unpaid" }}</td><td>
-<a class="link" href="{% url 'finance:payslip' p.pk %}">Payslip PDF</a>
-{% if perms.finance.change_payroll and not p.paid_on %}<form method="post" action="{% url 'finance:payroll_pay' p.pk %}">{% csrf_token %}<button class="btn-primary">Pay from cash</button></form>{% endif %}</td></tr>
-{% empty %}<tr><td>No payroll entries.</td></tr>{% endfor %}</tbody></table></div>{% endblock %}
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block header_actions %}
+  {% if perms.finance.add_payroll %}
+    <a href="{% url 'finance:payroll_run' %}" class="btn-primary btn-sm">Prepare the month</a>
+    <a href="{% url 'finance:payroll_create' %}" class="btn-secondary btn-sm">Add one salary</a>
+  {% endif %}
+{% endblock %}
+{% block content %}
+<form method="get" class="card card-body mb-4 flex flex-wrap items-end gap-3" data-autosubmit>
+  <div><label class="label" for="month">Month</label>
+    <input type="month" id="month" name="month" value="{{ month }}" class="input w-48"></div>
+  <button class="btn-secondary">Show</button>
+</form>
+
+<div class="mb-4 grid gap-4 sm:grid-cols-3">
+  <div class="stat"><p class="text-sm text-slate-500">Salaries listed</p><p class="mt-1 text-2xl font-bold">{{ rows|length }}</p></div>
+  <div class="stat"><p class="text-sm text-slate-500">Total net pay</p><p class="mt-1 text-2xl font-bold">{% money total %}</p></div>
+  <div class="stat"><p class="text-sm text-slate-500">Still unpaid</p>
+    <p class="mt-1 text-2xl font-bold {% if unpaid %}text-amber-700{% endif %}">{% money unpaid %}</p></div>
+</div>
+
+<div class="card overflow-x-auto">
+  <table class="table">
+    <thead><tr><th>Employee</th><th>Month</th><th class="text-right">Basic</th><th class="text-right">Allowance</th>
+      <th class="text-right">Deduction</th><th class="text-right">Net</th><th>Paid</th><th class="text-right">Actions</th></tr></thead>
+    <tbody>
+      {% for row in rows %}
+        <tr>
+          <td><a href="{% url 'employees:detail' row.employee.pk %}" class="link">{{ row.employee.full_name }}</a></td>
+          <td>{{ row.month|date:"F Y" }}</td>
+          <td class="text-right">{% money row.basic %}</td>
+          <td class="text-right">{% money row.allowance %}</td>
+          <td class="text-right">{% money row.deduction %}</td>
+          <td class="text-right font-medium">{% money row.net %}</td>
+          <td>{% if row.paid_on %}<span class="text-emerald-700">{{ row.paid_on|date:"d M Y" }}</span>{% else %}<span class="text-amber-700">Not paid</span>{% endif %}</td>
+          <td class="text-right">
+            <a href="{% url 'finance:payslip' row.pk %}" class="link text-xs">Payslip</a>
+            {% if perms.finance.change_payroll and not row.paid_on %}
+              <form method="post" action="{% url 'finance:payroll_pay' row.pk %}" class="mt-1 flex items-center justify-end gap-2"
+                    data-confirm="Record this salary as paid? It posts to the ledger.">
+                {% csrf_token %}
+                <select name="method" class="input w-32 py-1 text-xs">
+                  <option value="cash">Cash</option><option value="bank">Bank</option><option value="mobile">Mobile</option>
+                </select>
+                <button class="btn-success btn-sm">Pay</button>
+              </form>
+            {% endif %}
+          </td>
+        </tr>
+      {% empty %}<tr><td colspan="8">{% include "components/empty.html" with message="No salaries prepared for this month." %}</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
