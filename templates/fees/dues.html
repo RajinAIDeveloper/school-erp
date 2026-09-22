@@ -1,0 +1,58 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block header_actions %}
+  <a href="?{{ request.GET.urlencode }}&amp;format=csv" class="btn-secondary btn-sm">CSV</a>
+  <a href="?{{ request.GET.urlencode }}&amp;format=xlsx" class="btn-secondary btn-sm">Excel</a>
+  <a href="?{{ request.GET.urlencode }}&amp;format=pdf" class="btn-secondary btn-sm">PDF</a>
+  {% if perms.fees.change_feeinvoice %}<a href="{% url 'fees:late_fees' %}" class="btn-secondary btn-sm">Apply late fees</a>{% endif %}
+{% endblock %}
+{% block content %}
+<form method="get" class="card card-body mb-4">
+  <div class="grid gap-4 sm:grid-cols-4">{% for field in form %}{% render_field field %}{% endfor %}</div>
+  <div class="mt-4 flex gap-3"><button class="btn-secondary">Filter</button>
+    {% if request.GET %}<a href="{% url 'fees:dues' %}" class="link self-center text-sm">Clear</a>{% endif %}</div>
+</form>
+
+<div class="mb-4 grid gap-4 sm:grid-cols-2">
+  <div class="stat"><p class="text-sm text-slate-500">Invoices outstanding</p><p class="mt-1 text-3xl font-bold">{{ invoices|length }}</p></div>
+  <div class="stat"><p class="text-sm text-slate-500">Total due</p><p class="mt-1 text-3xl font-bold text-red-600">{% money total %}</p></div>
+</div>
+
+<form method="post" action="{% url 'fees:remind' %}" class="card">
+  {% csrf_token %}
+  {% if can_remind %}
+    <div class="card-header">
+      <p class="text-sm text-slate-600">Tick rows to remind, or send to everyone listed.</p>
+      <button class="btn-primary btn-sm" data-confirm="Queue reminder messages to these guardians?">Queue reminders</button>
+    </div>
+  {% endif %}
+  <div class="overflow-x-auto">
+    <table class="table">
+      <thead>
+        <tr>
+          {% if can_remind %}<th class="w-8"></th>{% endif %}
+          <th>Class</th><th>Roll</th><th>Student</th><th>Guardian</th><th>Invoice</th>
+          <th>Due date</th><th>Overdue</th><th>Balance</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for invoice in invoices %}
+          <tr>
+            {% if can_remind %}<td><input type="checkbox" name="invoice" value="{{ invoice.pk }}" class="h-4 w-4 rounded border-slate-300"></td>{% endif %}
+            <td>{{ invoice.enrollment.section }}</td>
+            <td>{{ invoice.enrollment.roll_number }}</td>
+            <td><a href="{% url 'students:detail' invoice.student.pk %}" class="link">{{ invoice.student.full_name }}</a></td>
+            <td class="text-xs">{{ invoice.student.primary_guardian.phone|default:"—" }}</td>
+            <td><a href="{% url 'fees:invoice_detail' invoice.pk %}" class="link">{{ invoice.invoice_no }}</a></td>
+            <td>{{ invoice.due_date|date:"d M Y" }}</td>
+            <td class="{% if invoice.days_overdue %}text-red-600 font-medium{% endif %}">{% if invoice.days_overdue %}{{ invoice.days_overdue }} days{% else %}—{% endif %}</td>
+            <td class="font-medium">{% money invoice.balance %}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="9">{% include "components/empty.html" with message="Nothing outstanding. Every invoice in this view is settled." %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</form>
+{% endblock %}

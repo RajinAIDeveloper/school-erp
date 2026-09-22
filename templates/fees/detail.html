@@ -1,10 +1,106 @@
-{% extends "layouts/base.html" %}{% load erp %}{% block content %}
-<div class="card card-body mb-4"><h2 class="font-semibold text-xl">{{ invoice.student }} · {{ invoice.invoice_no }}</h2>
-<p>Due {{ invoice.due_date }} · {{ invoice.status }} · Total {{ invoice.total }} · Paid {{ invoice.paid }} · Balance {{ invoice.balance }}</p>
-<table class="table"><thead><tr><th>Fee</th><th>Amount</th></tr></thead><tbody>{% for item in items %}<tr><td>{{ item.category }}</td><td>{{ item.amount }}</td></tr>{% endfor %}</tbody></table></div>
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block header_actions %}
+  <a href="{% url 'fees:statement' invoice.student.pk %}" class="btn-secondary btn-sm">Statement</a>
+  <a href="{% url 'students:detail' invoice.student.pk %}" class="btn-secondary btn-sm">Student</a>
+{% endblock %}
+{% block content %}
+<div class="card mb-6">
+  <div class="card-body">
+    <div class="flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <h2 class="text-xl font-semibold">{{ invoice.invoice_no }} {{ invoice.status|status_badge }}</h2>
+        <p class="text-slate-600">{{ invoice.student.full_name }} &middot; {{ invoice.enrollment.section }} &middot; Roll {{ invoice.enrollment.roll_number }}</p>
+        <p class="mt-1 text-sm text-slate-500">
+          Issued {{ invoice.issue_date|date:"d M Y" }} &middot; due {{ invoice.due_date|date:"d M Y" }}
+          {% if invoice.days_overdue %}<span class="font-medium text-red-600">&middot; {{ invoice.days_overdue }} days overdue</span>{% endif %}
+        </p>
+        {% if invoice.notes %}<p class="mt-1 text-sm text-slate-500">{{ invoice.notes }}</p>{% endif %}
+      </div>
+      <div class="grid grid-cols-3 gap-4 text-center">
+        <div><p class="text-xs text-slate-500">Total</p><p class="text-xl font-bold">{% money invoice.total %}</p></div>
+        <div><p class="text-xs text-slate-500">Paid</p><p class="text-xl font-bold text-emerald-700">{% money invoice.paid %}</p></div>
+        <div><p class="text-xs text-slate-500">Balance</p>
+          <p class="text-xl font-bold {% if invoice.balance > 0 %}text-red-600{% else %}text-emerald-700{% endif %}">{% money invoice.balance %}</p></div>
+      </div>
+    </div>
+
+    <table class="table mt-5">
+      <thead><tr><th>Fee head</th><th>Details</th><th class="text-right">Amount</th></tr></thead>
+      <tbody>
+        {% for item in items %}
+          <tr><td>{{ item.category }}</td><td class="text-slate-500">{{ item.description }}</td>
+            <td class="text-right">{% money item.amount %}</td></tr>
+        {% endfor %}
+        {% if invoice.discount %}<tr><td colspan="2">Discount</td><td class="text-right text-emerald-700">-{% money invoice.discount %}</td></tr>{% endif %}
+        {% if invoice.late_fee %}<tr><td colspan="2">Late fee</td><td class="text-right text-red-600">{% money invoice.late_fee %}</td></tr>{% endif %}
+        <tr class="bg-slate-50 font-semibold"><td colspan="2">Total</td><td class="text-right">{% money invoice.total %}</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
 {% if perms.fees.add_feepayment and invoice.balance > 0 and invoice.status != "cancelled" %}
-<form method="post" class="card card-body mb-4">{% csrf_token %}<h3 class="font-semibold mb-4">Collect payment</h3>{% render_form form %}<button class="btn-primary mt-4">Collect and issue receipt</button></form>{% endif %}
-<div class="card card-body"><h3 class="font-semibold">Payment history</h3>{% for p in payments %}
-<div class="py-3 border-b"><a class="link" href="{% url 'fees:receipt' p.pk %}">{{ p.receipt_no }} · PDF receipt</a> · {{ p.amount }} · {{ p.date }} {% if p.is_cancelled %}CANCELLED{% endif %}
-{% if perms.fees.change_feepayment and not p.is_cancelled %}<form method="post" action="{% url 'fees:cancel' p.pk %}" class="mt-2">{% csrf_token %}<input name="reason" required maxlength="200" class="input" placeholder="Reason for full refund / cancellation"><button class="btn-danger mt-2">Reverse payment</button></form>{% endif %}</div>
-{% empty %}<p>No payments.</p>{% endfor %}</div>{% endblock %}
+<form method="post" class="card mb-6">
+  {% csrf_token %}
+  <div class="card-header"><h3 class="font-semibold">Collect payment</h3></div>
+  <div class="card-body">
+    {% render_form form %}
+    <div class="mt-5 flex justify-end"><button class="btn-primary">Collect and issue receipt</button></div>
+  </div>
+</form>
+{% endif %}
+
+<div class="card">
+  <div class="card-header"><h3 class="font-semibold">Receipts</h3></div>
+  <div class="overflow-x-auto">
+    <table class="table">
+      <thead><tr><th>Receipt</th><th>Date</th><th>Method</th><th>Reference</th><th>Amount</th><th class="text-right">Actions</th></tr></thead>
+      <tbody>
+        {% for p in payments %}
+          <tr class="{% if p.is_cancelled %}text-slate-400{% endif %}">
+            <td>{{ p.receipt_no }}</td>
+            <td>{{ p.date|date:"d M Y" }}</td>
+            <td>{{ p.get_method_display }}</td>
+            <td class="text-xs">{{ p.reference|default:"—" }}</td>
+            <td class="{% if p.is_cancelled %}line-through{% endif %}">{% money p.amount %}</td>
+            <td class="text-right">
+              <a href="{% url 'fees:receipt' p.pk %}" class="link text-xs">PDF</a>
+              <a href="{% url 'fees:receipt' p.pk %}?copy=1" class="link ml-2 text-xs">Duplicate</a>
+              {% if perms.fees.change_feepayment and not p.is_cancelled %}
+                <button type="button" class="ml-2 text-xs text-red-600 hover:underline"
+                        onclick="document.getElementById('reverse-{{ p.pk }}').classList.toggle('hidden')">Reverse</button>
+              {% endif %}
+            </td>
+          </tr>
+          {% if perms.fees.change_feepayment and not p.is_cancelled %}
+            <tr id="reverse-{{ p.pk }}" class="hidden">
+              <td colspan="6">
+                <form method="post" action="{% url 'fees:cancel' p.pk %}" class="flex flex-wrap items-end gap-3 py-2">
+                  {% csrf_token %}
+                  <div class="flex-1"><label class="label">Reason for reversing {{ p.receipt_no }}</label>
+                    <input name="reason" required maxlength="200" class="input" placeholder="Duplicate receipt, refund issued, ..."></div>
+                  <button class="btn-danger">Reverse payment</button>
+                </form>
+              </td>
+            </tr>
+          {% endif %}
+        {% empty %}
+          <tr><td colspan="6">{% include "components/empty.html" with message="No payments received yet." %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if perms.fees.change_feeinvoice and invoice.status != "cancelled" and not invoice.paid %}
+    <form method="post" action="{% url 'fees:invoice_cancel' invoice.pk %}"
+          class="flex flex-wrap items-end gap-3 border-t border-slate-200 px-5 py-4"
+          data-confirm="Cancel this invoice? It stays on file, marked cancelled.">
+      {% csrf_token %}
+      <div class="flex-1"><label class="label">Cancel this invoice</label>
+        <input name="reason" required maxlength="200" class="input" placeholder="Reason, e.g. raised in error"></div>
+      <button class="btn-danger">Cancel invoice</button>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}

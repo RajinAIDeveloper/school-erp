@@ -33,6 +33,18 @@ class School(TimeStampedModel):
     timezone = models.CharField(max_length=50, default="Asia/Dhaka")
     # Weekend days as comma separated ISO weekday numbers (1=Mon ... 7=Sun). BD default: Fri, Sat
     weekend_days = models.CharField(max_length=20, default="5,6")
+    late_fee_per_day = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        default=0,
+        help_text="Charged for each day an invoice is overdue. Zero disables late fees.",
+    )
+    late_fee_cap = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text="Most that may be charged on one invoice. Zero means no cap.",
+    )
     # Notifications. Every one of these is off until a school turns it on, because each
     # message costs the school money and reaches a family's phone.
     notify_absence_sms = models.BooleanField("Tell guardians about an absence", default=False)
