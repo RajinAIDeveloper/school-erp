@@ -57,6 +57,10 @@ class ClassLevel(SchoolScopedModel):
     name = models.CharField(max_length=50)
     order = models.PositiveSmallIntegerField(help_text="Sort order for promotion, e.g. Play=0, Class 1=3")
 
+    is_active = models.BooleanField(
+        default=True, help_text="Clear this to retire the record without losing the history that uses it."
+    )
+
     class Meta:
         ordering = ["order"]
         constraints = [
@@ -80,6 +84,10 @@ class Section(SchoolScopedModel):
         "employees.Employee", null=True, blank=True, on_delete=models.SET_NULL, related_name="class_teacher_of"
     )
 
+    is_active = models.BooleanField(
+        default=True, help_text="Clear this to retire the record without losing the history that uses it."
+    )
+
     class Meta:
         ordering = ["class_level__order", "name"]
         constraints = [
@@ -95,6 +103,10 @@ class Subject(SchoolScopedModel):
     code = models.CharField(max_length=20, blank=True)
     class_levels = models.ManyToManyField(ClassLevel, related_name="subjects", blank=True)
     is_optional = models.BooleanField(default=False)
+
+    is_active = models.BooleanField(
+        default=True, help_text="Clear this to retire the record without losing the history that uses it."
+    )
 
     class Meta:
         ordering = ["name"]

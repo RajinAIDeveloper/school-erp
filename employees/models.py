@@ -8,6 +8,10 @@ from students.models import BLOOD_GROUPS, RELIGIONS, Gender
 class Department(SchoolScopedModel):
     name = models.CharField(max_length=100)
 
+    is_active = models.BooleanField(
+        default=True, help_text="Clear this to retire the record without losing the history that uses it."
+    )
+
     class Meta:
         ordering = ["name"]
         constraints = [models.UniqueConstraint(fields=["school", "name"], name="unique_department_per_school")]
@@ -18,6 +22,10 @@ class Department(SchoolScopedModel):
 
 class Designation(SchoolScopedModel):
     name = models.CharField(max_length=100, help_text="e.g. Head Teacher, Assistant Teacher, Accountant")
+
+    is_active = models.BooleanField(
+        default=True, help_text="Clear this to retire the record without losing the history that uses it."
+    )
 
     class Meta:
         ordering = ["name"]

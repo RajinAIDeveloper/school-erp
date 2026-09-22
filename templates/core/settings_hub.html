@@ -1,0 +1,46 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block header %}Basic Settings{% endblock %}
+{% block content %}
+{% with pending=readiness %}
+  {% regroup pending by done as grouped %}
+{% endwith %}
+
+<div class="card mb-6">
+  <div class="card-header">
+    <h2 class="font-semibold">Is the school ready to use?</h2>
+    {% if can_initialise %}
+      <form method="post" action="{% url 'settings:initialise' %}"
+            data-confirm="Create the default accounts, fee heads, grading, periods and templates? Nothing already entered is changed.">
+        {% csrf_token %}
+        <button class="btn-primary btn-sm">Create defaults</button>
+      </form>
+    {% endif %}
+  </div>
+  <div class="card-body">
+    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {% for item in readiness %}
+        <div class="flex items-start gap-2 rounded-lg border px-3 py-2
+          {% if item.done %}border-emerald-200 bg-emerald-50{% else %}border-amber-200 bg-amber-50{% endif %}">
+          <span class="mt-0.5 {% if item.done %}text-emerald-600{% else %}text-amber-600{% endif %}">
+            {% if item.done %}&#10004;{% else %}!{% endif %}
+          </span>
+          <div>
+            <p class="text-sm font-medium">{{ item.name }}</p>
+            {% if not item.done %}<p class="text-xs text-slate-600">{{ item.hint }}</p>{% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+  {% for card in cards %}
+    <a href="{{ card.href }}" class="card card-body transition hover:border-indigo-300 hover:shadow">
+      <h2 class="font-semibold text-indigo-700">{{ card.title }}</h2>
+      <p class="mt-2 text-sm text-slate-600">{{ card.description }}</p>
+    </a>
+  {% endfor %}
+</div>
+{% endblock %}

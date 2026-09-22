@@ -1,6 +1,7 @@
 {% load erp %}
 <div class="mb-4 flex flex-wrap gap-1 border-b border-slate-200 text-sm">
   {% with tab="border-b-2 px-3 py-2 hover:text-indigo-700" on="border-indigo-600 text-indigo-700 font-medium" off="border-transparent text-slate-600" %}
+  <a href="{% url 'settings:hub' %}" class="{{ tab }} {% if request.resolver_match.url_name == 'hub' %}{{ on }}{% else %}{{ off }}{% endif %}">Overview</a>
   <a href="{% url 'settings:school' %}" class="{{ tab }} {% if request.resolver_match.url_name == 'school' %}{{ on }}{% else %}{{ off }}{% endif %}">School profile</a>
   <a href="{% url 'settings:year_list' %}" class="{{ tab }} {% if 'year' in request.resolver_match.url_name %}{{ on }}{% else %}{{ off }}{% endif %}">Academic years</a>
   <a href="{% url 'settings:term_list' %}" class="{{ tab }} {% if 'term' in request.resolver_match.url_name %}{{ on }}{% else %}{{ off }}{% endif %}">Terms</a>

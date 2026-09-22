@@ -30,6 +30,7 @@ SCREENS = {
     "sms": "/sms/",
     "holidays": "/holidays/",
     "settings": "/settings/",
+    "school_profile": "/settings/school/",
     "users": "/users/",
     "reports": "/reports/",
     "overview": "/reports/overview/",
@@ -49,6 +50,7 @@ ACCESS = {
         "sms",
         "holidays",
         "settings",
+        "school_profile",
         "users",
         "reports",
         "overview",
@@ -66,6 +68,7 @@ ACCESS = {
         "downloads",
         "sms",
         "holidays",
+        "settings",
         "users",
         "reports",
         "overview",
@@ -79,6 +82,7 @@ ACCESS = {
         "downloads",
         "sms",
         "holidays",
+        "settings",
         "reports",
         "overview",
     },
@@ -92,6 +96,7 @@ ACCESS = {
         "routine",
         "downloads",
         "holidays",
+        "settings",
         "reports",
     },
     "Staff": {"dashboard", "staff_attendance", "routine", "downloads", "holidays", "reports"},
@@ -120,13 +125,65 @@ def test_role_screen_matrix(erp, role):
         assert actual == expected, (role, screen, url, actual, expected)
 
 
+def test_settings_hub_shows_only_the_cards_a_role_may_open(erp):
+    """The hub is shared; what it offers is not."""
+    c = Client()
+    c.force_login(erp.teacher)
+    body = c.get("/settings/").content
+    assert b"Classes and sections" in body
+    assert b"Chart of accounts" not in body
+    assert b"SMS gateway" not in body
+    assert b"Create defaults" not in body
+
+    c.force_login(erp.accountant)
+    body = c.get("/settings/").content
+    assert b"Chart of accounts" in body
+    assert b"Fees setup" in body
+    assert b"SMS gateway" not in body
+
+    c.force_login(erp.admin)
+    body = c.get("/settings/").content
+    assert b"SMS gateway" in body and b"Create defaults" in body
+
+
+def test_settings_hub_is_closed_to_roles_with_no_setup_access(erp):
+    c = Client()
+    c.force_login(erp.parent)
+    assert c.get("/settings/").status_code == 403
+
+
+def test_initialise_defaults_fills_the_empty_dropdowns(erp):
+    from fees.models import FeeCategory
+    from timetable.models import Period
+
+    c = Client()
+    c.force_login(erp.admin)
+    assert c.post("/settings/initialise/").status_code == 302
+    assert Period.objects.filter(school=erp.school).count() >= 7
+    assert FeeCategory.objects.filter(school=erp.school, name="Admission Fee").exists()
+    tuition = FeeCategory.objects.get(school=erp.school, name="Tuition Fee")
+    assert tuition.income_account.code == "4010"
+
+    # Running it again changes nothing and says so.
+    before = Period.objects.filter(school=erp.school).count()
+    c.post("/settings/initialise/")
+    assert Period.objects.filter(school=erp.school).count() == before
+
+
+def test_initialise_defaults_is_administrator_only(erp):
+    c = Client()
+    c.force_login(erp.accountant)
+    assert c.post("/settings/initialise/").status_code == 403
+
+
 def test_principal_academic_setup_but_no_school_identity(erp):
     principal = User.objects.create_user("principal", school=erp.school, password="Test-pass-9842")
     principal.groups.add(Group.objects.get(name="Principal"))
     c = Client()
     c.force_login(principal)
     assert c.get("/settings/year/").status_code == 200
-    assert c.get("/settings/").status_code == 403
+    assert c.get("/settings/").status_code == 200  # the hub, filtered to what they may open
+    assert c.get("/settings/school/").status_code == 403
     assert c.get("/settings/sms/").status_code == 403
     assert c.get("/users/").status_code == 200
     assert c.get("/users/new/").status_code == 403

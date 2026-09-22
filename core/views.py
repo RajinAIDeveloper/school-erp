@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
 from django.db.models import Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
@@ -143,3 +144,166 @@ def switch_year(request, pk):
         audit(request, "academic_year.switched", year, f"{year} is now the current session.")
     messages.success(request, f"{year} is now the current academic year.")
     return redirect("settings:year_list")
+
+
+SETTINGS_CARDS = [
+    {
+        "title": "School profile",
+        "description": "Name, logo, address, currency, weekend days and the head of institution.",
+        "url": "settings:school",
+        "permission": "core.change_school",
+    },
+    {
+        "title": "Academic years",
+        "description": "Sessions and terms, and which year the school is currently running.",
+        "url": "settings:year_list",
+        "permission": "academics.view_academicyear",
+    },
+    {
+        "title": "Classes and sections",
+        "description": "The classes you teach, their sections and who each class teacher is.",
+        "url": "settings:class_list",
+        "permission": "academics.view_classlevel",
+    },
+    {
+        "title": "Subjects and teaching",
+        "description": "Subjects, which classes take them, and which teacher takes each section.",
+        "url": "settings:subject_list",
+        "permission": "academics.view_subject",
+    },
+    {
+        "title": "People setup",
+        "description": "Departments, designations and leave types for staff records.",
+        "url": "settings:department_list",
+        "permission": "employees.view_department",
+    },
+    {
+        "title": "Fees setup",
+        "description": "Fee heads, class structures and concessions.",
+        "url": "fees:category_list",
+        "permission": "fees.view_feecategory",
+    },
+    {
+        "title": "Chart of accounts",
+        "description": "Account heads, opening balances and the ledger's structure.",
+        "url": "finance:account_list",
+        "permission": "finance.view_account",
+    },
+    {
+        "title": "Grading",
+        "description": "Grade scales and the marks each letter and grade point covers.",
+        "url": "examinations:scale_list",
+        "permission": "examinations.view_gradescale",
+    },
+    {
+        "title": "Periods and rooms",
+        "description": "The school day's periods, breaks and teaching rooms.",
+        "url": "timetable:period_list",
+        "permission": "timetable.change_period",
+    },
+    {
+        "title": "Notifications",
+        "description": "Which events text a family, and the wording each message uses.",
+        "url": "settings:notifications",
+        "permission": "core.change_school",
+    },
+    {
+        "title": "SMS gateway",
+        "description": "Provider credentials, sender ID and a live test.",
+        "url": "settings:sms",
+        "permission": "core.change_school",
+    },
+    {
+        "title": "Policy",
+        "description": "Late fees, closing the books and staff self check-in.",
+        "url": "settings:policy",
+        "permission": "core.change_school",
+    },
+    {
+        "title": "User management",
+        "description": "Accounts, roles and passwords.",
+        "url": "users:list",
+        "permission": "users.view_user",
+    },
+    {
+        "title": "Audit log",
+        "description": "Who changed money, marks, attendance and settings, and when.",
+        "url": "settings:audit",
+        "permission": "core.view_auditlog",
+    },
+]
+
+
+@require_permission(None)
+def settings_hub(request):
+    """One place to find every setup screen the current role may open."""
+    from django.urls import reverse
+
+    cards = [
+        {**card, "href": reverse(card["url"])} for card in SETTINGS_CARDS if request.user.has_perm(card["permission"])
+    ]
+    if not cards:
+        raise PermissionDenied("You do not have access to any settings.")
+    ready = _readiness(request.school)
+    return render(
+        request,
+        "core/settings_hub.html",
+        {
+            "cards": cards,
+            "readiness": ready,
+            "can_initialise": request.user.has_perm("core.change_school"),
+            "page_title": "Basic Settings",
+        },
+    )
+
+
+def _readiness(school):
+    """What a school still needs before the day-to-day screens are usable."""
+    from academics.models import AcademicYear, ClassLevel, Section, Subject
+    from fees.models import FeeCategory
+    from finance.models import Account
+    from timetable.models import Period
+
+    checks = [
+        (
+            "Academic year",
+            AcademicYear.objects.filter(school=school, is_current=True).exists(),
+            "Set the current session so enrollments, fees and results know where they belong.",
+        ),
+        ("Classes", ClassLevel.objects.filter(school=school).exists(), "Add the classes the school teaches."),
+        (
+            "Sections",
+            Section.objects.filter(school=school).exists(),
+            "Add at least one section per class so students can be placed on a roll.",
+        ),
+        (
+            "Subjects",
+            Subject.objects.filter(school=school).exists(),
+            "Add subjects before scheduling exams or a routine.",
+        ),
+        ("Fee heads", FeeCategory.objects.filter(school=school).exists(), "Add fee heads so invoices can be raised."),
+        (
+            "Accounts",
+            Account.objects.filter(school=school).exists(),
+            "Create the chart of accounts so money has somewhere to post.",
+        ),
+        (
+            "Periods",
+            Period.objects.filter(school=school).exists(),
+            "Set the school day's periods before building a routine.",
+        ),
+    ]
+    return [{"name": name, "done": done, "hint": hint} for name, done, hint in checks]
+
+
+@require_permission("core.change_school")
+@require_POST
+def initialise_defaults(request):
+    """Fill the empty dropdowns a new school starts with."""
+    from core.management.commands.setup_school import setup_school
+
+    added = setup_school(request.school)
+    summary = ", ".join(f"{value} {key.replace('_', ' ')}" for key, value in added.items() if value)
+    audit(request, "settings.defaults_created", request.school, summary)
+    messages.success(request, f"Defaults in place: {summary}." if summary else "Everything was already set up.")
+    return redirect("settings:hub")

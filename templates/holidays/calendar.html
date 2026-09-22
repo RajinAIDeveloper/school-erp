@@ -1,0 +1,102 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block header_actions %}
+  <a href="{% url 'holidays:list' %}" class="btn-secondary btn-sm">All holidays</a>
+  <a href="{% url 'holidays:calendar' %}" class="btn-secondary btn-sm">iCalendar</a>
+  {% if perms.holidays.add_holiday %}
+    <a href="{% url 'holidays:create' %}" class="btn-primary btn-sm">Add holiday</a>
+  {% endif %}
+{% endblock %}
+{% block content %}
+<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+  <div class="flex items-center gap-2">
+    <a href="?month={{ grid.previous }}" class="btn-secondary btn-sm">&larr;</a>
+    <h2 class="text-lg font-semibold">{{ grid.label }}</h2>
+    <a href="?month={{ grid.next }}" class="btn-secondary btn-sm">&rarr;</a>
+  </div>
+  <p class="text-sm text-slate-600">{{ grid.open_days }} open day{{ grid.open_days|pluralize }} &middot; {{ grid.closed_days }} closed</p>
+</div>
+
+<div class="card mb-6 overflow-x-auto">
+  <table class="w-full table-fixed border-collapse text-sm">
+    <thead>
+      <tr>
+        {% for label in grid.weekday_labels %}
+          <th class="border-b border-slate-200 px-2 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{{ label }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for week in grid.weeks %}
+        <tr>
+          {% for cell in week %}
+            <td class="h-24 border border-slate-100 align-top p-1
+              {% if not cell.in_month %}bg-slate-50 text-slate-300
+              {% elif cell.is_closed %}bg-red-50
+              {% elif cell.is_weekend %}bg-slate-50{% endif %}">
+              <div class="flex items-start justify-between">
+                <span class="text-xs {% if cell.is_today %}rounded-full bg-indigo-600 px-1.5 py-0.5 font-semibold text-white{% elif not cell.in_month %}text-slate-300{% else %}text-slate-500{% endif %}">
+                  {{ cell.date|date:"j" }}
+                </span>
+                {% if cell.in_month and cell.is_weekend and not cell.holidays %}
+                  <span class="text-[10px] text-slate-400">Weekend</span>
+                {% endif %}
+              </div>
+              {% for holiday in cell.holidays %}
+                <p class="mt-1 truncate rounded px-1 py-0.5 text-[11px]
+                  {% if holiday.closes_school %}bg-red-100 text-red-800{% else %}bg-sky-100 text-sky-800{% endif %}"
+                   title="{{ holiday.name }}">{{ holiday.name }}</p>
+              {% endfor %}
+            </td>
+          {% endfor %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="grid gap-6 lg:grid-cols-2">
+  <section class="card">
+    <div class="card-header"><h2 class="font-semibold">Coming up</h2></div>
+    <ul class="divide-y divide-slate-100 text-sm">
+      {% for h in upcoming %}
+        <li class="flex items-start justify-between gap-3 px-5 py-2.5">
+          <div>
+            <p class="font-medium">{{ h.name }}</p>
+            <p class="text-xs text-slate-500">{{ h.get_holiday_type_display }}{% if not h.closes_school %} · school open{% endif %}</p>
+          </div>
+          <span class="whitespace-nowrap text-xs text-slate-600">
+            {{ h.start_date|date:"d M" }}{% if h.days > 1 %} – {{ h.end_date|date:"d M" }}{% endif %}
+          </span>
+        </li>
+      {% empty %}<li class="px-5 py-6 text-center text-slate-500">Nothing on the calendar ahead.</li>{% endfor %}
+    </ul>
+    {% if perms.holidays.add_holiday %}
+      <form method="post" action="{% url 'holidays:import_national' %}" class="flex flex-wrap items-end gap-3 border-t border-slate-200 px-5 py-4">
+        {% csrf_token %}
+        <div><label class="label" for="year">Import national holidays for</label>
+          <input id="year" name="year" value="{{ grid.year }}" class="input w-32"></div>
+        <button class="btn-secondary">Import</button>
+        <p class="w-full text-xs text-slate-500">
+          Adds the fixed-date national holidays only. Eid and other lunar dates move each year, so they are
+          entered from the government notice rather than guessed.
+        </p>
+      </form>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <div class="card-header"><h2 class="font-semibold">Working days</h2>
+      <span class="text-sm text-slate-500">{{ academic_year|default:"No academic year" }}</span></div>
+    <table class="table">
+      <thead><tr><th>Month</th><th class="text-right">Open</th><th class="text-right">Days</th></tr></thead>
+      <tbody>
+        {% for row in summary %}
+          <tr><td>{{ row.label }}</td><td class="text-right font-medium">{{ row.working }}</td>
+            <td class="text-right text-slate-500">{{ row.total }}</td></tr>
+        {% empty %}<tr><td colspan="3">{% include "components/empty.html" with message="Set a current academic year to count working days." %}</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </section>
+</div>
+{% endblock %}

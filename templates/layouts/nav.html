@@ -64,18 +64,15 @@
 {% if perms.messaging.view_smsmessage %}
 <a href="{% url 'messaging:batch_list' %}" class="{{ base }} {% active request 'messaging' %}"><span class="w-5 text-center">💬</span> SMS</a>
 {% endif %}
-<a href="{% url 'holidays:list' %}" class="{{ base }} {% active request 'holidays' %}"><span class="w-5 text-center">🎉</span> Holidays</a>
+<a href="{% url 'holidays:month' %}" class="{{ base }} {% active request 'holidays' %}"><span class="w-5 text-center">🎉</span> Calendar</a>
 
 <a href="{% url 'reports:hub' %}" class="{{ base }} {% active request 'reports' %}">Reports</a>
 
 {% if perms.core.change_school or perms.users.view_user or perms.academics.view_academicyear %}
 <p class="mt-4 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Administration</p>
 {% endif %}
-{% if perms.core.change_school %}
-<a href="{% url 'settings:school' %}" class="{{ base }} {% active request 'settings' %}"><span class="w-5 text-center">⚙️</span> Basic Settings</a>
-{% endif %}
-{% if perms.academics.view_academicyear and not perms.core.change_school %}
-<a href="{% url 'settings:year_list' %}" class="{{ base }} {% active request 'settings' %}">Academic setup</a>
+{% if perms.core.change_school or perms.academics.view_academicyear %}
+<a href="{% url 'settings:hub' %}" class="{{ base }} {% active request 'settings' %}"><span class="w-5 text-center">⚙️</span> Basic Settings</a>
 {% endif %}
 {% if perms.users.view_user %}
 <a href="{% url 'users:list' %}" class="{{ base }} {% active request 'users' %}"><span class="w-5 text-center">👥</span> User Management</a>

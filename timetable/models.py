@@ -25,6 +25,10 @@ class Period(SchoolScopedModel):
     end_time = models.TimeField()
     is_break = models.BooleanField(default=False)
 
+    is_active = models.BooleanField(
+        default=True, help_text="Clear this to retire the record without losing the history that uses it."
+    )
+
     class Meta:
         ordering = ["order"]
         constraints = [models.UniqueConstraint(fields=["school", "order"], name="unique_period_order_per_school")]
@@ -36,6 +40,10 @@ class Period(SchoolScopedModel):
 class Room(SchoolScopedModel):
     name = models.CharField(max_length=50)
     capacity = models.PositiveSmallIntegerField(default=40)
+
+    is_active = models.BooleanField(
+        default=True, help_text="Clear this to retire the record without losing the history that uses it."
+    )
 
     class Meta:
         ordering = ["name"]

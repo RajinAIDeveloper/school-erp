@@ -64,6 +64,10 @@ class LeaveType(SchoolScopedModel):
     name = models.CharField(max_length=50, help_text="e.g. Casual, Sick, Earned")
     days_per_year = models.PositiveSmallIntegerField(default=10)
 
+    is_active = models.BooleanField(
+        default=True, help_text="Clear this to retire the record without losing the history that uses it."
+    )
+
     class Meta:
         ordering = ["name"]
         constraints = [models.UniqueConstraint(fields=["school", "name"], name="unique_leave_type_per_school")]

@@ -9,7 +9,9 @@ from . import views
 
 app_name = "settings"
 urlpatterns = [
-    path("", views.SchoolSettingsView.as_view(), name="school"),
+    path("", views.settings_hub, name="hub"),
+    path("school/", views.SchoolSettingsView.as_view(), name="school"),
+    path("initialise/", views.initialise_defaults, name="initialise"),
     path("sms/", views.SMSSettingsView.as_view(), name="sms"),
     path("notifications/", views.NotificationSettingsView.as_view(), name="notifications"),
     path("policy/", views.PolicySettingsView.as_view(), name="policy"),
