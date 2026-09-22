@@ -8,6 +8,7 @@ from django.utils import timezone
 from core.access import assert_actor_school, assert_school, sections_for
 from core.models import AuditLog
 from holidays.models import holiday_dates_between, is_holiday
+from messaging.notifications import notify_absences
 from students.models import Enrollment
 
 from .models import AttendanceStatus, StaffAttendance, StudentAttendance
@@ -36,6 +37,7 @@ def save_register(*, school, user, day, entries, staff=False):
     if not user.has_perm(permission):
         raise PermissionDenied
     saved = 0
+    absentees = []
     for obj, status, remarks, check_in, check_out in entries:
         assert_school(school, obj)
         if status not in AttendanceStatus.values:
@@ -60,7 +62,12 @@ def save_register(*, school, user, day, entries, staff=False):
             object_id=str(record.pk),
             description=f"{day}: {status}",
         )
+        if not staff and status == AttendanceStatus.ABSENT:
+            absentees.append(obj)
         saved += 1
+    if absentees:
+        # Queued only; the worker sends. A gateway problem must not undo the register.
+        transaction.on_commit(lambda: notify_absences(school, day, absentees))
     return saved
 
 
@@ -75,11 +82,15 @@ def monthly_matrix(school, objects, year, month, staff=False):
             school=school, date__year=year, date__month=month, **{field + "__in": [o.pk for o in objects]}
         )
     }
+    # One holiday query for the whole month instead of one per person per day.
+    closed = holiday_dates_between(school, days[0], days[-1])
+    weekend = school.weekend_day_numbers
+    open_days = [d for d in days if d not in closed and d.isoweekday() not in weekend]
     rows = []
     for obj in objects:
         start = obj.joining_date if staff else max(obj.student.admission_date, obj.academic_year.start_date)
         end = today if staff else min(today, obj.academic_year.end_date)
-        working = [d for d in days if start <= d <= end and not is_holiday(school, d)]
+        working = [d for d in open_days if start <= d <= end]
         present = sum(records.get((obj.pk, d)) in ("present", "late") for d in working)
         rows.append(
             {

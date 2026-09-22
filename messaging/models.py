@@ -73,11 +73,24 @@ class SMSMessage(SchoolScopedModel):
     phone = models.CharField(max_length=25)
     body = models.TextField(max_length=480)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.QUEUED)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    dedupe_key = models.CharField(
+        max_length=120,
+        blank=True,
+        help_text="Identifies an automatic message so the same event never queues twice.",
+    )
     provider_response = models.TextField(blank=True)
     sent_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["school", "dedupe_key"],
+                condition=~models.Q(dedupe_key=""),
+                name="unique_automatic_message_per_event",
+            )
+        ]
 
     def __str__(self):
         return f"{self.phone} [{self.status}]"

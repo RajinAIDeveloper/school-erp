@@ -33,6 +33,13 @@ class School(TimeStampedModel):
     timezone = models.CharField(max_length=50, default="Asia/Dhaka")
     # Weekend days as comma separated ISO weekday numbers (1=Mon ... 7=Sun). BD default: Fri, Sat
     weekend_days = models.CharField(max_length=20, default="5,6")
+    # Notifications. Every one of these is off until a school turns it on, because each
+    # message costs the school money and reaches a family's phone.
+    notify_absence_sms = models.BooleanField("Tell guardians about an absence", default=False)
+    notify_payment_sms = models.BooleanField("Confirm fee payments by SMS", default=False)
+    notify_due_sms = models.BooleanField("Allow fee reminder SMS", default=False)
+    notify_results_sms = models.BooleanField("Announce published results", default=False)
+    notify_admission_sms = models.BooleanField("Welcome newly admitted students", default=False)
     staff_self_checkin = models.BooleanField(
         default=False, help_text="Let teachers and staff record their own arrival and departure."
     )

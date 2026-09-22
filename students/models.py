@@ -110,6 +110,9 @@ class Guardian(SchoolScopedModel):
     nid = models.CharField("NID", max_length=20, blank=True)
     occupation = models.CharField(max_length=100, blank=True)
     address = models.TextField(blank=True)
+    sms_opt_in = models.BooleanField(
+        "Receive SMS", default=True, help_text="Clear this when a family asks not to be texted."
+    )
 
     class Meta:
         ordering = ["full_name"]

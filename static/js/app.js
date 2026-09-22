@@ -45,10 +45,16 @@ document.addEventListener("DOMContentLoaded", () => {
     el.addEventListener("change", () => el.form.submit());
   });
 
-  // Mark-all buttons for attendance grids: <button data-mark-all="present">
+  // Mark-all buttons on the attendance register. Scoped to the button's own form so a
+  // page with two registers cannot overwrite the wrong one. The "Clear" button carries an
+  // empty value, which matches the register's own "Not recorded" option.
   document.querySelectorAll("[data-mark-all]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      document.querySelectorAll(`input[type=radio][value="${btn.dataset.markAll}"]`).forEach((r) => (r.checked = true));
+      const scope = btn.closest("form") || document;
+      const wanted = btn.dataset.markAll;
+      scope.querySelectorAll('input[type=radio]:not([disabled])').forEach((radio) => {
+        if (radio.value === wanted) radio.checked = true;
+      });
     });
   });
 
