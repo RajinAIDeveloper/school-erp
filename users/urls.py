@@ -6,6 +6,11 @@ app_name = "users"
 urlpatterns = [
     path("", views.UserListView.as_view(), name="list"),
     path("new/", views.UserCreateView.as_view(), name="create"),
-    path("<int:pk>/edit/", views.UserUpdateView.as_view(), name="update"),
     path("profile/", views.profile, name="profile"),
+    path("provision/", views.provision_bulk, name="provision_bulk"),
+    path("provision/credentials.csv", views.credentials_csv, name="credentials_csv"),
+    path("provision/<str:kind>/<int:pk>/", views.provision, name="provision"),
+    path("<int:pk>/", views.detail, name="detail"),
+    path("<int:pk>/edit/", views.UserUpdateView.as_view(), name="update"),
+    path("<int:pk>/reset/", views.reset, name="reset"),
 ]

@@ -2,6 +2,11 @@
 {% load erp %}
 {% block header_actions %}
   <a href="{% url 'students:id_card' student.pk %}" class="btn-secondary btn-sm">ID card</a>
+  {% if perms.users.add_user and not student.user_id %}
+    <form method="post" action="{% url 'users:provision' 'student' student.pk %}" class="inline">
+      {% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+      <button class="btn-secondary btn-sm">Create login</button></form>
+  {% endif %}
   {% if perms.students.change_student %}
     <a href="{% url 'students:update' student.pk %}" class="btn-secondary btn-sm">Edit</a>
     {% if student.status == "active" %}<a href="{% url 'students:leaving' student.pk %}" class="btn-secondary btn-sm">Record leaving</a>{% endif %}
@@ -66,12 +71,19 @@
     <div class="card-header"><h3 class="font-semibold">Guardians</h3>
       {% if perms.students.add_guardian %}<a href="{% url 'students:guardian_create' student.pk %}" class="link text-sm">Add</a>{% endif %}</div>
     <table class="table">
-      <thead><tr><th>Name</th><th>Relation</th><th>Phone</th><th>Primary</th></tr></thead>
+      <thead><tr><th>Name</th><th>Relation</th><th>Phone</th><th>Primary</th><th></th></tr></thead>
       <tbody>
         {% for link in guardians %}
           <tr><td>{{ link.guardian.full_name }}</td><td>{{ link.get_relation_display }}</td><td>{{ link.guardian.phone }}</td>
-            <td>{% if link.is_primary %}<span class="text-emerald-600">&#10004;</span>{% endif %}</td></tr>
-        {% empty %}<tr><td colspan="4">{% include "components/empty.html" with message="No guardian linked. Add one so the school can reach this family." %}</td></tr>{% endfor %}
+            <td>{% if link.is_primary %}<span class="text-emerald-600">&#10004;</span>{% endif %}</td>
+            <td class="text-right">
+              {% if perms.users.add_user and not link.guardian.user_id %}
+                <form method="post" action="{% url 'users:provision' 'guardian' link.guardian.pk %}">
+                  {% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+                  <button class="link text-xs">Create login</button></form>
+              {% elif link.guardian.user_id %}<span class="text-xs text-slate-400">has login</span>{% endif %}
+            </td></tr>
+        {% empty %}<tr><td colspan="5">{% include "components/empty.html" with message="No guardian linked. Add one so the school can reach this family." %}</td></tr>{% endfor %}
       </tbody>
     </table>
   </section>

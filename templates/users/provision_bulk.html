@@ -1,0 +1,19 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block content %}
+<div class="card mx-auto max-w-2xl">
+  <form method="post" class="card-body">
+    {% csrf_token %}
+    <h2 class="font-semibold">Create logins for a whole class</h2>
+    <p class="mb-5 mt-1 text-sm text-slate-600">
+      Every student in the section who does not already have a login gets one, and optionally their
+      primary guardian too. The temporary passwords are shown once, on the next screen.
+    </p>
+    {% render_form form %}
+    <div class="mt-5 flex justify-end gap-3 border-t border-slate-200 pt-4">
+      <a href="{% url 'users:list' %}" class="btn-secondary">Cancel</a>
+      <button class="btn-primary">Create logins</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

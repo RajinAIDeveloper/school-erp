@@ -2,6 +2,11 @@
 {% load erp %}
 {% block header_actions %}
   {% if perms.employees.change_employee %}<a href="{% url 'employees:update' employee.pk %}" class="btn-secondary btn-sm">Edit</a>{% endif %}
+  {% if perms.users.add_user and not employee.user_id %}
+    <form method="post" action="{% url 'users:provision' 'employee' employee.pk %}" class="inline">
+      {% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+      <button class="btn-secondary btn-sm">Create login</button></form>
+  {% endif %}
   {% if perms.employees.add_employeedocument %}<a href="{% url 'employees:document_upload' employee.pk %}" class="btn-secondary btn-sm">Upload document</a>{% endif %}
 {% endblock %}
 {% block content %}

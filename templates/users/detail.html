@@ -1,0 +1,43 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block header_actions %}
+  {% if can_manage %}<a href="{% url 'users:update' account.pk %}" class="btn-secondary btn-sm">Edit</a>{% endif %}
+  <a href="{% url 'users:list' %}" class="btn-secondary btn-sm">All users</a>
+{% endblock %}
+{% block content %}
+<div class="card mx-auto max-w-3xl">
+  <div class="card-body">
+    <h2 class="text-xl font-semibold">
+      {{ account.get_full_name|default:account.username }}
+      {% if account.is_active %}{{ "active"|status_badge }}{% else %}{{ "inactive"|status_badge }}{% endif %}
+    </h2>
+    <dl class="mt-4 grid gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
+      <div class="flex gap-2"><dt class="text-slate-500">Username</dt><dd class="font-medium">{{ account.username }}</dd></div>
+      <div class="flex gap-2"><dt class="text-slate-500">Roles</dt><dd>{{ account.role_names|default:"None" }}</dd></div>
+      <div class="flex gap-2"><dt class="text-slate-500">Email</dt><dd>{{ account.email|default:"—" }}</dd></div>
+      <div class="flex gap-2"><dt class="text-slate-500">Phone</dt><dd>{{ account.phone|default:"—" }}</dd></div>
+      <div class="flex gap-2"><dt class="text-slate-500">Last signed in</dt><dd>{{ account.last_login|date:"d M Y, H:i"|default:"Never" }}</dd></div>
+      <div class="flex gap-2"><dt class="text-slate-500">Created</dt><dd>{{ account.date_joined|date:"d M Y" }}</dd></div>
+      <div class="flex gap-2 sm:col-span-2"><dt class="text-slate-500">Linked record</dt>
+        <dd>{% if profile %}{{ account.linked_profile }}{% else %}<span class="text-amber-700">Not linked to a student, guardian or employee</span>{% endif %}</dd></div>
+    </dl>
+
+    {% if account.must_change_password %}
+      <p class="mt-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
+        This account is still on a temporary password and will be asked to change it at the next sign-in.
+      </p>
+    {% endif %}
+
+    {% if can_manage %}
+      <form method="post" action="{% url 'users:reset' account.pk %}" class="mt-5 border-t border-slate-200 pt-4"
+            data-confirm="Issue a new temporary password? The current one stops working immediately.">
+        {% csrf_token %}
+        <button class="btn-secondary">Issue a temporary password</button>
+        <p class="mt-2 text-xs text-slate-500">
+          For someone who has forgotten theirs and cannot use the email reset. Shown once, then only as a hash.
+        </p>
+      </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

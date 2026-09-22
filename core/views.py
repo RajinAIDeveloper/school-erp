@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import PasswordChangeView
 from django.core.exceptions import PermissionDenied
 from django.db.models import Sum
 from django.shortcuts import get_object_or_404, redirect, render
@@ -307,3 +308,15 @@ def initialise_defaults(request):
     audit(request, "settings.defaults_created", request.school, summary)
     messages.success(request, f"Defaults in place: {summary}." if summary else "Everything was already set up.")
     return redirect("settings:hub")
+
+
+class ERPPasswordChangeView(PasswordChangeView):
+    """Clears the "temporary password" flag once the person has chosen their own."""
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        if getattr(self.request.user, "must_change_password", False):
+            self.request.user.must_change_password = False
+            self.request.user.save(update_fields=["must_change_password"])
+            audit(self.request, "user.password_changed", self.request.user)
+        return response
