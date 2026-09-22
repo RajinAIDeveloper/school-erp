@@ -40,6 +40,14 @@ class StaffAttendance(SchoolScopedModel):
     check_out = models.TimeField(null=True, blank=True)
     remarks = models.CharField(max_length=200, blank=True)
     recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
+    created_by_leave = models.ForeignKey(
+        "attendance.LeaveRequest",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="attendance_rows",
+        help_text="Set when an approved leave generated this row, so withdrawing the leave removes it again.",
+    )
 
     class Meta:
         ordering = ["-date", "employee__employee_id"]

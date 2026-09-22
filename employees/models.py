@@ -86,3 +86,18 @@ class Employee(SchoolScopedModel):
         )
         n = int(last.split("-")[-1]) + 1 if last and last.split("-")[-1].isdigit() else 1
         return f"EMP-{n:04d}"
+
+
+class EmployeeDocument(SchoolScopedModel):
+    """Contracts, certificates and letters. Private to staff who manage employees."""
+
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name="documents")
+    title = models.CharField(max_length=150)
+    file = models.FileField(upload_to="employees/documents/")
+    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.title

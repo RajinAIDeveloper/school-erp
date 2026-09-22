@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Department, Designation, Employee
+from .models import Department, Designation, Employee, EmployeeDocument
 
 
 @admin.register(Employee)
@@ -10,4 +10,4 @@ class EmployeeAdmin(admin.ModelAdmin):
     search_fields = ("employee_id", "first_name", "last_name", "phone")
 
 
-admin.site.register([Department, Designation])
+admin.site.register([Department, Designation, EmployeeDocument])

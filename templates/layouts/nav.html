@@ -18,6 +18,9 @@
 {% if perms.employees.view_employee %}
 <a href="{% url 'employees:list' %}" class="{{ base }} {% active request 'employees' %}"><span class="w-5 text-center">👩‍🏫</span> Teachers &amp; Staff</a>
 {% endif %}
+{% if user.employee_profile %}
+<a href="{% url 'employees:me' %}" class="{{ base }}"><span class="w-5 text-center">🪪</span> My staff file</a>
+{% endif %}
 
 {% if perms.attendance.view_studentattendance or perms.attendance.view_staffattendance %}
 <p class="mt-4 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Attendance</p>

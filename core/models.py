@@ -33,6 +33,9 @@ class School(TimeStampedModel):
     timezone = models.CharField(max_length=50, default="Asia/Dhaka")
     # Weekend days as comma separated ISO weekday numbers (1=Mon ... 7=Sun). BD default: Fri, Sat
     weekend_days = models.CharField(max_length=20, default="5,6")
+    staff_self_checkin = models.BooleanField(
+        default=False, help_text="Let teachers and staff record their own arrival and departure."
+    )
     # SMS gateway (generic HTTP)
     sms_sender_id = models.CharField(max_length=20, blank=True)
     sms_api_url = models.URLField(blank=True, help_text="Gateway endpoint, e.g. https://bulksmsbd.net/api/smsapi")

@@ -95,6 +95,7 @@ EXPLICIT_PERMS = {
         ("downloads", "add_downloaditem"),
         ("holidays", "view_holiday"),
         ("employees", "view_employee"),
+        ("employees", "view_employeedocument"),
     ],
     STAFF: [
         ("attendance", "view_staffattendance"),
