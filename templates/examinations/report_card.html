@@ -1,0 +1,8 @@
+{% extends "layouts/base.html" %}{% block content %}
+<div class="card card-body"><h2 class="text-xl font-semibold">{{ row.student }} · {{ exam }}</h2><p>{{ row.section }} · Roll {{ row.roll }} · {{ row.student_code }}</p>
+{% if exam.status != "published" %}<p class="text-red-600 font-semibold">DRAFT · unpublished results</p>{% endif %}
+<table class="table my-4"><thead><tr><th>Subject</th><th>Full marks</th><th>Obtained</th><th>Grade</th></tr></thead><tbody>
+{% for c in row.cells %}<tr><td>{{ c.subject }}</td><td>{{ c.full_marks }}</td><td>{% if c.absent %}ABS{% else %}{{ c.score|default_if_none:"Pending" }}{% endif %}</td><td>{% if not c.missing %}{{ c.letter }}{% else %}?{% endif %}</td></tr>{% endfor %}</tbody></table>
+<p>Total {{ row.total }}/{{ row.full_total }} · GPA {{ row.gpa|default_if_none:"—" }} · {{ row.result }} · Section rank {{ row.rank|default_if_none:"—" }} · Class rank {{ row.grade_rank|default_if_none:"—" }}</p>
+<a class="btn-primary mt-4" href="?format=pdf">Download PDF</a>
+{% if snapshot %}<p class="mt-4">Published version {{ snapshot.version }} · <a class="link" href="{% url 'examinations:verify' snapshot.verification_code %}">Verify report</a></p>{% endif %}</div>{% endblock %}

@@ -1,0 +1,7 @@
+{% extends "layouts/base.html" %}{% block content %}
+<a class="btn-primary mb-4" href="{% url 'finance:payroll_create' %}">Prepare salary</a>
+<div class="card overflow-x-auto"><table class="table"><thead><tr><th>Employee</th><th>Month</th><th>Net</th><th>Paid</th><th>Actions</th></tr></thead><tbody>
+{% for p in rows %}<tr><td>{{ p.employee }}</td><td>{{ p.month|date:"F Y" }}</td><td>{{ p.net }}</td><td>{{ p.paid_on|default:"Unpaid" }}</td><td>
+<a class="link" href="{% url 'finance:payslip' p.pk %}">Payslip PDF</a>
+{% if perms.finance.change_payroll and not p.paid_on %}<form method="post" action="{% url 'finance:payroll_pay' p.pk %}">{% csrf_token %}<button class="btn-primary">Pay from cash</button></form>{% endif %}</td></tr>
+{% empty %}<tr><td>No payroll entries.</td></tr>{% endfor %}</tbody></table></div>{% endblock %}

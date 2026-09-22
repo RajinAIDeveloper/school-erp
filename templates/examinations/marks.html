@@ -1,0 +1,7 @@
+{% extends "layouts/base.html" %}{% load erp %}{% block content %}
+<form method="get" class="card card-body mb-4">{% render_form selector %}<button class="btn-primary mt-4">Load marks</button></form>
+{% if locked %}<div class="card card-body mb-4"><p>Published · marks locked.</p><form method="post" action="{% url 'examinations:request_unlock' schedule.pk %}">{% csrf_token %}<input name="reason" required class="input" placeholder="Reason for correction"><button class="btn-secondary mt-2">Request 48-hour unlock</button></form></div>{% endif %}
+<div class="space-y-3">{% for r in rows %}<form method="post" action="{% url 'examinations:save_mark' %}" class="card card-body">{% csrf_token %}
+<p class="font-semibold mb-3">Roll {{ r.enrollment.roll_number }} · {{ r.enrollment.student.full_name }} · Full marks {{ schedule.full_marks }}</p>
+<input type="hidden" name="schedule" value="{{ schedule.pk }}"><input type="hidden" name="section" value="{{ section.pk }}"><input type="hidden" name="enrollment" value="{{ r.enrollment.pk }}">
+{% render_form r.form %}{% if not locked %}<button class="btn-primary mt-3">Save mark</button>{% endif %}</form>{% empty %}<p>Select an exam paper and section.</p>{% endfor %}</div>{% endblock %}

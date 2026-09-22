@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Students · {{ SCHOOL_NAME }}{% endblock %}
+{% block page_title %}Students{% endblock %}
+{% block content %}
+<div class="flex flex-wrap gap-3 items-end justify-between mb-4">
+  <form hx-get="{% url 'students:list' %}" hx-target="#student-table" hx-trigger="keyup changed delay:300ms from:#q, change from:select"
+        hx-push-url="true" class="flex flex-wrap gap-3">
+    <input id="q" name="q" value="{{ filters.q }}" placeholder="Search name, admission no, phone…"
+           class="rounded border border-gray-300 px-3 py-2 text-sm w-72">
+    <select name="grade" class="rounded border border-gray-300 px-3 py-2 text-sm">
+      <option value="">All classes</option>
+      {% for g in grades %}
+        <option value="{{ g.pk }}" {% if filters.grade == g.pk|stringformat:"s" %}selected{% endif %}>{{ g.name }}</option>
+      {% endfor %}
+    </select>
+    <select name="status" class="rounded border border-gray-300 px-3 py-2 text-sm">
+      <option value="">All statuses</option>
+      {% for value, label in statuses %}
+        <option value="{{ value }}" {% if filters.status == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </form>
+  <a href="{% url 'students:create' %}" class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700">+ New Admission</a>
+</div>
+
+<div id="student-table">
+  {% include "students/partials/student_table.html" %}
+</div>
+{% endblock %}

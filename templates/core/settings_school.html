@@ -1,0 +1,13 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block header %}Basic Settings{% endblock %}
+{% block content %}
+{% include "core/settings_nav.html" %}
+<div class="card max-w-4xl">
+  <form method="post" enctype="multipart/form-data" class="card-body">{% csrf_token %}
+    <h2 class="mb-4 font-semibold">School profile</h2>
+    {% render_form form %}
+    <div class="mt-6 flex justify-end border-t pt-4"><button class="btn-primary">Save settings</button></div>
+  </form>
+</div>
+{% endblock %}

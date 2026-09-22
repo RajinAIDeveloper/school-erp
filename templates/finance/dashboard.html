@@ -1,0 +1,6 @@
+{% extends "layouts/base.html" %}{% block content %}
+<div class="flex flex-wrap gap-3 mb-4"><a class="btn-primary" href="{% url 'finance:journal_create' %}">Post journal</a><a class="btn-secondary" href="{% url 'finance:account_list' %}">Chart of accounts</a><a class="btn-secondary" href="{% url 'finance:report' %}">Financial report</a><a class="btn-secondary" href="{% url 'finance:payroll' %}">Payroll</a></div>
+<div class="card overflow-x-auto"><table class="table"><thead><tr><th>Journal</th><th>Date</th><th>Accounts</th><th>Status</th><th>Correction</th></tr></thead><tbody>
+{% for e in entries %}<tr><td>{{ e.entry_no }} · {{ e.narration }}</td><td>{{ e.date }}</td><td>{% for l in e.lines.all %}<p>{{ l.account }} · Dr {{ l.debit }} / Cr {{ l.credit }}</p>{% endfor %}</td><td>{{ e.status }}</td><td>
+{% if perms.finance.change_journalentry and e.status == "posted" and e.source == "manual" %}<form method="post" action="{% url 'finance:reverse' e.pk %}">{% csrf_token %}<input class="input" name="reason" required maxlength="200" placeholder="Correction reason"><button class="btn-secondary">Reverse</button></form>{% endif %}
+</td></tr>{% empty %}<tr><td>No journals posted.</td></tr>{% endfor %}</tbody></table></div>{% endblock %}

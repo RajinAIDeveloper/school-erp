@@ -1,0 +1,14 @@
+{% load erp %}
+{% if page_obj.paginator.num_pages > 1 %}
+<nav class="mt-4 flex items-center justify-between text-sm">
+  <p class="text-slate-500">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }} ({{ page_obj.paginator.count }} records)</p>
+  <div class="flex gap-1">
+    {% if page_obj.has_previous %}
+      <a href="?{% query_replace page=page_obj.previous_page_number %}" class="rounded border bg-white px-3 py-1 hover:bg-slate-50">Previous</a>
+    {% endif %}
+    {% if page_obj.has_next %}
+      <a href="?{% query_replace page=page_obj.next_page_number %}" class="rounded border bg-white px-3 py-1 hover:bg-slate-50">Next</a>
+    {% endif %}
+  </div>
+</nav>
+{% endif %}

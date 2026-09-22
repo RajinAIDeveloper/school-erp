@@ -1,0 +1,10 @@
+{% extends "layouts/base.html" %}{% load erp %}{% block content %}
+<div class="card card-body mb-4"><h2 class="font-semibold text-xl">{{ invoice.student }} · {{ invoice.invoice_no }}</h2>
+<p>Due {{ invoice.due_date }} · {{ invoice.status }} · Total {{ invoice.total }} · Paid {{ invoice.paid }} · Balance {{ invoice.balance }}</p>
+<table class="table"><thead><tr><th>Fee</th><th>Amount</th></tr></thead><tbody>{% for item in items %}<tr><td>{{ item.category }}</td><td>{{ item.amount }}</td></tr>{% endfor %}</tbody></table></div>
+{% if perms.fees.add_feepayment and invoice.balance > 0 and invoice.status != "cancelled" %}
+<form method="post" class="card card-body mb-4">{% csrf_token %}<h3 class="font-semibold mb-4">Collect payment</h3>{% render_form form %}<button class="btn-primary mt-4">Collect and issue receipt</button></form>{% endif %}
+<div class="card card-body"><h3 class="font-semibold">Payment history</h3>{% for p in payments %}
+<div class="py-3 border-b"><a class="link" href="{% url 'fees:receipt' p.pk %}">{{ p.receipt_no }} · PDF receipt</a> · {{ p.amount }} · {{ p.date }} {% if p.is_cancelled %}CANCELLED{% endif %}
+{% if perms.fees.change_feepayment and not p.is_cancelled %}<form method="post" action="{% url 'fees:cancel' p.pk %}" class="mt-2">{% csrf_token %}<input name="reason" required maxlength="200" class="input" placeholder="Reason for full refund / cancellation"><button class="btn-danger mt-2">Reverse payment</button></form>{% endif %}</div>
+{% empty %}<p>No payments.</p>{% endfor %}</div>{% endblock %}

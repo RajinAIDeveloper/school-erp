@@ -1,0 +1,31 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign in · School ERP</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body class="flex min-h-full items-center justify-center bg-slate-100 px-4">
+  <form method="post" class="w-full max-w-sm rounded-xl bg-white p-8 shadow-lg">
+    {% csrf_token %}
+    <div class="mb-6 text-center">
+      <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-600 text-xl font-bold text-white">S</div>
+      <h1 class="text-xl font-semibold text-slate-900">School ERP</h1>
+      <p class="text-sm text-slate-500">Sign in to continue</p>
+    </div>
+    {% if form.errors %}
+      <div class="mb-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{{ form.non_field_errors }}</div>
+    {% endif %}
+    <label class="label">Username
+      <input name="username" required autofocus class="input" value="{{ form.username.value|default:'' }}">
+    </label>
+    <label class="label mt-4">Password
+      <input type="password" name="password" required class="input">
+    </label>
+    <input type="hidden" name="next" value="{{ next }}">
+    <button class="btn-primary mt-6 w-full">Sign in</button>
+    <a class="link mt-4 block text-center" href="{% url 'password_reset' %}">Forgot password?</a>
+  </form>
+</body>
+</html>

@@ -1,0 +1,5 @@
+{% extends "layouts/base.html" %}{% block content %}
+<div class="flex gap-3 mb-4"><a class="btn-primary" href="{% url 'messaging:compose' %}">Compose message</a><a class="btn-secondary" href="{% url 'messaging:template_list' %}">Templates</a></div>
+<div class="card overflow-x-auto"><table class="table"><thead><tr><th>Recipient</th><th>Message</th><th>Status</th><th>Sent</th><th>Action</th></tr></thead><tbody>
+{% for m in rows %}<tr><td>{{ m.recipient_name }} {{ m.phone }}</td><td>{{ m.body }}</td><td>{{ m.status }}</td><td>{{ m.sent_at|default:"—" }}</td><td>
+{% if m.status == "failed" %}<form method="post" action="{% url 'messaging:retry' m.pk %}">{% csrf_token %}<button class="btn-secondary">Retry</button></form>{% endif %}</td></tr>{% empty %}<tr><td>No messages queued.</td></tr>{% endfor %}</tbody></table></div>{% endblock %}

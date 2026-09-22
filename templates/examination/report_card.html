@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex flex-wrap items-center justify-between gap-3 mb-6 print:hidden">
+  <h1 class="text-2xl font-semibold">Report Card</h1>
+  <form method="get" class="flex items-center gap-2">
+    <select name="term" onchange="this.form.submit()" class="rounded-lg border-gray-300">
+      {% for t in terms %}<option value="{{ t.pk }}" {% if t.pk == term.pk %}selected{% endif %}>{{ t }}</option>{% endfor %}
+    </select>
+    <button type="button" onclick="window.print()" class="px-    <button type="button" onclick="window.print()" class="px-3 py-2 rounded-lg border hover:bg-gray-50 text-sm">🖨 Print</button>
+  </form>
+</div>
+
+{% if not card %}
+  <p class="text-gray-500">No enrollment or marks found for <strong>{{ student }}</strong> in {{ term }}.</p>
+{% else %}
+<div class="max-w-3xl mx-auto bg-white rounded-xl border p-8 print:border-0 print:p-0">
+  <div class="text-center mb-6">
+    <h2 class="text-xl font-bold uppercase tracking-wide">Progress Report</h2>
+    <p class="text-gray-600">
+      {{ card.term }}
+      {% if not card.term.is_published %}<span class="text-amber-700 text-xs font-semibold">(PROVISIONAL)</span>{% endif %}
+    </p>
+  </div>
+
+  <dl class="grid grid-cols-2 gap-x-8 gap-y-1 text-sm mb-6">
+    <div class="flex gap-2"><dt class="text-gray-500 w-24">Student</dt><dd class="font-medium">{{ card.student }}</dd></div>
+    <div class="flex gap-2"><dt class="text-gray-500 w-24">Class</dt><dd class="font-medium">{{ card.section }}</dd></div>
+    <div class="flex gap-2"><dt class="text-gray-500 w-24">Roll No.</dt><dd class="font-medium">{{ card.row.enrollment.roll_no }}</dd></div>
+    <div class="flex gap-2"><dt class="text-gray-500 w-24">Attendance</dt>
+      <dd class="font-medium">{{ card.attendance.present }}/{{ card.attendance.working_days }} days ({{ card.attendance.pct }}%)</dd></div>
+  </dl>
+
+  <table class="w-full text-sm border">
+    <thead class="bg-gray-50">
+      <tr>
+        <th class="border px-3 py-2 text-left">Subject</th>
+        <th class="border px-3 py-2 text-right">Max</th>
+        <th class="border px-3 py-2 text-right">Pass</th>
+        <th class="border px-3 py-2 text-right">Obtained</th>
+        <th class="border px-3 py-2 text-center">Grade</th>
+        <th class="border px-3 py-2 text-left">Remark</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in card.row.cells %}
+      <tr>
+        <td class="border px-3 py-1.5">{{ c.gs.subject }}</td>
+        <td class="border px-3 py-1.5 text-right">{{ c.gs.max_marks }}</td>
+        <td class="border px-3 py-1.5 text-right text-gray-500">{{ c.gs.pass_marks }}</td>
+        <td class="border px-3 py-1.5 text-right font-semibold {% if c.mark and not c.passed %}text-red-600{% endif %}">
+          {% if not c.mark %}—{% elif c.mark.is_absent %}AB{% else %}{{ c.obtained|floatformat:"-2" }}{% endif %}
+        </td>
+        <td class="border px-3 py-1.5 text-center">{% if c.band %}{{ c.band.letter }}{% else %}—{% endif %}</td>
+        <td class="border px-3 py-1.5 text-gray-600">{% if c.band %}{{ c.band.remark }}{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot class="bg-gray-50 font-semibold">
+      <tr>
+        <td class="border px-3 py-2">Total</td>
+        <td class="border px-3 py-2 text-right">{{ card.max_total }}</td>
+        <td class="border px-3 py-2"></td>
+        <td class="border px-3 py-2 text-right">{{ card.row.total|floatformat:"-2" }}</td>
+        <td class="border px-3 py-2 text-center">{{ card.row.band.letter }}</td>
+        <td class="border px-3 py-2">{{ card.row.band.remark }}</td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <div class="grid grid-cols-3 gap-4 mt-6 text-sm text-center">
+    <div class="rounded-lg border p-3">
+      <div class="text-gray-500 text-xs uppercase">Percentage</div>
+      <div class="text-lg font-bold">{{ card.row.pct }}%</div>
+    </div>
+    <div class="rounded-lg border p-3">
+      <div class="text-gray-500 text-xs uppercase">Rank</div>
+      <div class="text-lg font-bold">{% if card.row.rank %}{{ card.row.rank }} / {{ card.class_size }}{% else %}—{% endif %}</div>
+    </div>
+    <div class="rounded-lg border p-3">
+      <div class="text-gray-500 text-xs uppercase">Result</div>
+      <div class="text-lg font-bold {% if card.row.result == 'PASS' %}text-green-700{% elif card.row.result == 'FAIL' %}text-red-600{% else %}text-gray-400{% endif %}">
+        {{ card.row.result }}
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-2 gap-8 mt-12 text-sm text-gray-600">
+    <div class="border-t pt-2">Class Teacher</div>
+    <div class="border-t pt-2 text-right">Principal</div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

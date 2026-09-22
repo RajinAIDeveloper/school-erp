@@ -1,0 +1,18 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block header %}Basic Settings{% endblock %}
+{% block content %}
+{% include "core/settings_nav.html" %}
+<div class="card max-w-3xl">
+  <form method="post" class="card-body">{% csrf_token %}
+    <h2 class="font-semibold">SMS gateway</h2>
+    <p class="mb-4 mt-1 text-sm text-slate-500">
+      Works with any HTTP GET gateway that accepts <code>api_key</code>, <code>senderid</code>, <code>number</code> and <code>message</code>
+      (BulkSMSBD, SSL Wireless, Alpha SMS and similar). Set the environment variable
+      <code>SMS_BACKEND=messaging.backends.HttpSMSBackend</code> to send real messages; the default console backend prints messages to the server log.
+    </p>
+    {% render_form form %}
+    <div class="mt-6 flex justify-end border-t pt-4"><button class="btn-primary">Save gateway</button></div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,9 @@
+{% extends "layouts/base.html" %}{% block content %}
+<p class="mb-5 text-slate-600">{{ current_school.name }} · {% now "l, j F Y" %}</p>
+<div class="grid gap-4 md:grid-cols-3 mb-6">{% for label,value in stats %}<div class="card card-body"><p class="text-sm text-slate-500">{{ label }}</p><p class="text-3xl font-semibold mt-2">{{ value }}</p></div>{% endfor %}</div>
+{% if my_students %}<h2 class="font-semibold text-lg mb-3">Student portal</h2><div class="grid gap-4 md:grid-cols-2 mb-5">
+{% for s in my_students %}<div class="card card-body"><a class="link font-semibold" href="{% url 'students:detail' s.pk %}">{{ s.full_name }} · {{ s.student_id }}</a><p>{{ s.current_enrollment.section }}</p>
+{% for inv in s.invoices.all %}<p><a class="link" href="{% url 'fees:invoice_detail' inv.pk %}">{{ inv.invoice_no }}</a> · Balance {{ inv.balance }}</p>{% endfor %}
+{% for snap in snapshots %}{% if snap.enrollment.student_id == s.pk %}<p><a class="link" href="{% url 'examinations:report_card' snap.exam_id s.pk %}">{{ snap.exam.name }} report card</a></p>{% endif %}{% endfor %}</div>{% endfor %}</div>{% endif %}
+<div class="card card-body"><h2 class="font-semibold mb-3">Upcoming holidays</h2>{% for h in holidays %}<p>{{ h.name }} · {{ h.start_date }} · {{ h.end_date }}</p>{% empty %}<p>No upcoming holidays.</p>{% endfor %}</div>
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block header %}Basic Settings{% endblock %}
+{% block content %}
+{% include "core/settings_nav.html" %}
+<div class="card">
+  <div class="overflow-x-auto"><table class="table">
+    <thead><tr><th>When</th><th>User</th><th>Action</th><th>Record</th><th>Details</th><th>IP</th></tr></thead>
+    <tbody>
+      {% for log in object_list %}
+      <tr><td class="whitespace-nowrap">{{ log.created_at|date:"d M Y, h:i A" }}</td><td>{{ log.user|default:"-" }}</td>
+        <td><code class="text-xs">{{ log.action }}</code></td><td class="text-xs text-slate-500">{{ log.model }} #{{ log.object_id }}</td>
+        <td>{{ log.description }}</td><td class="text-xs text-slate-500">{{ log.ip_address|default:"" }}</td></tr>
+      {% empty %}<tr><td colspan="6">{% include "components/empty.html" with message="No audit events yet." %}</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+  <div class="px-5 pb-4">{% pagination page_obj %}</div>
+</div>
+{% endblock %}

@@ -1,0 +1,2 @@
+{% extends "layouts/base.html" %}{% block content %}<form method="post" class="card card-body">{% csrf_token %}{{ formset.management_form }}{{ formset.non_form_errors }}
+{% for form in formset %}<div class="border-b py-4">{{ form.as_p }}</div>{% endfor %}<button class="btn-primary mt-4">Save rules</button></form>{% endblock %}

@@ -1,0 +1,19 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<div class="card card-body mb-4"><h2 class="text-xl font-semibold">{{ student.full_name }}</h2>
+<p>{{ student.student_id }} · {{ student.get_status_display }} · {{ student.phone }}</p><p>{{ student.present_address }}</p>
+<a class="link" href="{% url 'students:id_card' student.pk %}">ID card PDF</a>
+{% if perms.students.change_student %}<a class="link ml-4" href="{% url 'students:update' student.pk %}">Edit profile</a>{% endif %}</div>
+<div class="grid gap-4 md:grid-cols-2">
+<div class="card card-body"><h3 class="font-semibold">Enrollment history</h3>
+{% for e in enrollments %}<p>{{ e.academic_year }} · {{ e.section }} · Roll {{ e.roll_number }} · {{ e.status }}</p>{% empty %}<p>No enrollments.</p>{% endfor %}
+{% if perms.students.add_enrollment %}<a class="link" href="{% url 'students:enrollment_create' %}">Add enrollment</a>{% endif %}</div>
+<div class="card card-body"><h3 class="font-semibold">Guardians</h3>
+{% for link in guardians %}<p>{{ link.guardian.full_name }} · {{ link.get_relation_display }} · {{ link.guardian.phone }}</p>{% empty %}<p>No guardians linked.</p>{% endfor %}
+{% if perms.students.add_guardian %}<a class="link" href="{% url 'students:guardian_create' student.pk %}">Add guardian</a>{% endif %}</div>
+<div class="card card-body"><h3 class="font-semibold">Documents</h3>
+{% for doc in documents %}<p><a class="link" href="{% url 'students:document' doc.pk %}">{{ doc.title }}</a></p>{% empty %}<p>No documents.</p>{% endfor %}
+{% if perms.students.add_studentdocument %}<a class="link" href="{% url 'students:document_upload' student.pk %}">Upload document</a>{% endif %}</div>
+<div class="card card-body"><h3 class="font-semibold">Fees</h3>
+{% for inv in invoices %}<p><a class="link" href="{% url 'fees:invoice_detail' inv.pk %}">{{ inv.invoice_no }}</a> · Due {{ inv.balance }}</p>{% empty %}<p>No invoices.</p>{% endfor %}</div></div>
+{% endblock %}

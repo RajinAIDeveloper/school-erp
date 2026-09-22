@@ -1,0 +1,34 @@
+        <input type="hidden" name="section" value="{{ section.pk }}">
+        <input type="hidden" name="date" value="{{ day|date:'Y-m-d' }}">
+        <button class="px-3 py-2 rounded-lg bg-green-600 text-white text-sm hover:bg-green-700"
+                onclick="return confirm('Mark all {{ counts.unmarked }} unmarked student(s) present?')">
+          Mark all present
+        </button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="overflow-x-auto rounded-xl border bg-white">
+    <table class="min-w-full text-sm">
+      <thead class="bg-gray-50 text-left text-gray-600">
+        <tr>
+          <th class="px-4 py-2 w-16">Roll</th>
+          <th class="px-4 py-2">Student</th>
+          <th class="px-4 py-2">Status</th>
+          <th class="px-4 py-2 w-64">Note</th>
+        </tr>
+      </thead>
+      {# hx-vals / hx-target / hx-swap are inherited by every button in the rows #}
+      <tbody hx-vals='{"section": "{{ section.pk }}", "date": "{{ day|date:'Y-m-d' }}"}'
+             hx-target="closest tr" hx-swap="outerHTML">
+        {% for row in rows %}
+          {% include "attendance/partials/row.html" %}
+        {% empty %}
+          <tr><td colspan="4" class="px-4 py-6 text-center text-gray-500">No active students in this section.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "layouts/base.html" %}{% load erp %}
+{% block content %}
+<div class="mb-4 flex gap-4"><a class="link" href="{% if staff %}{% url 'attendance:staff_report' %}{% else %}{% url 'attendance:student_report' %}{% endif %}">Monthly report</a>
+{% if staff %}<a class="link" href="{% url 'attendance:leave_list' %}">Leave requests</a>{% endif %}</div>
+<form method="get" class="card card-body mb-4">{% render_form filter_form %}<button class="btn-secondary mt-4">Load register</button></form>
+{% if rows %}<form method="post" class="card card-body">{% csrf_token %}
+<input type="hidden" name="date" value="{{ filter_form.date.value }}">
+<input type="hidden" name="section" value="{{ filter_form.section.value|default:'' }}">
+<div class="overflow-x-auto"><table class="table"><thead><tr><th>Name</th><th>Status</th><th>Remarks</th>{% if staff %}<th>In</th><th>Out</th>{% endif %}</tr></thead><tbody>
+{% for row in rows %}<tr><td>{{ row.name }}</td><td>{{ row.form.status.errors }}{{ row.form.status }}</td><td>{{ row.form.remarks.errors }}{{ row.form.remarks }}</td>
+{% if staff %}<td>{{ row.form.check_in.errors }}{{ row.form.check_in }}</td><td>{{ row.form.check_out.errors }}{{ row.form.check_out }}</td>{% endif %}</tr>{% endfor %}
+</tbody></table></div>{% if editable %}<button class="btn-primary mt-4">Save attendance</button>{% endif %}</form>
+{% else %}<p>Select a date and section to load students. Set up enrollments first if the register is empty.</p>{% endif %}
+{% endblock %}

@@ -1,0 +1,4 @@
+{% extends "layouts/base.html" %}{% block content %}
+{% if perms.downloads.add_downloaditem %}<a class="btn-primary mb-4" href="{% url 'downloads:create' %}">Upload file</a>{% endif %}
+{% if perms.downloads.change_downloaditem %}<a class="btn-secondary mb-4" href="{% url 'downloads:item_list' %}">Manage files</a><a class="btn-secondary mb-4" href="{% url 'downloads:category_list' %}">Categories</a>{% endif %}
+<div class="grid gap-4 md:grid-cols-2">{% for item in items %}<article class="card card-body"><h2 class="font-semibold">{{ item.title }}</h2><p>{{ item.category }}</p><p>{{ item.description }}</p><a class="link" href="{% url 'downloads:file' item.pk %}">Download {{ item.filename }}</a></article>{% empty %}<p>No files available for your account.</p>{% endfor %}</div>{% endblock %}

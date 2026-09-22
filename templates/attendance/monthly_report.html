@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+  <h1 class="text-2xl font-semibold">Monthly Attendance</h1>
+  <form method="get" class="flex items-center gap-2">
+    <select name="section" onchange="this.form.submit()" class="rounded-lg border-gray-300">
+      {% for s in sections %}
+        <option value="{{ s.pk }}" {% if s.pk == section.pk %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+    <select name="month" onchange="this.form.submit()" class="rounded-lg border-gray-300">
+      {% for n, name in months %}
+        <option value="{{ n }}" {% if n == month %}selected{% endif %}>{{ name }}</option>
+      {% endfor %}
+    </select>
+    <select name="year" onchange="this.form.submit()" class="rounded-lg border-gray-300">
+      {% for y in years %}
+        <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" name="export" value="csv"
+            class="px-3 py-2 rounded-lg border hover:bg-gray-50 text-sm">Export CSV</button>
+  </form>
+</div>
+
+{% if not matrix %}
+  <p class="text-gray-500">Create a class section first.</p>
+{% else %}
+  <p class="text-sm text-gray-600 mb-3">
+    <strong>{{ section }}</strong> · {{ month_name }} {{ year }} · {{ matrix.working_days }} working day(s) so far
+  </p>
+
+  <div class="overflow-x-auto rounded-xl border bg-white">
+    <table class="text-xs whitespace-nowrap">
+      <thead class="bg-gray-50 text-gray-600">
+        <tr>
+          <th class="sticky left-0 bg-gray-50 px-3 py-2 text-left">Roll</th>
+          <th class="sticky left-12 bg-gray-50 px-3 py-2 text-left">Student</th>
+          {% for d in matrix.days %}
+            <th class="px-1.5 py-2 text-center {% if d.weekend %}text-gray-300{% endif %}">{{ d.date.day }}</th>
+          {% endfor %}
+          <th class="px-3 py-2 text-right">P</th>
+          <th class="px-3 py-2 text-right">%</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in matrix.rows %}
+        <tr class="border-t">
+          <td class="sticky left-0 bg-white px-3 py-1.5 text-gray-500">{{ r.enrollment.roll_no }}</td>
+          <td class="sticky left-12 bg-white px-3 py-1.5 font-medium">
+            <a href="{% url 'attendance:student' r.student.pk %}?year={{ year }}&month={{ month }}" class="hover:underline">{{ r.student }}</a>
+          </td>
+          {% for c in r.cells %}
+            <td class="px-1.5 py-1.5 text-center font-semibold
+                       {% if c.weekend %}bg-gray-50 text-gray-300
+                       {% elif c.status == 'P' %}text-green-700
+                       {% elif c.status == 'A' %}bg-red-50 text-red-700
+                       {% elif c.status == 'L' %}bg-amber-50 text-amber-700
+                       {% elif c.status == 'E' %}bg-blue-50 text-blue-700
+                       {% else %}text-gray-300{% endif %}">
+              {{ c.status|default:"·" }}
+            </td>
+          {% endfor %}
+          <td class="px-3 py-1.5 text-right">{{ r.present }}</td>
+          <td class="px-3 py-1.5 text-right font-semibold {% if r.pct < 75 %}text-red-600{% endif %}">{{ r.pct }}%</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="40" class="px-4 py-6 text-center text-gray-500">No active students in this section.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="mt-2 text-xs text-gray-500">P = Present, A = Absent, L = Late, E = On leave. Percentages below 75% are highlighted.</p>
+{% endif %}
+{% endblock %}

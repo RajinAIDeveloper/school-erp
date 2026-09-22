@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <h1 class="text-2xl font-semibold">Fee Structure</h1>
+  <form method="get" class="flex items-center gap-2">
+    <label class="text-sm text-gray-600">Academic year</label>
+    <select name="year" onchange="this.form.submit()" class="rounded-lg border-gray-300">
+      {% for y in years %}
+        <option value="{{ y.pk }}" {% if year and y.pk == year.pk %}selected{% endif %}>{{ y }}</option>
+      {% endfor %}
+    </select>
+  </form>
+</div>
+
+{% if not year %}
+  <p class="text-gray-500">Create an academic year first.</p>
+{% elif not heads %}
+  <p class="text-gray-500">Create at least one <a href="{% url 'fees:head_list' %}" class="text-indigo-600 underline">fee head</a> first.</p>
+{% else %}
+<form method="post" class="bg-white rounded-xl shadow overflow-x-auto">
+  {% csrf_token %}
+  <input type="hidden" name="year" value="{{ year.pk }}">
+  <table class="min-w-full text-sm">
+    <thead class="bg-gray-50 text-left text-gray-600">
+      <tr>
+        <th class="px-4 py-3">Class</th>
+        {% for h in heads %}<th class="px-4 py-3">{{ h.name }} (৳)</th>{% endfor %}
+      </tr>
+    </thead>
+    <tbody class="divide-y">
+      {% for row in rows %}
+      <tr>
+        <td class="px-4 py-2 font-medium whitespace-nowrap">{{ row.grade }}</td>
+        {% for c in row.cells %}
+        <td class="px-4 py-2">
+          <input type="number" step="0.01" min="0" name="{{ c.name }}" value="{{ c.value }}"
+                 class="w-28 rounded-lg border-gray-300 text-right" placeholder="—">
+        </td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="p-4 border-t flex justify-between items-center">
+    <p class="text-xs text-gray-500">Leave a cell blank to remove that fee for the class.</p>
+    <button class="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">Save Structure</button>
+  </div>
+</form>
+{% endif %}
+{% endblock %}

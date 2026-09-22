@@ -1,0 +1,4 @@
+{% extends "layouts/base.html" %}{% block content %}
+<div class="card card-body"><h2 class="font-semibold text-xl">{{ exam }}</h2><p>Status: {{ exam.status }} · Published version: {{ exam.publication_version }}</p>
+<div class="flex gap-3 my-4"><a class="btn-secondary" href="{% url 'examinations:marks' %}">Enter marks</a><a class="btn-secondary" href="{% url 'examinations:results' %}?exam={{ exam.pk }}">Results</a><a class="btn-secondary" href="{% url 'examinations:rules' exam.grade_scale_id %}">Grading rules</a></div>
+{% if can_publish and exam.status != "published" %}<form method="post" action="{% url 'examinations:publish' exam.pk %}">{% csrf_token %}<p class="mb-3">Publishing requires every scheduled mark or an explicit absence. It freezes report snapshots and locks mark entry.</p><button class="btn-primary">Publish results</button></form>{% endif %}</div>{% endblock %}

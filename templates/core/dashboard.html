@@ -1,0 +1,101 @@
+{% extends "layouts/base.html" %}
+{% load erp humanize %}
+{% block header %}Dashboard <span class="ml-2 text-sm font-normal text-slate-500">{{ today|date:"l, d M Y" }} · {{ year|default:"No academic year" }}</span>{% endblock %}
+{% block content %}
+<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+  <div class="stat">
+    <p class="text-sm text-slate-500">Active students</p>
+    <p class="mt-1 text-3xl font-bold text-slate-900">{{ student_count|intcomma }}</p>
+    <p class="mt-1 text-xs text-slate-500">{{ enrolled_count }} enrolled in {{ year|default:"-" }}</p>
+  </div>
+  <div class="stat">
+    <p class="text-sm text-slate-500">Teachers &amp; staff</p>
+    <p class="mt-1 text-3xl font-bold text-slate-900">{{ teacher_count|add:staff_count }}</p>
+    <p class="mt-1 text-xs text-slate-500">{{ teacher_count }} teachers · {{ staff_count }} staff · {{ staff_present_today }} present today</p>
+  </div>
+  <div class="stat">
+    <p class="text-sm text-slate-500">Student attendance today</p>
+    <p class="mt-1 text-3xl font-bold {% if attendance_pct is None %}text-slate-400{% elif attendance_pct >= 90 %}text-emerald-600{% elif attendance_pct >= 75 %}text-amber-600{% else %}text-red-600{% endif %}">
+      {% if attendance_pct is not None %}{{ attendance_pct }}%{% else %}—{% endif %}
+    </p>
+    <p class="mt-1 text-xs text-slate-500">{% if attendance_total %}{{ attendance_total }} records{% else %}Not taken yet{% endif %}</p>
+  </div>
+  <div class="stat">
+    <p class="text-sm text-slate-500">Fees collected this month</p>
+    <p class="mt-1 text-3xl font-bold text-slate-900">{% money collected_month %}</p>
+    <p class="mt-1 text-xs text-slate-500">Outstanding {% money outstanding %} across {{ unpaid_count }} invoices</p>
+  </div>
+</div>
+
+<div class="mt-6 grid gap-6 lg:grid-cols-3">
+  <div class="card lg:col-span-2">
+    <div class="card-header"><h2 class="font-semibold">Class strength · {{ year|default:"-" }}</h2>
+      <a href="{% url 'students:list' %}" class="link text-sm">All students</a></div>
+    <div class="card-body">
+      {% if class_strength %}
+      <div class="space-y-2">
+        {% for row in class_strength %}
+        <div class="flex items-center gap-3 text-sm">
+          <span class="w-24 shrink-0 text-slate-600">{{ row.class_level__name }}</span>
+          <div class="h-4 flex-1 rounded bg-slate-100"><div class="h-4 rounded bg-indigo-500" style="width: {% widthratio row.n enrolled_count 100 %}%"></div></div>
+          <span class="w-10 text-right font-medium">{{ row.n }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}<p class="text-sm text-slate-500">No enrollments yet. Add students to see class strength.</p>{% endif %}
+      <div class="mt-4 flex gap-4 text-xs text-slate-500">
+        {% for g in gender_split %}<span>{% if g.gender == 'M' %}Boys{% elif g.gender == 'F' %}Girls{% else %}Other{% endif %}: <b>{{ g.n }}</b></span>{% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2 class="font-semibold">Quick actions</h2></div>
+    <div class="card-body grid grid-cols-2 gap-2 text-sm">
+      {% if perms.students.add_student %}<a href="{% url 'students:admission' %}" class="btn-secondary justify-start">➕ New admission</a>{% endif %}
+      {% if perms.attendance.add_studentattendance %}<a href="{% url 'attendance:student_take' %}" class="btn-secondary justify-start">📋 Take attendance</a>{% endif %}
+      {% if perms.fees.add_feepayment %}<a href="{% url 'fees:invoice_list' %}?status=unpaid" class="btn-secondary justify-start">💳 Collect fees</a>{% endif %}
+      {% if perms.examinations.add_mark %}<a href="{% url 'examinations:exam_list' %}" class="btn-secondary justify-start">📝 Enter marks</a>{% endif %}
+      {% if perms.messaging.add_smsmessage %}<a href="{% url 'messaging:compose' %}" class="btn-secondary justify-start">💬 Send SMS</a>{% endif %}
+      {% if perms.finance.add_journalentry %}<a href="{% url 'finance:expense_create' %}" class="btn-secondary justify-start">🧾 Record expense</a>{% endif %}
+      {% if pending_leaves and perms.attendance.change_leaverequest %}<a href="{% url 'attendance:leave_list' %}?status=pending" class="btn-secondary col-span-2 justify-start text-amber-700">⏳ {{ pending_leaves }} leave request{{ pending_leaves|pluralize }} pending</a>{% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="mt-6 grid gap-6 lg:grid-cols-3">
+  <div class="card">
+    <div class="card-header"><h2 class="font-semibold">Recent payments</h2><a href="{% url 'fees:payment_list' %}" class="link text-sm">All</a></div>
+    <ul class="divide-y divide-slate-100 text-sm">
+      {% for p in recent_payments %}
+      <li class="flex items-center justify-between px-5 py-2.5">
+        <div><p class="font-medium">{{ p.invoice.student.full_name }}</p><p class="text-xs text-slate-500">{{ p.receipt_no }} · {{ p.date|date:"d M" }} · {{ p.get_method_display }}</p></div>
+        <span class="font-semibold text-emerald-700">{% money p.amount %}</span>
+      </li>
+      {% empty %}<li class="px-5 py-6 text-center text-slate-500">No payments yet.</li>{% endfor %}
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-header"><h2 class="font-semibold">Upcoming holidays</h2><a href="{% url 'holidays:list' %}" class="link text-sm">Calendar</a></div>
+    <ul class="divide-y divide-slate-100 text-sm">
+      {% for h in upcoming_holidays %}
+      <li class="flex items-center justify-between px-5 py-2.5">
+        <div><p class="font-medium">{{ h.name }}</p><p class="text-xs text-slate-500">{{ h.get_holiday_type_display }}</p></div>
+        <span class="text-xs text-slate-600">{{ h.start_date|date:"d M" }}{% if h.days > 1 %} – {{ h.end_date|date:"d M" }}{% endif %}</span>
+      </li>
+      {% empty %}<li class="px-5 py-6 text-center text-slate-500">No upcoming holidays.</li>{% endfor %}
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-header"><h2 class="font-semibold">Recent admissions</h2><a href="{% url 'students:list' %}" class="link text-sm">All</a></div>
+    <ul class="divide-y divide-slate-100 text-sm">
+      {% for s in recent_students %}
+      <li class="flex items-center justify-between px-5 py-2.5">
+        <a href="{% url 'students:detail' s.pk %}" class="font-medium hover:underline">{{ s.full_name }}</a>
+        <span class="text-xs text-slate-500">{{ s.student_id }}</span>
+      </li>
+      {% empty %}<li class="px-5 py-6 text-center text-slate-500">No students yet.</li>{% endfor %}
+    </ul>
+  </div>
+</div>
+{% endblock %}

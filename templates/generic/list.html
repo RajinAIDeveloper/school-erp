@@ -1,0 +1,62 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block header_actions %}
+  {% for label, url in extra_actions %}<a href="{{ url }}" class="btn-secondary btn-sm">{{ label }}</a>{% endfor %}
+  {% if create_url %}<a href="{{ create_url }}" class="btn-primary btn-sm">+ New</a>{% endif %}
+{% endblock %}
+{% block content %}
+<div class="card">
+  {% if has_search or filters %}
+  <form method="get" class="card-header" data-autosubmit>
+    <div class="flex flex-wrap items-end gap-3">
+      {% if has_search %}
+      <div>
+        <label class="label">Search</label>
+        <input type="search" name="q" value="{{ q }}" placeholder="Type and press Enter" class="input w-64">
+      </div>
+      {% endif %}
+      {% for param, label, choices in filters %}
+      <div>
+        <label class="label">{{ label }}</label>
+        <select name="{{ param }}" class="input w-48">
+          <option value="">All</option>
+          {% for value, text in choices %}
+            <option value="{{ value }}" {% if request.GET|get_item:param == value|stringformat:"s" %}selected{% endif %}>{{ text }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endfor %}
+      <button class="btn-secondary">Filter</button>
+      {% if request.GET %}<a href="?" class="text-sm text-slate-500 hover:underline">Clear</a>{% endif %}
+    </div>
+  </form>
+  {% endif %}
+  <div class="overflow-x-auto">
+    <table class="table">
+      <thead><tr>
+        {% for col in columns %}<th>{{ col.0 }}</th>{% endfor %}
+        <th class="text-right">Actions</th>
+      </tr></thead>
+      <tbody>
+        {% for obj in object_list %}
+        <tr>
+          {% for col in columns %}
+            <td>{% if forloop.first and detail_url_name %}<a href="{% url_for detail_url_name obj %}" class="link font-medium">{% render_cell obj col %}</a>{% else %}{% render_cell obj col %}{% endif %}</td>
+          {% endfor %}
+          <td class="whitespace-nowrap text-right">
+            {% block row_actions %}
+            {% if detail_url_name %}<a href="{% url_for detail_url_name obj %}" class="link text-xs">View</a>{% endif %}
+            {% if update_url_name %}<a href="{% url_for update_url_name obj %}" class="link ml-3 text-xs">Edit</a>{% endif %}
+            {% if delete_url_name %}<a href="{% url_for delete_url_name obj %}" class="ml-3 text-xs text-red-600 hover:underline">Delete</a>{% endif %}
+            {% endblock %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="{{ columns|length|add:1 }}">{% include "components/empty.html" with message=empty_message %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if page_obj %}<div class="px-5 pb-4">{% pagination page_obj %}</div>{% endif %}
+</div>
+{% endblock %}

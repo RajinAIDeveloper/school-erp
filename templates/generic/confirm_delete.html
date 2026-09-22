@@ -1,0 +1,14 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<div class="card mx-auto max-w-lg">
+  <form method="post" class="card-body">
+    {% csrf_token %}
+    <h2 class="text-lg font-semibold">Delete "{{ object }}"?</h2>
+    <p class="mt-2 text-sm text-slate-600">This action cannot be undone.</p>
+    <div class="mt-6 flex justify-end gap-3">
+      <a href="javascript:history.back()" class="btn-secondary">Cancel</a>
+      <button class="btn-danger">Delete</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

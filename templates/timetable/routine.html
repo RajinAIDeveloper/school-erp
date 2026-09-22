@@ -1,0 +1,4 @@
+{% extends "generic/report.html" %}
+{% block header_actions %}
+{% if perms.timetable.add_routineslot %}<a class="btn-primary btn-sm" href="{% url 'timetable:slot_list' %}">Edit routine</a><a class="btn-secondary btn-sm" href="{% url 'timetable:period_list' %}">Periods</a><a class="btn-secondary btn-sm" href="{% url 'timetable:room_list' %}">Rooms</a>{% endif %}
+{% endblock %}

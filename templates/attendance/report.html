@@ -1,0 +1,5 @@
+{% extends "layouts/base.html" %}{% load erp %}{% block content %}
+<form method="get" class="card card-body mb-4">{% render_form filter_form %}<div class="mt-4 flex gap-3"><button class="btn-primary">View month</button><button class="btn-secondary" name="format" value="csv">CSV</button><button class="btn-secondary" name="format" value="xlsx">Excel</button></div></form>
+<div class="card overflow-x-auto"><table class="table"><thead><tr><th>Name</th>{% for d in days %}<th>{{ d.day }}</th>{% endfor %}<th>Present / working</th><th>%</th></tr></thead><tbody>
+{% for row in rows %}<tr><td>{{ row.name }}</td>{% for cell in row.cells %}<td>{{ cell }}</td>{% endfor %}<td>{{ row.present }} / {{ row.working }}</td><td>{{ row.pct|default_if_none:"—" }}</td></tr>{% empty %}<tr><td>Select a month to view attendance.</td></tr>{% endfor %}
+</tbody></table></div>{% endblock %}

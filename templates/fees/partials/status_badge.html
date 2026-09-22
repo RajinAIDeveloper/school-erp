@@ -1,0 +1,9 @@
+{% if status == "paid" %}
+  <span class="px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-700">{{ label }}</span>
+{% elif status == "partial" %}
+  <span class="px-2 py-0.5 rounded-full text-xs bg-amber-100 text-amber-700">{{ label }}</span>
+{% elif status == "cancelled" %}
+  <span class="px-2 py-0.5 rounded-full text-xs bg-gray-200 text-gray-600 line-through">{{ label }}</span>
+{% else %}
+  <span class="px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-700">{{ label }}</span>
+{% endif %}

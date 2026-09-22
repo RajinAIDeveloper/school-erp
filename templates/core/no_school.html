@@ -1,0 +1,8 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<div class="card mx-auto max-w-lg"><div class="card-body text-center">
+  <h2 class="text-lg font-semibold">No school configured</h2>
+  <p class="mt-2 text-sm text-slate-600">Run <code>python manage.py seed_demo</code> or create a School in the Django admin and attach it to your user.</p>
+  {% if user.is_superuser %}<a href="{% url 'admin:core_school_add' %}" class="btn-primary mt-4">Create school</a>{% endif %}
+</div></div>
+{% endblock %}

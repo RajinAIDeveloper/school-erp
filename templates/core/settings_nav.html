@@ -1,0 +1,17 @@
+{% load erp %}
+<div class="mb-4 flex flex-wrap gap-1 border-b border-slate-200 text-sm">
+  {% with tab="border-b-2 px-3 py-2 hover:text-indigo-700" on="border-indigo-600 text-indigo-700 font-medium" off="border-transparent text-slate-600" %}
+  <a href="{% url 'settings:school' %}" class="{{ tab }} {% if request.resolver_match.url_name == 'school' %}{{ on }}{% else %}{{ off }}{% endif %}">School profile</a>
+  <a href="{% url 'settings:year_list' %}" class="{{ tab }} {% if 'year' in request.resolver_match.url_name %}{{ on }}{% else %}{{ off }}{% endif %}">Academic years</a>
+  <a href="{% url 'settings:term_list' %}" class="{{ tab }} {% if 'term' in request.resolver_match.url_name %}{{ on }}{% else %}{{ off }}{% endif %}">Terms</a>
+  <a href="{% url 'settings:class_list' %}" class="{{ tab }} {% if 'class' in request.resolver_match.url_name %}{{ on }}{% else %}{{ off }}{% endif %}">Classes</a>
+  <a href="{% url 'settings:section_list' %}" class="{{ tab }} {% if 'section' in request.resolver_match.url_name %}{{ on }}{% else %}{{ off }}{% endif %}">Sections</a>
+  <a href="{% url 'settings:subject_list' %}" class="{{ tab }} {% if 'subject' in request.resolver_match.url_name and 'teacher' not in request.resolver_match.url_name %}{{ on }}{% else %}{{ off }}{% endif %}">Subjects</a>
+  <a href="{% url 'settings:subject_teacher_list' %}" class="{{ tab }} {% if 'subject_teacher' in request.resolver_match.url_name %}{{ on }}{% else %}{{ off }}{% endif %}">Subject teachers</a>
+  <a href="{% url 'settings:department_list' %}" class="{{ tab }} {% if 'department' in request.resolver_match.url_name %}{{ on }}{% else %}{{ off }}{% endif %}">Departments</a>
+  <a href="{% url 'settings:designation_list' %}" class="{{ tab }} {% if 'designation' in request.resolver_match.url_name %}{{ on }}{% else %}{{ off }}{% endif %}">Designations</a>
+  <a href="{% url 'settings:leave_type_list' %}" class="{{ tab }} {% if 'leave_type' in request.resolver_match.url_name %}{{ on }}{% else %}{{ off }}{% endif %}">Leave types</a>
+  <a href="{% url 'settings:sms' %}" class="{{ tab }} {% if request.resolver_match.url_name == 'sms' %}{{ on }}{% else %}{{ off }}{% endif %}">SMS gateway</a>
+  <a href="{% url 'settings:audit' %}" class="{{ tab }} {% if request.resolver_match.url_name == 'audit' %}{{ on }}{% else %}{{ off }}{% endif %}">Audit log</a>
+  {% endwith %}
+</div>

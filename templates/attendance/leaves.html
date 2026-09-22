@@ -1,0 +1,6 @@
+{% extends "layouts/base.html" %}{% block content %}
+<a class="btn-primary mb-4" href="{% url 'attendance:leave_create' %}">Request leave</a>
+<div class="card overflow-x-auto"><table class="table"><thead><tr><th>Employee</th><th>Type</th><th>Dates</th><th>Reason</th><th>Status</th><th>Review</th></tr></thead><tbody>
+{% for r in rows %}<tr><td>{{ r.employee }}</td><td>{{ r.leave_type }}</td><td>{{ r.start_date }} · {{ r.end_date }}</td><td>{{ r.reason }}</td><td>{{ r.status }}</td><td>
+{% if can_review and r.status == "pending" %}<form method="post" action="{% url 'attendance:leave_review' r.pk %}">{% csrf_token %}<button class="btn-secondary" name="status" value="approved">Approve</button><button class="btn-secondary" name="status" value="rejected">Reject</button></form>{% endif %}
+</td></tr>{% empty %}<tr><td>No requests.</td></tr>{% endfor %}</tbody></table></div>{% endblock %}

@@ -1,0 +1,64 @@
+{% load erp %}
+{% with base="flex items-center gap-2 rounded-md px-3 py-2 hover:bg-slate-800 hover:text-white" %}
+<a href="{% url 'dashboard' %}" class="{{ base }} {% active request 'dashboard' %}">
+  <span class="w-5 text-center">🏠</span> Dashboard
+</a>
+
+{% if perms.students.view_student %}
+<p class="mt-4 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">People</p>
+<a href="{% url 'students:list' %}" class="{{ base }} {% active request 'students' %}"><span class="w-5 text-center">🎓</span> Students</a>
+{% endif %}
+{% if perms.employees.view_employee %}
+<a href="{% url 'employees:list' %}" class="{{ base }} {% active request 'employees' %}"><span class="w-5 text-center">👩‍🏫</span> Teachers &amp; Staff</a>
+{% endif %}
+
+{% if perms.attendance.view_studentattendance or perms.attendance.view_staffattendance %}
+<p class="mt-4 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Attendance</p>
+{% endif %}
+{% if perms.attendance.view_studentattendance %}
+<a href="{% url 'attendance:student_take' %}" class="{{ base }} {% active request 'student_take' 'student_report' %}"><span class="w-5 text-center">📋</span> Student Attendance</a>
+{% endif %}
+{% if perms.attendance.view_staffattendance %}
+<a href="{% url 'attendance:staff_take' %}" class="{{ base }} {% active request 'staff_take' 'staff_report' 'leave_list' 'leave_create' %}"><span class="w-5 text-center">🕒</span> Staff Attendance</a>
+{% endif %}
+
+{% if perms.fees.view_feeinvoice or perms.finance.view_journalentry %}
+<p class="mt-4 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Finance</p>
+{% endif %}
+{% if perms.fees.view_feeinvoice %}
+<a href="{% url 'fees:invoice_list' %}" class="{{ base }} {% active request 'fees' %}"><span class="w-5 text-center">💳</span> Fees</a>
+{% endif %}
+{% if perms.finance.view_journalentry %}
+<a href="{% url 'finance:dashboard' %}" class="{{ base }} {% active request 'finance' %}"><span class="w-5 text-center">📒</span> Accounts</a>
+{% endif %}
+
+{% if perms.examinations.view_exam or perms.timetable.view_routineslot %}
+<p class="mt-4 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Academics</p>
+{% endif %}
+{% if perms.examinations.view_exam %}
+<a href="{% url 'examinations:exam_list' %}" class="{{ base }} {% active request 'examinations' %}"><span class="w-5 text-center">📝</span> Results</a>
+{% endif %}
+{% if perms.timetable.view_routineslot %}
+<a href="{% url 'timetable:routine' %}" class="{{ base }} {% active request 'timetable' %}"><span class="w-5 text-center">🗓️</span> Routine</a>
+{% endif %}
+
+<p class="mt-4 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Communication</p>
+<a href="{% url 'downloads:list' %}" class="{{ base }} {% active request 'downloads' %}"><span class="w-5 text-center">📁</span> Downloads</a>
+{% if perms.messaging.view_smsmessage %}
+<a href="{% url 'messaging:batch_list' %}" class="{{ base }} {% active request 'messaging' %}"><span class="w-5 text-center">💬</span> SMS</a>
+{% endif %}
+<a href="{% url 'holidays:list' %}" class="{{ base }} {% active request 'holidays' %}"><span class="w-5 text-center">🎉</span> Holidays</a>
+
+{% if perms.core.change_school or perms.users.view_user %}
+<p class="mt-4 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Administration</p>
+{% endif %}
+{% if perms.core.change_school %}
+<a href="{% url 'settings:school' %}" class="{{ base }} {% active request 'settings' %}"><span class="w-5 text-center">⚙️</span> Basic Settings</a>
+{% endif %}
+{% if perms.users.view_user %}
+<a href="{% url 'users:list' %}" class="{{ base }} {% active request 'users' %}"><span class="w-5 text-center">👥</span> User Management</a>
+{% endif %}
+{% if user.is_superuser %}
+<a href="{% url 'admin:index' %}" class="{{ base }}"><span class="w-5 text-center">🛠️</span> Django Admin</a>
+{% endif %}
+{% endwith %}

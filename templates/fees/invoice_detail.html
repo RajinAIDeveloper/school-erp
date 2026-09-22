@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-4xl mx-auto">
+  <div class="flex items-start justify-between mb-6">
+    <div>
+      <a href="{% url 'fees:invoice_list' %}" class="text-sm text-gray-500 hover:underline">← Invoices</a>
+      <h1 class="text-2xl font-semibold mt-1">{{ invoice.invoice_no }}
+        {% include "fees/partials/status_badge.html" with status=invoice.status label=invoice.get_status_display %}
+      </h1>
+      <p class="text-gray-600">{{ invoice.student }} · {{ invoice.student.admission_no }} · {{ invoice.get_month_display }} {{ invoice.academic_year }}</p>
+      <p class="text-sm text-gray-500">Issued {{ invoice.issue_date }} · Due {{ invoice.due_date }}</p>
+    </div>
+    <div class="flex gap-2">
+      {% if invoice.status != "cancelled" %}
+        <a href="{% url 'fees:invoice_edit' invoice.pk %}" class="px-3 py-2 rounded-lg border hover:bg-gray-50 text-sm">Edit</a>
+      {% endif %}
+      {% if can_cancel %}
+        <form method="post" action="{% url 'fees:invoice_cancel' invoice.pk %}" onsubmit="return confirm('Cancel this invoice?')">
+          {% csrf_token %}
+          <button class="px-3 py-2 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 text-sm">Cancel</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2 space-y-6">
+      <div class="bg-white rounded-xl shadow overflow-hidden">
+        <h2 class="px-4 py-3 border-b font-medium">Items</h2>
+        <table class="min-w-full text-sm">
+          <tbody class="divide-y">
+            {% for it in invoice.items.all %}
+            <tr><td class="px-4 py-2">{{ it.fee_head.name }}</td><td class="px-4 py-2 text-right">৳{{ it.amount|floatformat:2 }}</td></tr>
+            {% endfor %}
+            <tr class="bg-gray-50"><td class="px-4 py-2">Subtotal</td><td class="px-4 py-2 text-right">৳{{ invoice.amount|floatformat:2 }}</td></tr>
+            {% if invoice.discount %}
+            <tr><td class="px-4 py-2 text-green-700">Discount</td><td class="px-4 py-2 text-right text-green-700">−৳{{ invoice.discount|floatformat:2 }}</td></tr>
+            {% endif %}
+            <tr class="font-semibold"><td class="px-4 py-2">Total</td><td class="px-4 py-2 text-right">৳{{ invoice.total|floatformat:2 }}</td></tr>
+            <tr><td class="px-4 py-2">Paid</td><td class="px-4 py-2 text-right text-green-700">৳{{ invoice.paid|floatformat:2 }}</td></tr>
+            <tr class="font-semibold text-red-600"><td class="px-4 py-2">Balance</td><td class="px-4 py-2 text-right">৳{{ invoice.balance|floatformat:2 }}</td></tr>
+          </tbody>
+        </table>
+        {% if invoice.note %}<p class="px-4 py-3 border-t text-sm text-gray-600">{{ invoice.note }}</p>{% endif %}
+      </div>
+
+      <div class="bg-white rounded-xl shadow overflow-hidden">
+        <h2 class="px-4 py-3 border-b font-medium">Payments</h2>
+        <table class="min-w-full text-sm">
+          <thead class="bg-gray-50 text-left text-gray-600">
+            <tr><th class="px-4 py-2">Date</th><th class="px-4 py-2">Method</th><th class="px-4 py-2">Txn ID</th><th class="px-4 py-2 text-right">Amount</th><th class="px-4 py-2"></th></tr>
+          </thead>
+          <tbody class="divide-y">
+            {% for p in invoice.payments.all %}
+            <tr>
+              <td class="px-4 py-2">{{ p.paid_on }}</td>
+              <td class="px-4 py-2">{{ p.get_method_display }}</td>
+              <td class="px-4 py-2 font-mono text-xs">{{ p.txn_id|default:"—" }}</td>
+              <td class="px-4 py-2 text-right">৳{{ p.amount|floatformat:2 }}</td>
+              <td class="px-4 py-2 text-right"><a href="{% url 'fees:receipt' p.pk %}" target="_blank" class="text-indigo-600 hover:underline">Receipt</a></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="px-4 py-4 text-center text-gray-500">No payments yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div>
+      {% if can_pay %}
+              <form method="post" action="{% url 'fees:invoice_pay' invoice.pk %}" class="bg-white rounded-xl shadow p-4 space-y-3">
+        {% csrf_token %}
+        <h2 class="font-medium">Record Payment</h2>
+        {{ payment_form.non_field_errors }}
+        {% for field in payment_form %}
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.help_text %}<p class="text-xs text-gray-400 mt-1">{{ field.help_text }}</p>{% endif %}
+            {% for err in field.errors %}<p class="text-xs text-red-600 mt-1">{{ err }}</p>{% endfor %}
+          </div>
+        {% endfor %}
+        <button class="w-full px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700">Save Payment</button>
+      </form>
+      {% else %}
+      <div class="bg-gray-50 rounded-xl p-4 text-sm text-gray-600 text-center">
+        {% if invoice.status == "paid" %}This invoice is fully paid.{% else %}This invoice is cancelled.{% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

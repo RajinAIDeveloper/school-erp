@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <h1 class="text-2xl font-semibold">Invoices</h1>
+  <a href="{% url 'fees:invoice_generate' %}" class="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">Generate Monthly Invoices</a>
+</div>
+
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6" id="summary">
+  {% include "fees/partials/summary_cards.html" %}
+</div>
+
+<form id="filters" class="bg-white rounded-xl shadow p-4 mb-4 grid grid-cols-1 md:grid-cols-5 gap-3"
+      hx-get="{% url 'fees:invoice_list' %}" hx-target="#invoice-table" hx-trigger="change, keyup delay:400ms from:[name='q']"
+      hx-push-url="true">
+  <input type="search" name="q" value="{{ filters.q }}" placeholder="Search student / invoice no" class="rounded-lg border-gray-300 md:col-span-2">
+  <select name="year" class="rounded-lg border-gray-300">
+    <option value="">All years</option>
+    {% for y in years %}<option value="{{ y.pk }}" {% if filters.year == y.pk|stringformat:"s" %}selected{% endif %}>{{ y }}</option>{% endfor %}
+  </select>
+  <select name="month" class="rounded-lg border-gray-300">
+    <option value="">All months</option>
+    {% for n, name in months %}<option value="{{ n }}" {% if filters.month == n|stringformat:"s" %}selected{% endif %}>{{ name }}</option>{% endfor %}
+  </select>
+  <select name="status" class="rounded-lg border-gray-300">
+    <option value="">All statuses</option>
+    {% for v, label in statuses %}<option value="{{ v }}" {% if filters.status == v %}selected{% endif %}>{{ label }}</option>{% endfor %}
+  </select>
+</form>
+
+<div id="invoice-table">
+  {% include "fees/partials/invoice_table.html" %}
+</div>
+{% endblock %}
