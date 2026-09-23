@@ -7,7 +7,7 @@ from django.utils import timezone
 from core.access import assert_actor_school, assert_school
 from core.models import AuditLog, School
 from messaging.notifications import notify_payment
-from students.models import Enrollment
+from students.models import Enrollment, Student
 
 from .models import ZERO, FeeConcession, FeeInvoice, FeeInvoiceItem, FeePayment, FeeStructure
 
@@ -60,6 +60,7 @@ def generate_invoices(*, school, user, academic_year, class_level=None, month, i
             continue
         items = []
         concessions = list(FeeConcession.objects.filter(school=school, student=enr.student, is_active=True))
+        sibling_rate = sibling_discount_for(school, enr.student)
         for fs in structures:
             previous = FeeInvoiceItem.objects.filter(invoice__student=enr.student, category=fs.category).exclude(
                 invoice__status="cancelled"
@@ -77,6 +78,8 @@ def generate_invoices(*, school, user, academic_year, class_level=None, month, i
             amount = fs.amount
             if amount < 0:
                 raise ValidationError("Fee amounts cannot be negative.")
+            if sibling_rate:
+                amount = amount - (amount * sibling_rate / 100)
             for c in concessions:
                 if c.category_id in (None, fs.category_id):
                     if c.percent < 0 or c.percent > 100 or c.fixed_amount < 0:
@@ -104,6 +107,35 @@ def generate_invoices(*, school, user, academic_year, class_level=None, month, i
         school=school, user=user, action="invoices.generated", description=f"{created} created; {skipped} skipped."
     )
     return created, skipped
+
+
+def sibling_discount_for(school, student):
+    """
+    The percentage a younger sibling is entitled to, or zero.
+
+    Siblings are children who share a primary guardian. The eldest by date of birth pays
+    in full; each younger active child gets the school's sibling rate. Ties on birthdate
+    (twins) fall back to student ID so the answer is stable between runs.
+    """
+    rate = Decimal(school.sibling_discount_percent or 0)
+    if rate <= ZERO:
+        return ZERO
+    link = student.guardian_links.filter(is_primary=True).select_related("guardian").first()
+    if link is None:
+        return ZERO
+    siblings = list(
+        Student.objects.filter(
+            school=school,
+            status=Student.Status.ACTIVE,
+            guardian_links__guardian=link.guardian,
+            guardian_links__is_primary=True,
+        )
+        .distinct()
+        .order_by("date_of_birth", "student_id")
+    )
+    if len(siblings) < 2 or siblings[0].pk == student.pk:
+        return ZERO
+    return rate
 
 
 @transaction.atomic

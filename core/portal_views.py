@@ -1,6 +1,6 @@
 from datetime import date
 
-from django.db.models import F
+from django.db.models import Count, F
 from django.http import Http404
 from django.shortcuts import render
 
@@ -30,7 +30,39 @@ def select_student(request):
 @require_permission(None)
 def index(request):
     students, _ = select_student(request)
-    return render(request, "portal/index.html", {"students": students, "page_title": "My school records"})
+    from decimal import Decimal
+
+    from django.db.models import Sum
+
+    owed = {}
+    if students:
+        rows = (
+            FeeInvoice.objects.filter(school=request.school, student__in=students)
+            .outstanding()
+            .values("student")
+            .annotate(total=Sum("balance_amount"), count=Count("id"))
+        )
+        owed = {row["student"]: row for row in rows}
+    cards = [
+        {
+            "student": student,
+            "owed": owed.get(student.pk, {}).get("total") or Decimal("0.00"),
+            "invoices": owed.get(student.pk, {}).get("count", 0),
+        }
+        for student in students
+    ]
+    family_total = sum((card["owed"] for card in cards), start=Decimal("0.00"))
+    return render(
+        request,
+        "portal/index.html",
+        {
+            "students": students,
+            "cards": cards,
+            "family_total": family_total,
+            "family_invoices": sum(card["invoices"] for card in cards),
+            "page_title": "My school records",
+        },
+    )
 
 
 @require_permission(None)

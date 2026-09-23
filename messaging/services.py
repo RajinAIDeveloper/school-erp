@@ -71,21 +71,25 @@ def queue_batch(school, title, recipients_kind, body, contacts, user=None):
     """
     if not body.strip() or len(body) > 480:
         raise ValidationError("Message must contain 1 to 480 characters.")
-    recipients = {}
+    # Keyed on the number AND the rendered text. A guardian with two children in the
+    # same class gets a message about each child; the same generic notice still reaches
+    # a number only once.
+    messages = {}
     for contact in contacts:
         name, phone = contact[0], contact[1]
         context = contact[2] if len(contact) > 2 else {}
         if not phone:
             continue
         number = normalize_bd_phone(phone)
-        recipients.setdefault(number, (name, context))
-    if not recipients:
+        rendered = render_body(body, context)
+        messages.setdefault((number, rendered), name)
+    if not messages:
         raise ValidationError("No recipients with valid phone numbers.")
     batch = SMSBatch.objects.create(school=school, title=title, recipients=recipients_kind, body=body, sent_by=user)
     SMSMessage.objects.bulk_create(
         [
-            SMSMessage(school=school, batch=batch, recipient_name=name, phone=phone, body=render_body(body, context))
-            for phone, (name, context) in recipients.items()
+            SMSMessage(school=school, batch=batch, recipient_name=name, phone=number, body=rendered)
+            for (number, rendered), name in messages.items()
         ]
     )
     return batch

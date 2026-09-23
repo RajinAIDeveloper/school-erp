@@ -7,7 +7,7 @@ Last updated: 23 September 2026. This records what was built against
 
 | Measure | Before | Now |
 |---|---:|---:|
-| Tests passing | 148 | 435 (+1 browser) |
+| Tests passing | 148 | 452 (+1 browser) |
 | Python line coverage | 87 % | 92 % |
 | Lint / format | none configured | ruff clean, 181 files formatted |
 | `check --deploy` | 2 warnings | clean at `--fail-level WARNING` |
@@ -61,6 +61,11 @@ All sixteen are complete, each its own commit.
   types start switched off, and a guardian can be opted out individually.
 - **Generated documentation.** `manage.py role_matrix` prints the access matrix from the URLs
   and the groups, so it cannot drift from the code.
+- **A guardian with several children is the ordinary case, not an edge case.** One login
+  covers the family, home totals the fees across children, and a class notice names each
+  child rather than the first one alphabetically. Messages are deduplicated on what the
+  person would actually receive, so a personalised notice arrives per child while a generic
+  one still arrives once.
 
 ## Deliberately not built
 

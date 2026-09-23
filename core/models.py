@@ -50,6 +50,15 @@ class School(TimeStampedModel):
         default=0,
         help_text="Most that may be charged on one invoice. Zero means no cap.",
     )
+    sibling_discount_percent = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        help_text=(
+            "Taken off every younger sibling's fees when two or more children share a primary "
+            "guardian. The eldest pays in full. Zero switches it off."
+        ),
+    )
     # Notifications. Every one of these is off until a school turns it on, because each
     # message costs the school money and reaches a family's phone.
     notify_absence_sms = models.BooleanField("Tell guardians about an absence", default=False)

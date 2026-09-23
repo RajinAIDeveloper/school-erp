@@ -190,5 +190,11 @@ class NotificationSettingsForm(TailwindFormMixin, forms.ModelForm):
 class FinancePolicyForm(TailwindFormMixin, forms.ModelForm):
     class Meta:
         model = School
-        fields = ["late_fee_per_day", "late_fee_cap", "books_locked_until", "staff_self_checkin"]
+        fields = [
+            "late_fee_per_day",
+            "late_fee_cap",
+            "sibling_discount_percent",
+            "books_locked_until",
+            "staff_self_checkin",
+        ]
         widgets = {"sms_api_key": forms.PasswordInput(render_value=True)}
