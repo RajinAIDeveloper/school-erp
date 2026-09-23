@@ -300,20 +300,29 @@ def bulk_report_cards_pdf(school, exam, cards):
     return response
 
 
-def admit_cards_pdf(school, exam, enrollments, schedules):
-    """One admit card per student, each listing the papers they will sit."""
+def admit_cards_pdf(school, exam, enrollments, schedules, papers_for_student=None):
+    """
+    One admit card per student, each listing the papers that student sits.
+
+    `papers_for_student` maps an enrollment to its own papers. Without it every student gets
+    every paper, which is right only for a class where everyone takes the same subjects.
+    """
     style = styles()
-    paper_rows = [
-        [
-            s.subject.name,
-            s.date.strftime("%d %b %Y") if s.date else "To be announced",
-            f"{s.start_time:%H:%M}" if s.start_time else "",
-            s.room or "",
+
+    def rows_for(papers):
+        return [
+            [
+                s.subject.name,
+                s.date.strftime("%d %b %Y") if s.date else "To be announced",
+                f"{s.start_time:%H:%M}" if s.start_time else "",
+                s.room or "",
+            ]
+            for s in papers
         ]
-        for s in schedules
-    ]
+
     flow = []
     for index, enrollment in enumerate(enrollments):
+        paper_rows = rows_for(papers_for_student(enrollment) if papers_for_student else schedules)
         if index:
             flow.append(PageBreak())
         student = enrollment.student

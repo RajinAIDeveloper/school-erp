@@ -215,12 +215,10 @@ def teacher_dashboard(school, user):
                 .select_related("exam")
             )
             for schedule in schedules:
-                expected = Enrollment.objects.filter(
-                    section=assignment.section,
-                    academic_year=year,
-                    status=Enrollment.Status.ENROLLED,
-                    student__status="active",
-                ).count()
+                # Only the students who sit this paper: a Humanities pupil is not "missing" Physics.
+                from examinations.services import expected_marks
+
+                expected = expected_marks(schedule, section=assignment.section)
                 entered = Mark.objects.filter(schedule=schedule, enrollment__section=assignment.section).count()
                 if expected and entered < expected:
                     pending_marks.append(

@@ -23,6 +23,7 @@ quietly join it.
 |---|---|---|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
 | / | dashboard | `(sign-in only)` | - | o | o | o | o | o | o | o |
 | /academics/sections.json | academics:sections_json | `academics.view_section` | - | Y | Y | Y | Y | . | . | . |
+| /academics/subject-plan/ | academics:subject_plan | `academics.view_classsubject` | - | Y | Y | . | . | . | . | . |
 | /attendance/ | attendance:student_take | `(sign-in only)` | - | o | o | o | o | o | o | o |
 | /attendance/leave/ | attendance:leave_list | `attendance.view_leaverequest` | own requests unless a manager | Y | Y | . | Y | Y | . | . |
 | /attendance/leave/<int:pk>/review/ | attendance:leave_review | `attendance.change_leaverequest` | managers only | Y | Y | . | . | . | . | . |
@@ -156,6 +157,9 @@ quietly join it.
 | /routine/utilisation/ | timetable:utilisation | `timetable.view_routineslot` | timetable editors only | Y | Y | . | Y | Y | Y | Y |
 | /settings/ | settings:hub | `(sign-in only)` | - | o | o | o | o | o | o | o |
 | /settings/audit/ | settings:audit | `core.view_auditlog` | - | Y | . | . | . | . | . | . |
+| /settings/class-subject/ | settings:class_subject_list | `academics.view_classsubject` | - | Y | Y | . | . | . | . | . |
+| /settings/class-subject/<int:pk>/edit/ | settings:class_subject_update | `academics.change_classsubject` | - | Y | Y | . | . | . | . | . |
+| /settings/class-subject/new/ | settings:class_subject_create | `academics.add_classsubject` | - | Y | Y | . | . | . | . | . |
 | /settings/class/ | settings:class_list | `academics.view_classlevel` | - | Y | Y | Y | Y | . | . | . |
 | /settings/class/<int:pk>/edit/ | settings:class_update | `academics.change_classlevel` | - | Y | Y | . | . | . | . | . |
 | /settings/class/new/ | settings:class_create | `academics.add_classlevel` | - | Y | Y | . | . | . | . | . |
@@ -207,6 +211,7 @@ quietly join it.
 | /students/<int:pk>/leaving/ | students:leaving | `students.change_student` | - | Y | Y | . | . | . | . | . |
 | /students/<int:student_pk>/guardian/ | students:guardian_create | `students.add_guardian` | - | Y | Y | . | . | . | . | . |
 | /students/admit/ | students:admission | `students.add_student` | - | Y | Y | . | . | . | . | . |
+| /students/choices/ | students:subject_choices | `students.change_enrollment` | - | Y | Y | . | . | . | . | . |
 | /students/documents/<int:pk>/ | students:document | `(sign-in only)` | - | o | o | o | o | o | o | o |
 | /students/enrollment/ | students:enrollment_list | `students.view_enrollment` | - | Y | Y | Y | Y | . | . | . |
 | /students/enrollment/<int:pk>/edit/ | students:enrollment_update | `students.change_enrollment` | - | Y | Y | . | . | . | . | . |

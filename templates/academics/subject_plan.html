@@ -1,0 +1,76 @@
+{% extends "layouts/base.html" %}
+{% block header_actions %}
+  {% if perms.academics.add_classsubject %}<a href="{% url 'settings:class_subject_create' %}" class="btn-primary btn-sm">Add a subject row</a>{% endif %}
+  <a href="{% url 'settings:class_subject_list' %}" class="btn-secondary btn-sm">All rows</a>
+  {% if perms.students.change_enrollment %}<a href="{% url 'students:subject_choices' %}" class="btn-secondary btn-sm">Subject choices</a>{% endif %}
+{% endblock %}
+{% block content %}
+<form method="get" class="card card-body mb-4 flex flex-wrap items-end gap-3">
+  <div><label class="label" for="year">Year</label>
+    <select id="year" name="year" class="input w-40">
+      {% for y in years %}<option value="{{ y.pk }}" {% if year.pk == y.pk %}selected{% endif %}>{{ y }}</option>{% endfor %}
+    </select></div>
+  <div><label class="label" for="class_level">Class</label>
+    <select id="class_level" name="class_level" class="input w-56">
+      <option value="">Choose a class</option>
+      {% for l in levels %}<option value="{{ l.pk }}" {% if level.pk == l.pk %}selected{% endif %}>{{ l }}</option>{% endfor %}
+    </select></div>
+  <button class="btn-secondary">Show</button>
+</form>
+
+{% if level %}
+  <div class="mb-4 rounded-md border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+    A class with no subject plan sits every paper scheduled for it. With a plan, each student sits the
+    compulsory subjects of their group, the choice subjects recorded for them, and the religion paper for
+    their religion. Rulebook for {{ level }}: <b>{{ level.get_assessment_system_display|default:"the school's setting" }}</b>.
+  </div>
+
+  <div class="card overflow-x-auto mb-4">
+    <table class="table">
+      <thead><tr><th>Code</th><th>Subject</th><th>Group</th><th>Kind</th><th>Counts towards</th><th>Religion</th><th class="text-right"></th></tr></thead>
+      <tbody>
+        {% for row in rows %}
+          <tr>
+            <td class="text-slate-500">{{ row.subject.code }}</td>
+            <td class="font-medium">{{ row.subject.name }}</td>
+            <td>{{ row.get_group_display|default:"All groups" }}</td>
+            <td>{{ row.get_kind_display }}</td>
+            <td class="text-sm text-slate-600">{{ row.subject.combines_into|default:"" }}</td>
+            <td class="text-sm text-slate-600">{{ row.subject.get_religion_display|default:"" }}</td>
+            <td class="text-right">{% if perms.academics.change_classsubject %}<a href="{% url 'settings:class_subject_update' row.pk %}" class="link text-xs">Edit</a>{% endif %}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="7">{% include "components/empty.html" with message="No subject plan for this class and year: every student sits every paper." %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if perms.academics.add_classsubject %}
+    <div class="grid gap-4 md:grid-cols-2">
+      <form method="post" class="card card-body">
+        {% csrf_token %}
+        <input type="hidden" name="year" value="{{ year.pk }}"><input type="hidden" name="class_level" value="{{ level.pk }}">
+        <input type="hidden" name="action" value="copy">
+        <p class="font-semibold">Copy another year's plan</p>
+        <p class="mt-1 text-sm text-slate-600">Rows already in this year's plan are kept.</p>
+        <div class="mt-3 flex items-end gap-3">
+          <select name="from_year" class="input w-40">
+            {% for y in years %}{% if y.pk != year.pk %}<option value="{{ y.pk }}">{{ y }}</option>{% endif %}{% endfor %}
+          </select>
+          <button class="btn-secondary btn-sm">Copy</button>
+        </div>
+      </form>
+      <form method="post" class="card card-body" data-confirm="Add the national Classes 9-10 subjects to this class's plan?">
+        {% csrf_token %}
+        <input type="hidden" name="year" value="{{ year.pk }}"><input type="hidden" name="class_level" value="{{ level.pk }}">
+        <input type="hidden" name="action" value="national">
+        <p class="font-semibold">Start from the national Classes 9-10 plan</p>
+        <p class="mt-1 text-sm text-slate-600">For Bangla-medium and English-version classes: Science, Business Studies and
+          Humanities groups, religion papers and 4th-subject choices, with board codes. Check it against the board's current list.</p>
+        <div class="mt-3"><button class="btn-secondary btn-sm">Load</button></div>
+      </form>
+    </div>
+  {% endif %}
+{% endif %}
+{% endblock %}

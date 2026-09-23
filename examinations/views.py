@@ -694,9 +694,20 @@ def admit_cards(request):
     enrollments = list(
         Enrollment.objects.filter(school=request.school, academic_year=exam.academic_year, section=section)
         .select_related("student", "section__class_level")
+        .prefetch_related("chosen_subjects")
         .order_by("roll_number")
     )
-    return admit_cards_pdf(request.school, exam, enrollments, schedules)
+    from .subjects import papers_for
+
+    plan = subject_plan(exam.academic_year, section.class_level)
+    # The same eligibility rule as mark entry and results: a card lists only that student's papers.
+    return admit_cards_pdf(
+        request.school,
+        exam,
+        enrollments,
+        schedules,
+        papers_for_student=lambda e: [schedule for schedule, _role in papers_for(e, schedules, plan)],
+    )
 
 
 @require_permission("examinations.view_exam")

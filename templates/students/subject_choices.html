@@ -1,0 +1,95 @@
+{% extends "layouts/base.html" %}
+{% block header_actions %}
+  {% if perms.academics.view_classsubject %}<a href="{% url 'academics:subject_plan' %}{% if section %}?class_level={{ section.class_level_id }}{% endif %}" class="btn-secondary btn-sm">Subject plan</a>{% endif %}
+{% endblock %}
+{% block content %}
+<form method="get" class="card card-body mb-4 flex flex-wrap items-end gap-3">
+  <div><label class="label" for="section">Section</label>
+    <select id="section" name="section" class="input w-64">
+      <option value="">Choose a section</option>
+      {% for s in sections %}<option value="{{ s.pk }}" {% if section.pk == s.pk %}selected{% endif %}>{{ s }}</option>{% endfor %}
+    </select></div>
+  <button class="btn-secondary">Show</button>
+  {% if year %}<p class="self-center text-sm text-slate-500">Year {{ year }}</p>{% endif %}
+</form>
+
+{% if section and not plan %}
+  {% include "components/empty.html" with message="This class has no subject plan for the current year, so every student sits every paper. Set up a subject plan first." %}
+{% elif section %}
+  {% if open_problems %}
+    <div class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+      {{ open_problems }} student{{ open_problems|pluralize }} still need choices fixing before their results can be worked out correctly.
+    </div>
+  {% endif %}
+  <form method="post" class="card">
+    {% csrf_token %}
+    <input type="hidden" name="section" value="{{ section.pk }}">
+    <div class="overflow-x-auto">
+      <table class="table">
+        <thead>
+          <tr>
+            <th class="w-14">Roll</th><th>Student</th><th>Religion</th>
+            {% if groups %}<th>Group</th>{% endif %}
+            {% if choice_subjects %}<th>Choice subjects (as main subjects)</th>{% endif %}
+            {% if board and choice_subjects %}<th>4th subject</th>{% endif %}
+            <th>Problems</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+            {% with pk=row.enrollment.pk %}
+            <tr class="{% if row.error %}bg-red-50{% elif row.problems %}bg-amber-50{% endif %}">
+              <td class="text-slate-500">{{ row.enrollment.roll_number }}</td>
+              <td class="font-medium">{{ row.enrollment.student.full_name }}</td>
+              <td class="text-sm text-slate-600">{{ row.enrollment.student.get_religion_display|default:"—" }}</td>
+              {% if groups %}
+                <td>
+                  <select name="{{ pk }}-group" class="input py-1 text-sm">
+                    <option value="">—</option>
+                    {% for value, label in groups %}<option value="{{ value }}" {% if row.group == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                  </select>
+                </td>
+              {% endif %}
+              {% if choice_subjects %}
+                <td>
+                  <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                    {% for subject, group_label in choice_subjects %}
+                      <label class="inline-flex items-center gap-1" title="{{ group_label }}">
+                        <input type="checkbox" name="{{ pk }}-chosen" value="{{ subject.pk }}" class="h-4 w-4 rounded border-slate-300"
+                               {% if subject.pk|stringformat:"s" in row.chosen %}checked{% endif %}>
+                        {{ subject.name }}
+                      </label>
+                    {% endfor %}
+                  </div>
+                </td>
+              {% endif %}
+              {% if board and choice_subjects %}
+                <td>
+                  <select name="{{ pk }}-fourth" class="input py-1 text-sm">
+                    <option value="">None</option>
+                    {% for subject, group_label in choice_subjects %}<option value="{{ subject.pk }}" {% if row.fourth == subject.pk|stringformat:"s" %}selected{% endif %}>{{ subject.name }}</option>{% endfor %}
+                  </select>
+                </td>
+              {% endif %}
+              <td class="text-xs">
+                {% if row.error %}<p class="text-red-700">{{ row.error }}</p>{% endif %}
+                {% for p in row.problems %}<p class="text-amber-800">{{ p }}</p>{% endfor %}
+                {% for w in row.warnings %}<p class="text-slate-500">{{ w }}</p>{% endfor %}
+              </td>
+            </tr>
+            {% endwith %}
+          {% empty %}
+            <tr><td colspan="7">{% include "components/empty.html" with message="No students in this section this year." %}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if rows %}
+      <div class="flex items-center justify-between border-t border-slate-200 px-5 py-4">
+        <p class="text-xs text-slate-500">Every student is checked against the subject plan before anything is saved.</p>
+        <button class="btn-primary">Save choices</button>
+      </div>
+    {% endif %}
+  </form>
+{% endif %}
+{% endblock %}

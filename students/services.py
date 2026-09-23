@@ -383,3 +383,73 @@ def import_students(school, upload, user=None):
             school=school, user=user, action="students.imported", description=f"{len(prepared)} students"
         )
     return len(prepared)
+
+
+class ChoiceError(Exception):
+    """Carries per-student messages so the choices screen can show each one in place."""
+
+    def __init__(self, errors):
+        self.errors = errors
+        super().__init__(f"{len(errors)} student(s) have choices that cannot be saved")
+
+
+@transaction.atomic
+def save_subject_choices(*, school, user, section, academic_year, rows):
+    """
+    Record each student's group, main choice subjects and 4th subject for one section.
+
+    `rows` is [(enrollment, group, chosen_subject_ids, fourth_subject_id_or_None)]. Every row
+    is checked against the class's subject plan before any is saved, and one bad row rejects
+    the whole submission, reported against its own student. A subject from another school, or
+    one the plan does not offer that group, is refused rather than quietly stored.
+    """
+    from academics.models import Subject
+    from examinations.subjects import check_choices, subject_plan
+
+    assert_actor_school(user, school)
+    assert_school(school, section, academic_year)
+    if not user.has_perm("students.change_enrollment"):
+        raise PermissionDenied
+    plan = subject_plan(academic_year, section.class_level)
+    if plan is None:
+        raise ValidationError(
+            f"{section.class_level} has no subject plan for {academic_year}, so there is nothing to choose."
+        )
+    board = section.class_level.uses_board_rules
+    known = {subject.pk: subject for subject in Subject.objects.filter(school=school)}
+    errors, prepared = {}, []
+    for enrollment, group, chosen, fourth in rows:
+        if enrollment.section_id != section.pk or enrollment.academic_year_id != academic_year.pk:
+            raise ValidationError(
+                "A student in this submission is not in this section this year. Reload and try again."
+            )
+        chosen = [int(pk) for pk in chosen]
+        fourth = int(fourth) if fourth else None
+        if any(pk not in known for pk in chosen) or (fourth and fourth not in known):
+            errors[enrollment.pk] = "A chosen subject does not exist in this school."
+            continue
+        if fourth and not board:
+            errors[enrollment.pk] = "A 4th subject applies only under the Bangladesh national curriculum."
+            continue
+        enrollment.group = group or ""
+        enrollment.fourth_subject_id = fourth
+        # Checked as if already saved, without touching the database.
+        enrollment._prefetched_objects_cache = {"chosen_subjects": [known[pk] for pk in chosen]}
+        problems = check_choices(enrollment, plan)
+        if problems:
+            errors[enrollment.pk] = " ".join(problems)
+            continue
+        prepared.append((enrollment, chosen))
+    if errors:
+        raise ChoiceError(errors)
+    for enrollment, chosen in prepared:
+        enrollment._prefetched_objects_cache = {}
+        enrollment.save(update_fields=["group", "fourth_subject", "updated_at"])
+        enrollment.chosen_subjects.set(chosen)
+    AuditLog.objects.create(
+        school=school,
+        user=user,
+        action="students.subject_choices_saved",
+        description=f"{section} {academic_year}: {len(prepared)} student(s)",
+    )
+    return len(prepared)

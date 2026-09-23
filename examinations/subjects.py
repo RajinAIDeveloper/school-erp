@@ -118,9 +118,19 @@ def check_choices(enrollment, plan):
         problems.append("The 4th subject is not one this group may take.")
     if fourth and fourth in chosen:
         problems.append("The 4th subject cannot also be a main subject.")
-    religion_papers = {row.subject_id for row in plan.rows if row.subject.religion}
-    if religion_papers and not any(
-        row.subject.religion == (enrollment.student.religion or "") for row in plan.rows if row.subject.religion
-    ):
-        problems.append("The student's religion is not recorded, so no religion paper applies.")
     return problems
+
+
+def choice_warnings(enrollment, plan):
+    """
+    Things worth fixing that do not block saving choices.
+
+    A missing religion leaves the student with no religion paper; that belongs on the student's
+    record, not in this screen, so it is shown but does not stop the rest being saved.
+    """
+    if plan is None:
+        return []
+    religions = {row.subject.religion for row in plan.rows if row.subject.religion}
+    if religions and (enrollment.student.religion or "") not in religions:
+        return ["No religion paper applies: the student's religion is not recorded, or not offered."]
+    return []

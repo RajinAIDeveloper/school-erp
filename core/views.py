@@ -148,6 +148,12 @@ SETTINGS_CARDS = [
         "permission": "academics.view_subject",
     },
     {
+        "title": "Subject plans",
+        "description": "Which subjects each class takes in a year, groups and choices, copied from last year or started from a preset.",
+        "url": "academics:subject_plan",
+        "permission": "academics.view_classsubject",
+    },
+    {
         "title": "People setup",
         "description": "Departments, designations and leave types for staff records.",
         "url": "settings:department_list",

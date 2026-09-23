@@ -5,8 +5,8 @@ import pytest
 from django.contrib.auth.models import Group
 from django.core.management import call_command
 
-from academics.models import AcademicYear, ClassLevel, Section, Subject, SubjectTeacher
-from core.models import School
+from academics.models import AcademicYear, ClassLevel, ClassSubject, Section, Subject, SubjectTeacher
+from core.models import AssessmentSystem, School
 from employees.models import Employee
 from examinations.models import Exam, ExamSchedule, ensure_default_grade_scale
 from fees.models import FeeCategory, FeeStructure
@@ -99,3 +99,92 @@ def invoice(erp):
         due_date=date(2026, 9, 10),
     )
     return FeeInvoice.objects.get()
+
+
+@pytest.fixture
+def board(erp):
+    """
+    A Class 9 under the national curriculum: two groups, a combined Bangla, religion papers,
+    and a 4th subject. One Muslim Science student and one Hindu Humanities student.
+    """
+    school, year = erp.school, erp.year
+    # Board rules are opt-in: the school's default is its own rules, and this class chooses
+    # the national curriculum explicitly.
+    level = ClassLevel.objects.create(
+        school=school, name="Class 9", order=9, assessment_system=AssessmentSystem.NATIONAL
+    )
+    section = Section.objects.create(school=school, class_level=level, name="A", shift="morning", version="bangla")
+
+    def subject(name, code, **extra):
+        return Subject.objects.create(school=school, name=name, code=code, **extra)
+
+    bangla = subject("Bangla", "")
+    b1 = subject("Bangla 1st paper", "101", combines_into=bangla)
+    b2 = subject("Bangla 2nd paper", "102", combines_into=bangla)
+    math = subject("General Math", "109")
+    islam = subject("Islam and Moral Education", "111", religion="islam")
+    hindu = subject("Hindu Religion and Moral Education", "112", religion="hinduism")
+    physics = subject("Physics", "136")
+    geography = subject("Geography and Environment", "110")
+    higher_math = subject("Higher Math", "126")
+    agriculture = subject("Agriculture Studies", "134")
+
+    def plan(subj, group="", kind=ClassSubject.Kind.COMPULSORY):
+        ClassSubject.objects.create(
+            school=school, academic_year=year, class_level=level, subject=subj, group=group, kind=kind
+        )
+
+    for subj in (b1, b2, math, islam, hindu):
+        plan(subj)
+    plan(physics, "science")
+    plan(geography, "humanities")
+    for subj in (higher_math, agriculture):
+        plan(subj, "", ClassSubject.Kind.CHOICE)
+
+    exam = Exam.objects.create(school=school, academic_year=year, name="Half Yearly", grade_scale=erp.scale)
+    schedules = {}
+    for subj in (b1, b2, math, islam, hindu, physics, geography, higher_math, agriculture):
+        schedules[subj.code] = ExamSchedule.objects.create(
+            school=school, exam=exam, class_level=level, subject=subj, full_marks=100, pass_marks=33
+        )
+
+    def student(sid, name, religion, group, fourth, roll, guardian_phone):
+        person = Student.objects.create(
+            school=school,
+            student_id=sid,
+            first_name=name,
+            gender="F",
+            religion=religion,
+            date_of_birth=date(2011, 1, 1),
+            admission_date=date(2026, 1, 1),
+        )
+        enrollment = Enrollment.objects.create(
+            school=school,
+            student=person,
+            academic_year=year,
+            class_level=level,
+            section=section,
+            roll_number=roll,
+            group=group,
+            fourth_subject=fourth,
+        )
+        guardian = Guardian.objects.create(school=school, full_name=f"{name}'s parent", phone=guardian_phone)
+        StudentGuardian.objects.create(student=person, guardian=guardian, relation="mother", is_primary=True)
+        return enrollment
+
+    science = student("C9-1", "Nabila", "islam", "science", higher_math, 1, "01712340001")
+    humanities = student("C9-2", "Rupa", "hinduism", "humanities", agriculture, 2, "01712340002")
+
+    teacher = erp.employee
+    for subj in (b1, b2, math, islam, hindu, physics, geography, higher_math, agriculture):
+        SubjectTeacher.objects.create(school=school, academic_year=year, section=section, subject=subj, teacher=teacher)
+
+    return SimpleNamespace(
+        level=level,
+        section=section,
+        exam=exam,
+        schedules=schedules,
+        science=science,
+        humanities=humanities,
+        subjects=SimpleNamespace(bangla=bangla, higher_math=higher_math, agriculture=agriculture, physics=physics),
+    )

@@ -20,6 +20,7 @@ urlpatterns = [
     path("<int:pk>/id-card.pdf", views.id_card, name="id_card"),
     path("id-cards.pdf", views.id_cards, name="id_cards"),
     path("promote/", views.promotion, name="promote"),
+    path("choices/", views.subject_choices, name="subject_choices"),
     path("import/", views.import_csv, name="import"),
     path("export/", views.export, name="export"),
 ]

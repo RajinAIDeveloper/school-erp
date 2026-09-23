@@ -1,6 +1,6 @@
 from django.urls import path
 
-from academics.models import AcademicYear, ClassLevel, Section, Subject, SubjectTeacher, Term
+from academics.models import AcademicYear, ClassLevel, ClassSubject, Section, Subject, SubjectTeacher, Term
 from attendance.models import LeaveType
 from core.crud import crud
 from employees.models import Department, Designation
@@ -63,6 +63,18 @@ for model, key, fields, columns in [
         "subject_teacher",
         ["academic_year", "section", "subject", "teacher"],
         [("Year", "academic_year"), ("Section", "section"), ("Subject", "subject"), ("Teacher", "teacher")],
+    ),
+    (
+        ClassSubject,
+        "class_subject",
+        ["academic_year", "class_level", "subject", "group", "kind"],
+        [
+            ("Class", "class_level"),
+            ("Year", "academic_year"),
+            ("Subject", "subject"),
+            ("Group", "get_group_display"),
+            ("Kind", "get_kind_display"),
+        ],
     ),
     (Department, "department", ["name"], [("Department", "name")]),
     (Designation, "designation", ["name"], [("Designation", "name")]),

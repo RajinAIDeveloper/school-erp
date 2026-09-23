@@ -388,3 +388,93 @@ def id_cards(request):
 def scope_to_visible_students(view, queryset):
     """Enrollment lists follow the same visibility rule as the student roster."""
     return queryset.filter(student__in=students_for(view.request.user, view.request.school))
+
+
+@require_permission("students.change_enrollment")
+def subject_choices(request):
+    """
+    Each student's group, choice subjects and 4th subject for one section, on one screen.
+
+    What is chosen here decides which papers a student sits: their mark-entry rows, their
+    admit card and their result. Problems are listed per student before anything is saved.
+    """
+    from academics.models import AcademicYear, ClassSubject, Group, Section
+    from examinations.subjects import check_choices, choice_warnings, subject_plan
+
+    from .services import ChoiceError, save_subject_choices
+
+    year = AcademicYear.current_for(request.school)
+    sections = Section.objects.filter(school=request.school, is_active=True).select_related("class_level")
+    raw = request.POST.get("section") or request.GET.get("section") or ""
+    section = sections.filter(pk=int(raw)).first() if str(raw).isdigit() else None
+    context = {"sections": sections, "section": section, "year": year, "page_title": "Subject choices"}
+    if section is None or year is None:
+        return render(request, "students/subject_choices.html", context)
+
+    plan = subject_plan(year, section.class_level)
+    enrollments = list(
+        Enrollment.objects.filter(school=request.school, section=section, academic_year=year)
+        .exclude(status=Enrollment.Status.LEFT)
+        .select_related("student", "fourth_subject")
+        .prefetch_related("chosen_subjects")
+        .order_by("roll_number")
+    )
+    choice_rows = [row for row in (plan.rows if plan else []) if row.kind == ClassSubject.Kind.CHOICE]
+    choice_subjects = []
+    for row in choice_rows:
+        if row.subject not in [s for s, _g in choice_subjects]:
+            choice_subjects.append((row.subject, row.get_group_display() if row.group else "All groups"))
+    groups = [(g, dict(Group.choices)[g]) for g in (plan.groups() if plan else [])]
+    board = section.class_level.uses_board_rules
+    errors, typed = {}, {}
+
+    if request.method == "POST" and plan is not None:
+        submitted = []
+        for enrollment in enrollments:
+            prefix = str(enrollment.pk)
+            group = request.POST.get(f"{prefix}-group", "")
+            chosen = [pk for pk in request.POST.getlist(f"{prefix}-chosen") if pk.isdigit()]
+            fourth = request.POST.get(f"{prefix}-fourth", "")
+            fourth = fourth if fourth.isdigit() else None
+            typed[enrollment.pk] = {"group": group, "chosen": set(chosen), "fourth": fourth}
+            submitted.append((enrollment, group, chosen, fourth))
+        try:
+            saved = save_subject_choices(
+                school=request.school, user=request.user, section=section, academic_year=year, rows=submitted
+            )
+            messages.success(request, f"Saved subject choices for {saved} student(s).")
+            return redirect(f"{request.path}?section={section.pk}")
+        except ChoiceError as exc:
+            errors = exc.errors
+            messages.error(request, "Nothing was saved. Fix the students marked below and save again.")
+        except ValidationError as exc:
+            messages.error(request, " ".join(exc.messages))
+
+    rows = []
+    for enrollment in enrollments:
+        entry = typed.get(enrollment.pk)
+        chosen = entry["chosen"] if entry else {str(s.pk) for s in enrollment.chosen_subjects.all()}
+        rows.append(
+            {
+                "enrollment": enrollment,
+                "group": entry["group"] if entry else enrollment.group,
+                "chosen": chosen,
+                "fourth": entry["fourth"]
+                if entry
+                else (str(enrollment.fourth_subject_id) if enrollment.fourth_subject_id else ""),
+                "error": errors.get(enrollment.pk),
+                "problems": [] if entry else check_choices(enrollment, plan),
+                "warnings": choice_warnings(enrollment, plan),
+            }
+        )
+    context.update(
+        {
+            "plan": plan,
+            "rows": rows,
+            "groups": groups,
+            "choice_subjects": choice_subjects,
+            "board": board,
+            "open_problems": sum(1 for row in rows if row["problems"]),
+        }
+    )
+    return render(request, "students/subject_choices.html", context)
