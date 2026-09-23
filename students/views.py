@@ -24,7 +24,7 @@ from .forms import (
     StudentForm,
 )
 from .models import Enrollment, Student, StudentDocument, StudentGuardian
-from .services import admit, change_status, import_students, promote, read_import_rows, validate_import
+from .services import admit, change_status, import_students, read_import_rows, validate_import
 
 IMPORT_SESSION_KEY = "student_import_rows"
 
@@ -276,16 +276,74 @@ def document_download(request, pk):
 
 @require_permission("students.change_enrollment")
 def promotion(request):
-    form = PromotionForm(request.POST or None, school=request.school)
-    if request.method == "POST" and form.is_valid():
-        try:
-            count = promote(request.school, **form.cleaned_data)
-            audit(request, "students.promoted", description=f"{count} students")
-            messages.success(request, f"Promoted {count} students; previous enrollments retained.")
-            return redirect("students:list")
-        except ValidationError as e:
-            form.add_error(None, e)
-    return render(request, "generic/form.html", {"form": form, "page_title": "Promote students"})
+    """
+    Promote a section student by student, with advice from a published result.
+
+    First choose the classes and, optionally, the result to advise from; then each student
+    is listed with the advice and a tick to promote. Going against the advice needs a reason.
+    """
+    from examinations.advice import advise, published_rows
+
+    from .services import promote_from_results
+
+    data = request.POST if request.method == "POST" else (request.GET if "source_section" in request.GET else None)
+    form = PromotionForm(data, school=request.school)
+    rows, basis_name = [], ""
+    if form.is_bound and form.is_valid():
+        d = form.cleaned_data
+        results, basis_name = published_rows(request.school, d.get("basis"))
+        enrollments = (
+            Enrollment.objects.filter(
+                school=request.school,
+                academic_year=d["source_year"],
+                section=d["source_section"],
+                status=Enrollment.Status.ENROLLED,
+                student__status="active",
+            )
+            .select_related("student")
+            .order_by("roll_number")
+        )
+        for e in enrollments:
+            advised, why = advise(results.get(e.pk)) if results is not None else (True, "No result chosen")
+            rows.append({"enrollment": e, "advised": advised, "why": why})
+        if request.method == "POST":
+            decisions = {
+                row["enrollment"].pk: {
+                    "promote": request.POST.get(f"{row['enrollment'].pk}-promote") == "on",
+                    "advised": row["advised"],
+                    "reason": request.POST.get(f"{row['enrollment'].pk}-reason", ""),
+                }
+                for row in rows
+            }
+            for row in rows:
+                row["promote"] = decisions[row["enrollment"].pk]["promote"]
+                row["reason"] = decisions[row["enrollment"].pk]["reason"]
+            try:
+                moved, held = promote_from_results(
+                    school=request.school,
+                    user=request.user,
+                    source_year=d["source_year"],
+                    source_section=d["source_section"],
+                    target_year=d["target_year"],
+                    target_section=d["target_section"],
+                    decisions=decisions,
+                    repeat_section=d.get("repeat_section"),
+                    basis=basis_name,
+                )
+                messages.success(
+                    request, f"Promoted {moved} student(s); {held} held back. Earlier enrollments are kept."
+                )
+                return redirect("students:list")
+            except ValidationError as exc:
+                messages.error(request, " ".join(exc.messages))
+        else:
+            for row in rows:
+                row["promote"], row["reason"] = row["advised"], ""
+    return render(
+        request,
+        "students/promotion.html",
+        {"form": form, "rows": rows, "basis_name": basis_name, "page_title": "Promote students"},
+    )
 
 
 @require_permission("students.add_student")

@@ -192,6 +192,108 @@ def promote(school, source_year, source_section, target_year, target_section):
     return len(rows)
 
 
+@transaction.atomic
+def promote_from_results(
+    *, school, user, source_year, source_section, target_year, target_section, decisions, repeat_section=None, basis=""
+):
+    """
+    Promote a section student by student.
+
+    `decisions` is {enrollment id: {"promote": bool, "advised": bool, "reason": str}} for
+    every student enrolled in the section. A decision against the advice needs a reason, and
+    each is written to the audit log. Students held back stay in their class; with
+    `repeat_section` they are enrolled in it again for the new year.
+    """
+    assert_actor_school(user, school)
+    assert_school(school, source_year, source_section, target_year, target_section)
+    if not user.has_perm("students.change_enrollment"):
+        raise PermissionDenied
+    if target_year.start_date <= source_year.start_date:
+        raise ValidationError("Target year must follow source year.")
+    if repeat_section is not None:
+        assert_school(school, repeat_section)
+        if repeat_section.class_level_id != source_section.class_level_id:
+            raise ValidationError("Students held back repeat the same class; choose a section of it.")
+    School.objects.select_for_update().get(pk=school.pk)
+    rows = list(
+        Enrollment.objects.filter(
+            school=school,
+            academic_year=source_year,
+            section=source_section,
+            status=Enrollment.Status.ENROLLED,
+            student__status="active",
+        )
+        .select_related("student")
+        .order_by("roll_number")
+    )
+    if {e.pk for e in rows} != {int(pk) for pk in decisions}:
+        raise ValidationError("The class has changed since this list was prepared. Reload and try again.")
+    unexplained = [
+        e.student.full_name
+        for e in rows
+        if decisions[e.pk]["promote"] != decisions[e.pk]["advised"]
+        and not (decisions[e.pk].get("reason") or "").strip()
+    ]
+    if unexplained:
+        raise ValidationError(f"Give a reason for going against the advice for: {', '.join(unexplained)}.")
+    if Enrollment.objects.filter(academic_year=target_year, student_id__in=[e.student_id for e in rows]).exists():
+        raise ValidationError("Some students already have an enrollment in the target year; nothing was changed.")
+    moving = [e for e in rows if decisions[e.pk]["promote"]]
+    staying = [e for e in rows if not decisions[e.pk]["promote"]]
+    roll = next_roll_number(target_year, target_section) - 1
+    for e in moving:
+        roll += 1
+        Enrollment.objects.create(
+            school=school,
+            student=e.student,
+            academic_year=target_year,
+            section=target_section,
+            class_level=target_section.class_level,
+            roll_number=roll,
+        )
+        e.status = Enrollment.Status.PROMOTED
+        e.save(update_fields=["status", "updated_at"])
+    if repeat_section is not None and staying:
+        roll = next_roll_number(target_year, repeat_section) - 1
+        for e in staying:
+            roll += 1
+            Enrollment.objects.create(
+                school=school,
+                student=e.student,
+                academic_year=target_year,
+                section=repeat_section,
+                class_level=repeat_section.class_level,
+                roll_number=roll,
+            )
+            e.status = Enrollment.Status.REPEATED
+            e.save(update_fields=["status", "updated_at"])
+    for e in rows:
+        decision = decisions[e.pk]
+        if decision["promote"] != decision["advised"]:
+            AuditLog.objects.create(
+                school=school,
+                user=user,
+                action="students.promotion_override",
+                model=Enrollment._meta.label,
+                object_id=str(e.pk),
+                description=(
+                    f"{e.student}: {'promoted' if decision['promote'] else 'held back'} against the advice "
+                    f"of {basis or 'the result'}. Reason: {decision['reason'].strip()}"
+                ),
+            )
+    AuditLog.objects.create(
+        school=school,
+        user=user,
+        action="students.promoted",
+        description=(
+            f"{source_section} {source_year} -> {target_section} {target_year}: {len(moving)} promoted, "
+            f"{len(staying)} held back{' and re-enrolled' if repeat_section is not None and staying else ''}"
+            + (f"; advice from {basis}" if basis else "")
+        ),
+    )
+    return len(moving), len(staying)
+
+
 def read_import_rows(upload):
     """Decode and sanity-check the upload before anything touches the database."""
     if upload.size > 5 * 1024 * 1024:

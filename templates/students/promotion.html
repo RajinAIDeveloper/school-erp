@@ -1,0 +1,45 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block content %}
+<div class="mx-auto max-w-5xl space-y-4">
+  <form method="get" class="card card-body">
+    <div class="grid gap-4 sm:grid-cols-2">{% for field in form %}{% render_field field %}{% endfor %}</div>
+    {% if form.non_field_errors %}<p class="mt-2 text-sm text-red-700">{{ form.non_field_errors|join:" " }}</p>{% endif %}
+    <p class="mt-3 text-xs text-slate-500">Choose the source year and press "List students" once to see its published results in "Advise from".</p>
+    <div class="mt-4"><button class="btn-secondary">List students</button></div>
+  </form>
+
+  {% if rows %}
+    <form method="post" class="card">
+      {% csrf_token %}
+      {% for field in form %}{% if field.value %}<input type="hidden" name="{{ field.html_name }}" value="{{ field.value }}">{% endif %}{% endfor %}
+      <div class="card-header">
+        <h3 class="font-semibold">{{ rows|length }} student{{ rows|length|pluralize }}</h3>
+        <span class="text-sm text-slate-500">{% if basis_name %}Advice from {{ basis_name }}{% else %}No result chosen: every student is ticked{% endif %}</span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="table">
+          <thead><tr><th class="w-14">Roll</th><th>Student</th><th>Advice</th><th class="w-20">Promote</th><th>Reason, when going against the advice</th></tr></thead>
+          <tbody>
+            {% for row in rows %}
+              <tr class="{% if row.promote != row.advised %}bg-amber-50{% endif %}">
+                <td class="text-slate-500">{{ row.enrollment.roll_number }}</td>
+                <td class="font-medium">{{ row.enrollment.student.full_name }}</td>
+                <td class="text-sm {% if row.advised %}text-emerald-700{% else %}text-red-700{% endif %}">{% if row.advised %}Promote{% else %}Hold back{% endif %} · <span class="text-slate-600">{{ row.why }}</span></td>
+                <td><input type="checkbox" name="{{ row.enrollment.pk }}-promote" {% if row.promote %}checked{% endif %} class="h-4 w-4 rounded border-slate-300"></td>
+                <td><input name="{{ row.enrollment.pk }}-reason" value="{{ row.reason }}" maxlength="200" class="input py-1 text-sm" placeholder="e.g. passed the re-sit"></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="flex items-center justify-between border-t border-slate-200 px-5 py-4">
+        <p class="text-xs text-slate-500">Every decision against the advice is recorded with its reason. Earlier enrollments are kept.</p>
+        <button class="btn-primary">Promote</button>
+      </div>
+    </form>
+  {% elif form.is_bound and form.is_valid %}
+    {% include "components/empty.html" with message="No students are enrolled in this section for the source year." %}
+  {% endif %}
+</div>
+{% endblock %}

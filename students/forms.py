@@ -175,13 +175,33 @@ class PromotionForm(TailwindFormMixin, forms.Form):
     source_section = forms.ModelChoiceField(queryset=None)
     target_year = forms.ModelChoiceField(queryset=None)
     target_section = forms.ModelChoiceField(queryset=None)
+    basis = forms.CharField(
+        required=False,
+        label="Advise from",
+        help_text="A published exam or combined result of the source year, e.g. the annual result.",
+        widget=forms.Select,
+    )
+    repeat_section = forms.ModelChoiceField(
+        queryset=None,
+        required=False,
+        label="Re-enrol students held back in",
+        help_text="Leave blank to leave them unenrolled for the new year.",
+    )
 
     def __init__(self, *args, school, **kwargs):
         super().__init__(*args, **kwargs)
+        from examinations.advice import basis_choices
+
+        self.school = school
         for key in ("source_year", "target_year"):
             self.fields[key].queryset = AcademicYear.objects.filter(school=school)
-        for key in ("source_section", "target_section"):
+        for key in ("source_section", "target_section", "repeat_section"):
             self.fields[key].queryset = Section.objects.filter(school=school)
+        raw_year = (self.data.get("source_year") or "") if self.is_bound else ""
+        year = AcademicYear.objects.filter(school=school, pk=int(raw_year)).first() if str(raw_year).isdigit() else None
+        self.fields["basis"].widget.choices = (
+            basis_choices(school, year) if year else [("", "Choose the source year first")]
+        )
 
     def clean(self):
         data = super().clean()
@@ -191,6 +211,12 @@ class PromotionForm(TailwindFormMixin, forms.Form):
             and data["target_year"].start_date <= data["source_year"].start_date
         ):
             raise forms.ValidationError("Target year must start after source year.")
+        basis = data.get("basis") or ""
+        if basis and basis not in dict(self.fields["basis"].widget.choices):
+            self.add_error("basis", "Choose a published result of the source year.")
+        repeat, source = data.get("repeat_section"), data.get("source_section")
+        if repeat and source and repeat.class_level_id != source.class_level_id:
+            self.add_error("repeat_section", "Students held back repeat the same class; choose a section of it.")
         return data
 
 
