@@ -415,7 +415,20 @@ def live_class_sheet(exam, class_level):
             if (schedule, role) not in excused
         ]
         units = combine_units(cells, rules, combine=book.combine_papers)
-        outcome = book.outcome(units, rules)
+        if not cells and excused:
+            # Excused from every paper: nothing to grade, and nothing missing either.
+            outcome = {
+                "complete": True,
+                "result": None,
+                "gpa": None,
+                "gpa_without_fourth": None,
+                "gpa_letter": None,
+                "points": None,
+                "headline": "Exempt from every paper",
+                "trace": ["Every paper is marked exempt, so there is no result to work out."],
+            }
+        else:
+            outcome = book.outcome(units, rules)
         total = sum((Decimal(c["score"]) for c in cells if c["score"] is not None), Decimal(0))
         full = sum((Decimal(c["full_marks"]) for c in cells), Decimal(0))
         student = e.student
@@ -446,6 +459,7 @@ def live_class_sheet(exam, class_level):
                 "has_result": book.has_result,
                 "show_rank": show_rank,
                 "cells": cells + [_exempt_cell(s, r) for s, r in excused],
+                "cells_graded": bool(cells),
                 "subjects": units,
                 "total": str(total),
                 "full_total": str(full),
@@ -489,7 +503,8 @@ def assign_ranks(rows, key="rank", sort_key=None):
     total. Positions are always worked out, and shown only where the rulebook or the exam says.
     """
     sort_key = sort_key or (lambda r: (Decimal(r["total"]),))
-    ranked = sorted((r for r in rows if r["complete"]), key=sort_key, reverse=True)
+    # A student with nothing graded (exempt from every paper) takes no position.
+    ranked = sorted((r for r in rows if r["complete"] and r.get("cells_graded", True)), key=sort_key, reverse=True)
     last, rank = None, 0
     for index, row in enumerate(ranked, 1):
         current = sort_key(row)

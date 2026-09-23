@@ -1,0 +1,54 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block header_actions %}
+  <a href="{% url 'examinations:combined_list' %}" class="btn-secondary btn-sm">All combined results</a>
+  {% if rows %}<a href="?class_level={{ level.pk }}&format=csv" class="btn-secondary btn-sm">CSV</a>{% endif %}
+{% endblock %}
+{% block content %}
+<div class="card card-body mb-4">
+  <div class="flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <p class="text-sm text-slate-600">{{ combined.academic_year }} · graded on {{ combined.grade_scale }}</p>
+      <p class="mt-1 text-sm">Made from: {% for p in parts %}{{ p.exam.name }} <b>{{ p.weight|floatformat:"-2" }}%</b>{% if p.exam.status != "published" %} <span class="text-amber-700">(not published)</span>{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+      <p class="mt-1 text-sm text-slate-500">{% if combined.publication_version %}Published version {{ combined.publication_version }}, {{ combined.published_at|date:"d M Y" }}{% else %}Draft: not published{% endif %}</p>
+    </div>
+    {% if can_publish and not combined.publication_version or can_publish and stale %}
+      <form method="post" data-confirm="Publish this combined result? It is frozen as a new version.">
+        {% csrf_token %}<button class="btn-primary">{% if combined.publication_version %}Publish again{% else %}Publish{% endif %}</button>
+      </form>
+    {% endif %}
+  </div>
+  {% if stale %}
+    <p class="mt-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+      Out of date: {{ stale|join:", " }} {{ stale|length|pluralize:"was,were" }} corrected after this was published. Publish again to include the correction.
+    </p>
+  {% endif %}
+</div>
+
+{% if levels %}
+  <form method="get" class="mb-4 flex items-end gap-3">
+    <div><label class="label" for="class_level">Class</label>
+      <select id="class_level" name="class_level" class="input w-48">{% for lv in levels %}<option value="{{ lv.pk }}" {% if lv.pk == level.pk %}selected{% endif %}>{{ lv }}</option>{% endfor %}</select></div>
+    <button class="btn-secondary">Show</button>
+  </form>
+{% endif %}
+
+{% if problem %}
+  <p class="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{{ problem }}</p>
+{% else %}
+  <div class="card overflow-x-auto">
+    <table class="table">
+      <thead><tr><th>Section</th><th>Roll</th><th>Student</th><th class="text-right">Percent</th><th>Overall</th><th></th></tr></thead>
+      <tbody>
+        {% for r in rows %}
+          <tr><td>{{ r.section }}</td><td>{{ r.roll }}</td><td>{{ r.student }}</td>
+            <td class="text-right">{{ r.percent|default_if_none:"—" }}</td><td>{{ r|result_headline }}</td>
+            <td class="text-right"><a href="{% url 'examinations:combined_card' combined.pk r.student_id %}" class="link text-xs">Card</a></td></tr>
+        {% empty %}
+          <tr><td colspan="6">{% include "components/empty.html" with message="No students to show." %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endif %}
+{% endblock %}

@@ -140,6 +140,22 @@ def results(request):
             "snapshots": snapshots,
             # Only results a second person has checked against the body's statement.
             "official_results": official_results_for(student, confirmed_only=True) if student else [],
+            "combined": _published_combined(student),
             "page_title": "My results",
         },
+    )
+
+
+def _published_combined(student):
+    """The current published combined results (such as an annual result) for one child."""
+    if student is None:
+        return []
+    from examinations.models import CombinedSnapshot
+
+    return list(
+        CombinedSnapshot.objects.filter(
+            enrollment__student=student,
+            combined__status="published",
+            version=F("combined__publication_version"),
+        ).select_related("combined")
     )

@@ -182,6 +182,8 @@ def test_the_public_surface_is_exactly_what_we_intend(erp):
         "/downloads/<int:pk>/file/",
         # Confirms a report card is genuine without naming a child or showing a mark.
         "/exams/verify/<uuid:code>/",
+        # The same check for a combined result, such as an annual result.
+        "/exams/combined/verify/<uuid:code>/",
         # Anyone holding a certificate may check it; the page shows initials, never the record.
         "/students/certificates/verify/<uuid:code>/",
         # A liveness probe; a load balancer has no session.

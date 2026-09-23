@@ -299,6 +299,11 @@ def report_card_flowables(school, exam, enrollment, row, snapshot, style, verify
     flow = [_facts(facts, style), Spacer(1, 6), table, Spacer(1, 8), summary, Spacer(1, 6)]
     from .rulebooks import official_notice
 
+    if row.get("sources"):
+        made_of = ", ".join(f"{s['exam']} {s['weight']}%" for s in row["sources"])
+        flow.append(
+            Paragraph(f"<font color='#475569' size='7.5'>Combined from: {escape(made_of)}</font>", style["cell"])
+        )
     if official_notice(row):
         flow.append(Paragraph(f"<font color='#475569' size='7.5'>{escape(official_notice(row))}</font>", style["cell"]))
         flow.append(Spacer(1, 4))

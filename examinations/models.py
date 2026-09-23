@@ -1,3 +1,4 @@
+import uuid
 from decimal import Decimal
 
 from django.conf import settings
@@ -578,3 +579,62 @@ class OfficialResult(SchoolScopedModel):
 
     def __str__(self):
         return f"{self.candidate} {self.syllabus_code}: {self.grade}"
+
+
+class CombinedResult(SchoolScopedModel):
+    """
+    A result built from several published exams with weights, such as an annual result of
+    30% half-yearly and 70% final. It is published as its own versioned result, and it
+    records which version of each exam it used, so a later correction to an exam shows it is
+    out of date rather than changing it silently.
+    """
+
+    academic_year = models.ForeignKey(AcademicYear, on_delete=models.CASCADE, related_name="combined_results")
+    name = models.CharField(max_length=60)
+    grade_scale = models.ForeignKey(GradeScale, on_delete=models.PROTECT, related_name="combined_results")
+    status = models.CharField(max_length=10, default="draft", choices=[("draft", "Draft"), ("published", "Published")])
+    publication_version = models.PositiveIntegerField(default=0)
+    published_at = models.DateTimeField(null=True, blank=True)
+    published_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    grading_snapshot = models.JSONField(default=list, blank=True)
+    # {exam id: publication version} as used by the latest publication.
+    sources_snapshot = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        ordering = ["-academic_year__start_date", "name"]
+        constraints = [models.UniqueConstraint(fields=["academic_year", "name"], name="unique_combined_per_year")]
+
+    def __str__(self):
+        return f"{self.name} ({self.academic_year})"
+
+
+class CombinedPart(models.Model):
+    combined = models.ForeignKey(CombinedResult, on_delete=models.CASCADE, related_name="parts")
+    exam = models.ForeignKey(Exam, on_delete=models.PROTECT, related_name="combined_parts")
+    weight = models.DecimalField(max_digits=5, decimal_places=2, help_text="Percent of the combined result.")
+
+    class Meta:
+        ordering = ["id"]  # as the school listed them
+        constraints = [models.UniqueConstraint(fields=["combined", "exam"], name="one_part_per_exam")]
+
+    def __str__(self):
+        return f"{self.exam} at {self.weight}%"
+
+
+class CombinedSnapshot(SchoolScopedModel):
+    """One student's combined result as published, frozen like an exam's result snapshot."""
+
+    combined = models.ForeignKey(CombinedResult, on_delete=models.CASCADE, related_name="snapshots")
+    enrollment = models.ForeignKey(Enrollment, on_delete=models.CASCADE, related_name="combined_snapshots")
+    version = models.PositiveIntegerField()
+    payload = models.JSONField()
+    verification_code = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["combined", "enrollment", "version"], name="one_combined_snapshot_per_version"
+            )
+        ]

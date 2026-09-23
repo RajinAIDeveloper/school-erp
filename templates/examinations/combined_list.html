@@ -1,0 +1,56 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<div class="mx-auto max-w-4xl space-y-4">
+  <div class="rounded-md border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+    A combined result weights several exams into one, such as an annual result made of 30% half-yearly
+    and 70% final. Only published exams are used. Each subject's percentage is the weighted average of
+    the exams the student sat it in; an absence counts as nought, an exemption leaves that exam out.
+    The class's own rules then grade it, as for a single exam.
+  </div>
+
+  <div class="card overflow-x-auto">
+    <table class="table">
+      <thead><tr><th>Combined result</th><th>Year</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for c in combined %}
+          <tr><td><a href="{% url 'examinations:combined_detail' c.pk %}" class="link font-medium">{{ c.name }}</a></td>
+            <td>{{ c.academic_year }}</td>
+            <td>{% if c.publication_version %}Published, version {{ c.publication_version }}{% else %}Draft{% endif %}</td></tr>
+        {% empty %}
+          <tr><td colspan="3">{% include "components/empty.html" with message="No combined results yet." %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if perms.examinations.add_combinedresult %}
+    <form method="get" class="flex items-end gap-3">
+      <div><label class="label" for="year">Year</label>
+        <select id="year" name="year" class="input w-40">{% for y in years %}<option value="{{ y.pk }}" {% if year.pk == y.pk %}selected{% endif %}>{{ y }}</option>{% endfor %}</select></div>
+      <button class="btn-secondary">Show exams</button>
+    </form>
+    <form method="post" class="card card-body space-y-4">
+      {% csrf_token %}<input type="hidden" name="academic_year" value="{{ year.pk }}">
+      <h3 class="font-semibold">Set up a combined result for {{ year }}</h3>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div><label class="label" for="name">Name</label><input id="name" name="name" value="{{ typed.name }}" class="input" placeholder="Annual result" required></div>
+        <div><label class="label" for="grade_scale">Grade scale</label>
+          <select id="grade_scale" name="grade_scale" class="input">{% for s in scales %}<option value="{{ s.pk }}" {% if typed.grade_scale == s.pk|stringformat:"s" %}selected{% endif %}>{{ s }}</option>{% endfor %}</select></div>
+      </div>
+      <table class="table">
+        <thead><tr><th>Exam</th><th>Status</th><th class="w-32">Weight %</th></tr></thead>
+        <tbody>
+          {% for e, weight in exams %}
+            <tr><td>{{ e.name }}</td><td>{{ e.status|capfirst }}</td>
+              <td><input name="weight-{{ e.pk }}" inputmode="decimal" class="input py-1 text-right" value="{{ weight }}"></td></tr>
+          {% empty %}
+            <tr><td colspan="3">{% include "components/empty.html" with message="No exams in this year." %}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p class="text-xs text-slate-500">Give a weight to each exam to include, adding up to 100. Leave the others blank.</p>
+      <div class="text-right"><button class="btn-primary">Set up</button></div>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}

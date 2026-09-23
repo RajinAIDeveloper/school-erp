@@ -108,6 +108,9 @@
       </form>
       {% endif %}
 
+      {% if perms.examinations.view_combinedresult %}
+        <p class="text-sm"><a href="{% url 'examinations:combined_list' %}" class="link">Combined results (such as an annual result)</a></p>
+      {% endif %}
       {% if perms.examinations.view_examseries %}
         <p class="text-sm"><a href="{% url 'examinations:series_list' %}" class="link">Board exam series, entries and official results</a></p>
       {% endif %}

@@ -3,6 +3,8 @@
 {% if selected %}<div class="card overflow-x-auto"><table class="table"><thead><tr><th>Exam</th><th>Class</th><th>Score</th><th>Result</th><th>Report card</th></tr></thead><tbody>
 {% for snapshot in snapshots %}<tr><td>{{ snapshot.exam.name }}</td><td>{{ snapshot.payload.section }}</td><td>{{ snapshot.payload.total }}/{{ snapshot.payload.full_total }}</td><td>{{ snapshot.payload|result_headline }}</td><td><a class="link" href="{% url 'examinations:report_card' snapshot.exam_id selected.pk %}">View or download</a></td></tr>
 {% empty %}<tr><td>No published results for this student.</td></tr>{% endfor %}</tbody></table></div>
+{% if combined %}<div class="card mt-4 overflow-x-auto"><table class="table"><thead><tr><th>Combined result</th><th>Score</th><th>Result</th><th>Report card</th></tr></thead><tbody>
+{% for snapshot in combined %}<tr><td>{{ snapshot.combined.name }}</td><td>{{ snapshot.payload.percent|default:"—" }}%</td><td>{{ snapshot.payload|result_headline }}</td><td><a class="link" href="{% url 'examinations:combined_card' snapshot.combined_id selected.pk %}">View or download</a></td></tr>{% endfor %}</tbody></table></div>{% endif %}
 <p class="mt-2 text-xs text-slate-500">These are the school's own assessments.</p>
 {% if official_results %}<section class="card mt-6"><div class="card-header"><h3 class="font-semibold">Official results</h3><span class="text-xs text-slate-500">As issued by the awarding body</span></div>
 {% include "examinations/_official_results.html" with results=official_results staff=False %}</section>{% endif %}{% endif %}

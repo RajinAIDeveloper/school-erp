@@ -144,3 +144,12 @@ def test_the_exam_page_shows_the_checklist_to_those_who_publish(erp):
     assert "Before publishing" not in login(erp.teacher).get(f"/exams/{erp.exam.pk}/").content.decode()
     save_mark(user=erp.teacher, schedule=erp.schedule, enrollment=erp.enrollment, score=Decimal(70))
     assert "Everything checks out." in login(erp.admin).get(f"/exams/{erp.exam.pk}/").content.decode()
+
+
+def test_a_student_exempt_from_every_paper_has_no_result_and_no_position(erp):
+    save_mark(user=erp.admin, schedule=erp.schedule, enrollment=erp.enrollment, exempt=True)
+    assert not blockers(erp.exam)
+    row = build_result_sheet(erp.exam, erp.level)["rows"][0]
+    assert row["complete"] and row["headline"] == "Exempt from every paper"
+    assert row["result"] is None and row["rank"] is None
+    publish_exam(erp.exam, erp.admin)
