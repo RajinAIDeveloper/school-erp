@@ -226,6 +226,9 @@ class Mark(SchoolScopedModel):
     # always their sum. Kept on the mark row so the published-marks lock covers them too.
     component_marks = models.JSONField(default=dict, blank=True)
     is_absent = models.BooleanField(default=False)
+    # Excused from the paper by the school (illness with evidence, a disability arrangement):
+    # not a score, not an absence, and left out of the student's result.
+    is_exempt = models.BooleanField(default=False)
     remarks = models.CharField(max_length=100, blank=True)
     entered_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
     version = models.PositiveIntegerField(default=1)
@@ -241,7 +244,9 @@ class Mark(SchoolScopedModel):
             or self.schedule.exam.academic_year_id != self.enrollment.academic_year_id
         ):
             raise ValidationError("The enrollment must match the exam year and class.")
-        if self.is_absent:
+        if self.is_absent and self.is_exempt:
+            raise ValidationError("A student is either absent or exempt, not both.")
+        if self.is_absent or self.is_exempt:
             self.marks_obtained = None
             self.component_marks = {}
             return

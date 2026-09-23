@@ -145,6 +145,23 @@ def card_rows(row):
                     "combined": True,
                 }
             )
+    for cell in row["cells"]:
+        if cell.get("exempt"):
+            note = notes.get(str(cell.get("subject_id"))) or {}
+            lines.append(
+                {
+                    "effort": note.get("effort", ""),
+                    "comment": note.get("comment", ""),
+                    "code": cell.get("subject_code", ""),
+                    "subject": cell["subject"],
+                    "full_marks": "—",
+                    "parts": "",
+                    "obtained": "Exempt",
+                    "letter": "EX",
+                    "grade_point": "",
+                    "combined": False,
+                }
+            )
     return lines
 
 

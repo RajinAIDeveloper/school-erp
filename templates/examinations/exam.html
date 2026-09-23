@@ -26,6 +26,22 @@
       </div>
     </div>
 
+    {% if checklist is not None %}
+      <div class="mt-5 border-t border-slate-200 pt-4">
+        <p class="text-sm font-semibold">Before publishing</p>
+        {% if checklist %}
+          <ul class="mt-2 space-y-1 text-sm">
+            {% for item in checklist %}
+              <li class="{% if item.level == 'block' %}text-red-700{% else %}text-amber-800{% endif %}">
+                {% if item.level == "block" %}Must fix:{% else %}Check:{% endif %} {{ item.text }}
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="mt-1 text-sm text-emerald-700">Everything checks out.</p>
+        {% endif %}
+      </div>
+    {% endif %}
     {% if can_publish and exam.status != "published" %}
       <form method="post" action="{% url 'examinations:publish' exam.pk %}" class="mt-5 border-t border-slate-200 pt-4"
             data-confirm="Publish these results? Marks are locked afterwards and corrections need an approved unlock.">

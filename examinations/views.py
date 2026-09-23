@@ -53,6 +53,8 @@ def _cell_text(row, schedule_id):
     cell = next((c for c in row["cells"] if c["schedule_id"] == schedule_id), None)
     if cell is None:
         return ""
+    if cell.get("exempt"):
+        return "EX"
     if cell["absent"]:
         return "ABS"
     return cell["score"] if not cell["missing"] else ""
@@ -97,8 +99,18 @@ def exam_detail(request, pk):
             "marks_expected": expected,
             "page_title": str(exam),
             "can_publish": is_manager(request.user) and request.user.has_perm("examinations.change_exam"),
+            "checklist": _checklist_for(request.user, exam),
         },
     )
+
+
+def _checklist_for(user, exam):
+    """The pre-publication checks, for the people who can publish, while it is still a draft."""
+    if exam.status == "published" or not (is_manager(user) and user.has_perm("examinations.change_exam")):
+        return None
+    from .checklist import publication_checklist
+
+    return publication_checklist(exam)
 
 
 @require_permission("examinations.change_exam")
@@ -177,6 +189,7 @@ def marks(request):
             mark.enrollment_id: mark for mark in Mark.objects.filter(schedule=schedule, enrollment__in=enrollments)
         }
 
+        manager = is_manager(request.user)
         if request.method == "POST":
             if locked:
                 raise PermissionDenied("Results are published. Request an unlock before editing.")
@@ -186,7 +199,13 @@ def marks(request):
             for enrollment in enrollments:
                 prefix = str(enrollment.pk)
                 absent = request.POST.get(f"{prefix}-absent") == "on"
+                stored = existing.get(enrollment.pk)
+                # Only managers decide exemptions; everyone else's save keeps what is stored.
+                exempt = request.POST.get(f"{prefix}-exempt") == "on" if manager else bool(stored and stored.is_exempt)
+                if exempt:
+                    absent = False
                 typed[enrollment.pk] = {
+                    "exempt": exempt,
                     "absent": absent,
                     "score": request.POST.get(f"{prefix}-score", "").strip(),
                     "parts": {c.code: request.POST.get(f"{prefix}-{c.code}", "").strip() for c in components},
@@ -206,15 +225,17 @@ def marks(request):
                                 invalid[enrollment.pk] = f"{component.name}: '{raw_part}' is not a number."
                     if enrollment.pk in invalid:
                         continue
+                    if exempt:
+                        parts = {}
                 else:
                     raw = request.POST.get(f"{prefix}-score", "").strip()
-                    if raw and not absent:
+                    if raw and not absent and not exempt:
                         try:
                             score = Decimal(raw)
                         except InvalidOperation:
                             invalid[enrollment.pk] = f"'{raw}' is not a number."
                             continue
-                submitted.append((enrollment, score, absent, version, parts))
+                submitted.append((enrollment, score, absent, version, parts, exempt))
             if invalid:
                 row_errors = invalid
             else:
@@ -249,6 +270,8 @@ def marks(request):
                     "absent": bool(mark and mark.is_absent),
                     "input_score": entry["score"] if entry else ("" if stored_score is None else stored_score),
                     "input_absent": entry["absent"] if entry else bool(mark and mark.is_absent),
+                    "exempt": bool(mark and mark.is_exempt),
+                    "input_exempt": entry["exempt"] if entry else bool(mark and mark.is_exempt),
                     "version": mark.version if mark else 0,
                     "parts": [
                         (component, entry["parts"][component.code] if entry else stored_parts.get(component.code, ""))
@@ -258,7 +281,7 @@ def marks(request):
                 }
             )
 
-    entered = sum(1 for row in rows if row["score"] is not None or row["absent"])
+    entered = sum(1 for row in rows if row["score"] is not None or row["absent"] or row["exempt"])
     scored = [row["score"] for row in rows if row["score"] is not None and not row["absent"]]
     # Averaged over the students who actually sat the paper, so an absence does not drag
     # the class down and a blank row does not count as a zero.
@@ -277,6 +300,7 @@ def marks(request):
             "missing": len(rows) - entered,
             "average": average,
             "components": components,
+            "may_exempt": is_manager(request.user),
             "average_percent": (
                 (average * 100 / schedule.full_marks).quantize(Decimal("0.1"))
                 if average is not None and schedule and schedule.full_marks

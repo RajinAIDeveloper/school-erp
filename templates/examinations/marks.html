@@ -104,6 +104,11 @@
                          class="h-4 w-4 rounded border-slate-300" data-absent {% if locked %}disabled{% endif %}>
                   Absent
                 </label>
+                <label class="ml-3 inline-flex items-center gap-2 text-sm" title="Excused by the school: left out of the result">
+                  <input type="checkbox" name="{{ row.enrollment.pk }}-exempt" {% if row.input_exempt %}checked{% endif %}
+                         class="h-4 w-4 rounded border-slate-300" {% if locked or not may_exempt %}disabled{% endif %}>
+                  Exempt
+                </label>
               </td>
               <td class="text-sm text-red-700">{{ row.error|default:"" }}</td>
             </tr>

@@ -80,13 +80,13 @@ def _normalise_parts(parts):
     return {str(code): str(Decimal(str(value)).quantize(Decimal("0.01"))) for code, value in (parts or {}).items()}
 
 
-def _unchanged(obj, score, absent, parts, has_parts):
+def _unchanged(obj, score, absent, parts, has_parts, exempt=False):
     """Whether a submitted row says exactly what the stored mark already says."""
     if obj is None:
         return False
-    if bool(obj.is_absent) != bool(absent):
+    if bool(obj.is_absent) != bool(absent) or bool(obj.is_exempt) != bool(exempt):
         return False
-    if absent:
+    if absent or exempt:
         return True
     if has_parts:
         try:
@@ -100,7 +100,16 @@ def _unchanged(obj, score, absent, parts, has_parts):
 
 @transaction.atomic
 def save_mark(
-    *, user, schedule, enrollment, score=None, absent=False, expected_version=0, components=None, republish=True
+    *,
+    user,
+    schedule,
+    enrollment,
+    score=None,
+    absent=False,
+    expected_version=0,
+    components=None,
+    republish=True,
+    exempt=False,
 ):
     """
     Save one student's mark for one paper.
@@ -122,13 +131,17 @@ def save_mark(
     version = obj.version if obj else 0
     if version != expected_version:
         raise ValidationError("Another user changed this mark. Reload before saving.")
-    if _unchanged(obj, score, absent, components, has_parts):
+    if _unchanged(obj, score, absent, components, has_parts, exempt):
         return None
-    before = ("absent" if obj.is_absent else str(obj.marks_obtained)) if obj else "not entered"
+    if bool(exempt) != bool(obj and obj.is_exempt) and not is_manager(user):
+        # Excusing a student changes their result, so it is the school's decision to make.
+        raise PermissionDenied("Only the school's managers may excuse a student from a paper, or undo it.")
+    before = _describe(obj) if obj else "not entered"
     if obj is None:
         obj = Mark(school=schedule.school, schedule=schedule, enrollment=enrollment)
-    obj.is_absent = absent
-    if absent:
+    obj.is_absent = absent and not exempt
+    obj.is_exempt = exempt
+    if absent or exempt:
         obj.marks_obtained = None
         obj.component_marks = {}
     elif has_parts:
@@ -148,14 +161,17 @@ def save_mark(
         action="mark.updated",
         model=obj._meta.label,
         object_id=str(obj.pk),
-        description=(
-            f"{before} -> {'absent' if absent else obj.marks_obtained}; "
-            f"parts={obj.component_marks or '-'}; version={obj.version}"
-        ),
+        description=(f"{before} -> {_describe(obj)}; parts={obj.component_marks or '-'}; version={obj.version}"),
     )
     if exam.status == "published" and republish:
         snapshot_exam(exam, user)
     return obj
+
+
+def _describe(mark):
+    if mark.is_exempt:
+        return "exempt"
+    return "absent" if mark.is_absent else str(mark.marks_obtained)
 
 
 def _write(exam, operation):
@@ -187,7 +203,9 @@ def clear_mark(*, user, schedule, enrollment, expected_version):
         raise ValidationError("Another user changed this mark. Reload before saving.")
     if exam.status == "published":
         raise ValidationError("A published mark cannot be cleared. Enter the score, or mark the student absent.")
-    before = "absent" if obj.is_absent else str(obj.marks_obtained)
+    if obj.is_exempt and not is_manager(user):
+        raise PermissionDenied("Only the school's managers may undo an exemption.")
+    before = _describe(obj)
     pk = obj.pk
     obj.delete()
     AuditLog.objects.create(
@@ -236,9 +254,10 @@ def save_marks(*, user, schedule, section, rows):
     for row in rows:
         enrollment, score, absent, expected_version = row[:4]
         parts = row[4] if len(row) > 4 else None
+        exempt = bool(row[5]) if len(row) > 5 else False
         filled_parts = {code: value for code, value in (parts or {}).items() if value not in (None, "")}
         try:
-            if score is None and not absent and not filled_parts:
+            if score is None and not absent and not exempt and not filled_parts:
                 if clear_mark(user=user, schedule=schedule, enrollment=enrollment, expected_version=expected_version):
                     saved.append(enrollment.pk)
                 continue
@@ -251,6 +270,7 @@ def save_marks(*, user, schedule, section, rows):
                 expected_version=expected_version,
                 components=filled_parts or None,
                 republish=False,
+                exempt=exempt,
             )
             if mark is not None:
                 saved.append(mark)
@@ -305,6 +325,36 @@ def _paper_spec(schedule, role):
     }
 
 
+def _exempt_cell(schedule, role):
+    """A paper the student was excused from: shown on the card, left out of the result."""
+    spec = _paper_spec(schedule, role)
+    return {
+        "schedule_id": spec["schedule_id"],
+        "subject": spec["subject"],
+        "subject_id": spec["subject_id"],
+        "subject_code": spec["subject_code"],
+        "unit_id": spec["unit_id"],
+        "unit_name": spec["unit_name"],
+        "full_marks": str(spec["full_marks"]),
+        "pass_marks": str(spec["pass_marks"]),
+        "score": None,
+        "missing": False,
+        "absent": False,
+        "exempt": True,
+        "percent": "0",
+        "letter": "EX",
+        "grade_point": "0",
+        "passed": True,
+        "failed_part": False,
+        "capped": False,
+        "components": [],
+        "is_fourth": False,
+        "level": spec.get("level", ""),
+        "core": spec.get("core", ""),
+        "reached_pass_mark": False,
+    }
+
+
 def _mark_dict(mark):
     if mark is None:
         return None
@@ -353,6 +403,7 @@ def live_class_sheet(exam, class_level):
     rows = []
     for e in enrollments:
         taken = papers_for(e, schedules, plan)
+        excused = [(s, r) for s, r in taken if (m := marks.get((e.pk, s.pk))) is not None and m.is_exempt]
         cells = [
             grade_paper(
                 _paper_spec(schedule, role if book.fourth_subject else "main"),
@@ -361,6 +412,7 @@ def live_class_sheet(exam, class_level):
                 pass_marks=book.pass_marks,
             )
             for schedule, role in taken
+            if (schedule, role) not in excused
         ]
         units = combine_units(cells, rules, combine=book.combine_papers)
         outcome = book.outcome(units, rules)
@@ -393,7 +445,7 @@ def live_class_sheet(exam, class_level):
                 "has_gpa": book.has_gpa,
                 "has_result": book.has_result,
                 "show_rank": show_rank,
-                "cells": cells,
+                "cells": cells + [_exempt_cell(s, r) for s, r in excused],
                 "subjects": units,
                 "total": str(total),
                 "full_total": str(full),
@@ -479,7 +531,10 @@ def analyse(rows):
                 c["schedule_id"],
                 {"subject": c["subject"], "entered": 0, "absent": 0, "missing": 0, "passed": 0, "scores": []},
             )
-            if c["missing"]:
+            st.setdefault("exempt", 0)
+            if c.get("exempt"):
+                st["exempt"] += 1
+            elif c["missing"]:
                 st["missing"] += 1
             else:
                 st["entered"] += 1
@@ -660,6 +715,11 @@ def publish_exam(exam, user):
     locked = Exam.objects.select_for_update().get(pk=exam.pk)
     if locked.status == "published":
         return locked
+    from .checklist import blockers
+
+    problems = blockers(locked)
+    if problems:
+        raise ValidationError(problems)
     return snapshot_exam(locked, user)
 
 
