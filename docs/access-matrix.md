@@ -81,6 +81,12 @@ quietly join it.
 | /exams/schedule/<int:pk>/parts/ | examinations:paper_parts | `examinations.change_examschedule` | - | Y | Y | . | . | . | . | . |
 | /exams/schedule/<int:pk>/unlock/ | examinations:request_unlock | `examinations.change_mark` | - | Y | Y | . | Y | . | . | . |
 | /exams/schedule/new/ | examinations:schedule_create | `examinations.add_examschedule` | - | Y | Y | . | . | . | . | . |
+| /exams/series/ | examinations:series_list | `examinations.view_examseries` | - | Y | Y | . | . | . | . | . |
+| /exams/series/<int:pk>/ | examinations:series_detail | `examinations.view_examseries` | - | Y | Y | . | . | . | . | . |
+| /exams/series/<int:pk>/results/ | examinations:series_results | `examinations.view_officialresult` | - | Y | Y | . | . | . | . | . |
+| /exams/series/manage/ | examinations:series_list | `examinations.view_examseries` | - | Y | Y | . | . | . | . | . |
+| /exams/series/manage/<int:pk>/edit/ | examinations:series_update | `examinations.change_examseries` | - | Y | Y | . | . | . | . | . |
+| /exams/series/manage/new/ | examinations:series_create | `examinations.add_examseries` | - | Y | Y | . | . | . | . | . |
 | /exams/unlocks/ | examinations:unlocks | `examinations.view_mark` | own requests unless a manager | Y | Y | . | Y | . | . | . |
 | /exams/unlocks/<int:pk>/review/ | examinations:unlock_review | `examinations.change_exam` | - | Y | Y | . | . | . | . | . |
 | /exams/verify/<uuid:code>/ | examinations:verify | `(public)` | - | * | * | * | * | * | * | * |

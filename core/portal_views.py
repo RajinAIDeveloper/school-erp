@@ -129,8 +129,17 @@ def results(request):
         if student
         else []
     )
+    from examinations.official import official_results_for
+
     return render(
         request,
         "portal/results.html",
-        {"students": students, "selected": student, "snapshots": snapshots, "page_title": "My results"},
+        {
+            "students": students,
+            "selected": student,
+            "snapshots": snapshots,
+            # Only results a second person has checked against the body's statement.
+            "official_results": official_results_for(student, confirmed_only=True) if student else [],
+            "page_title": "My results",
+        },
     )

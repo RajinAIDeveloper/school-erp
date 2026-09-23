@@ -4,7 +4,7 @@ from core.crud import crud
 
 from . import views
 from .forms import ExamForm, ExamScheduleForm
-from .models import Exam, ExamSchedule, GradeScale
+from .models import Exam, ExamSchedule, ExamSeries, GradeScale
 
 app_name = "examinations"
 urlpatterns = [
@@ -25,6 +25,9 @@ urlpatterns = [
     path("schedule/<int:pk>/parts/", views.paper_parts, name="paper_parts"),
     path("comments/", views.comments, name="comments"),
     path("estimates/", views.forecasts, name="forecasts"),
+    path("series/", views.series_list, name="series_list"),
+    path("series/<int:pk>/", views.series_detail, name="series_detail"),
+    path("series/<int:pk>/results/", views.series_results, name="series_results"),
     path("unlocks/<int:pk>/review/", views.unlock_review, name="unlock_review"),
     path("scales/<int:pk>/rules/", views.grade_rules, name="rules"),
     path("scales/presets/", views.scale_presets, name="scale_presets"),
@@ -63,3 +66,12 @@ urlpatterns += crud(
     actions=(("Add a programme's scale", "examinations:scale_presets", "examinations.add_gradescale"),),
 )
 # Each scale's rule editor is linked from this custom list.
+urlpatterns += crud(
+    ExamSeries,
+    "examinations",
+    "series",
+    ["body", "name", "centre_number", "entry_deadline", "results_date", "notes"],
+    [("Series", "__str__"), ("Centre", "centre_number"), ("Results", "results_date", "date")],
+    prefix="series/manage/",
+    actions=(("Series pages", "examinations:series_list", "examinations.view_examseries"),),
+)

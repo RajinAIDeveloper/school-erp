@@ -4,8 +4,10 @@ from urllib.parse import urlencode
 from django import forms
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from academics.models import ClassLevel, Section
@@ -1254,3 +1256,194 @@ def forecasts(request):
         }
     )
     return render(request, "examinations/forecasts.html", context)
+
+
+# ------------------------------------------------------------------ exam series and official results
+
+OFFICIAL_IMPORT_KEY = "official_results_import"
+
+
+@require_permission("examinations.view_examseries")
+def series_list(request):
+    from .models import ExamSeries
+
+    series = ExamSeries.objects.filter(school=request.school).annotate(
+        candidate_count=Count("candidates", distinct=True)
+    )
+    return render(request, "examinations/series_list.html", {"series": series, "page_title": "Exam series"})
+
+
+def _series(request, pk):
+    from .models import ExamSeries
+
+    return get_object_or_404(ExamSeries, school=request.school, pk=pk)
+
+
+@require_permission("examinations.view_examseries")
+def series_detail(request, pk):
+    """
+    Candidates and entries for one series: register a section's students, correct candidate
+    numbers, enter candidates for a syllabus, and withdraw entries (which are kept).
+    """
+    from academics.models import Section, Subject
+    from students.models import Student
+
+    from .models import SeriesCandidate, SeriesEntry
+    from .official import add_candidates, add_entries, update_candidate, withdraw_entry
+
+    series = _series(request, pk)
+    here = reverse("examinations:series_detail", args=[series.pk])
+    if request.method == "POST":
+        action = request.POST.get("action")
+        try:
+            if action == "add_candidates":
+                section = get_object_or_404(Section, school=request.school, pk=request.POST.get("section") or 0)
+                start = request.POST.get("first_number", "").strip()
+                students = list(
+                    Student.objects.filter(
+                        school=request.school,
+                        enrollments__section=section,
+                        enrollments__status=Enrollment.Status.ENROLLED,
+                    ).distinct()
+                )
+                added = add_candidates(
+                    user=request.user,
+                    series=series,
+                    students=students,
+                    first_number=int(start) if start.isdigit() else None,
+                )
+                messages.success(request, f"Registered {added} candidate(s) from {section}.")
+            elif action == "update_candidate":
+                candidate = get_object_or_404(SeriesCandidate, series=series, pk=request.POST.get("candidate") or 0)
+                update_candidate(
+                    user=request.user,
+                    candidate=candidate,
+                    candidate_number=request.POST.get("candidate_number", ""),
+                    uci=request.POST.get("uci", ""),
+                )
+                messages.success(request, f"Updated {candidate.student}.")
+            elif action == "add_entries":
+                chosen = [pk for pk in request.POST.getlist("candidates") if pk.isdigit()]
+                candidates = list(SeriesCandidate.objects.filter(series=series, pk__in=chosen))
+                if not candidates:
+                    raise ValidationError("Tick the candidates to enter.")
+                raw_subject = request.POST.get("subject", "")
+                subject = (
+                    get_object_or_404(Subject, school=request.school, pk=raw_subject) if raw_subject.isdigit() else None
+                )
+                made, skipped = add_entries(
+                    user=request.user,
+                    series=series,
+                    candidates=candidates,
+                    qualification=request.POST.get("qualification", ""),
+                    syllabus_code=request.POST.get("syllabus_code", ""),
+                    syllabus_title=request.POST.get("syllabus_title", ""),
+                    option_code=request.POST.get("option_code", ""),
+                    tier=request.POST.get("tier", ""),
+                    level=request.POST.get("level", ""),
+                    subject=subject,
+                )
+                note = f" ({skipped} already entered)" if skipped else ""
+                messages.success(request, f"Entered {made} candidate(s){note}.")
+            elif action == "withdraw":
+                entry = get_object_or_404(SeriesEntry, candidate__series=series, pk=request.POST.get("entry") or 0)
+                withdraw_entry(user=request.user, entry=entry)
+                messages.success(request, f"Withdrew {entry.syllabus_code} for {entry.candidate.student}.")
+            return redirect(here)
+        except ValidationError as exc:
+            messages.error(request, " ".join(exc.messages))
+    candidates = series.candidates.select_related("student").prefetch_related("entries")
+    return render(
+        request,
+        "examinations/series_detail.html",
+        {
+            "series": series,
+            "candidates": candidates,
+            "sections": sections_for(request.user, request.school).select_related("class_level"),
+            "subjects": Subject.objects.filter(school=request.school),
+            "tiers": SeriesEntry.Tier.choices,
+            "page_title": str(series),
+        },
+    )
+
+
+@require_permission("examinations.view_officialresult")
+def series_results(request, pk):
+    """
+    Official results for a series: import the body's statement of results as a CSV (checked
+    and shown before anything is written), confirm them, and see amendments.
+    """
+    from datetime import date as _date
+
+    from .models import OfficialResult
+    from .official import check_results, confirm_results, import_results, read_result_rows
+
+    series = _series(request, pk)
+    here = reverse("examinations:series_results", args=[series.pk])
+    preview = None
+    session_key = f"{OFFICIAL_IMPORT_KEY}:{series.pk}"
+    if request.method == "POST":
+        action = request.POST.get("action")
+        try:
+            if action == "check" and request.FILES.get("file"):
+                if not request.user.has_perm("examinations.add_officialresult"):
+                    raise PermissionDenied
+                prepared, errors = check_results(series, read_result_rows(request.FILES["file"]))
+                preview = {
+                    "rows": prepared,
+                    "errors": errors,
+                    "new": sum(r["action"] == "new" for r in prepared),
+                    "amend": sum(r["action"] == "amend" for r in prepared),
+                    "unchanged": sum(r["action"] == "unchanged" for r in prepared),
+                    "unentered": sum(not r["entered"] for r in prepared),
+                }
+                if errors:
+                    request.session.pop(session_key, None)
+                else:
+                    request.session[session_key] = prepared
+            elif action == "import":
+                prepared = request.session.get(session_key)
+                if not prepared:
+                    raise ValidationError("Check a file first; nothing is waiting to be imported.")
+                try:
+                    received = _date.fromisoformat(request.POST.get("received_on", ""))
+                except ValueError:
+                    received = None
+                added, amended = import_results(
+                    user=request.user,
+                    series=series,
+                    prepared=prepared,
+                    source=request.POST.get("source", ""),
+                    received_on=received,
+                    amendment_reason=request.POST.get("amendment_reason", ""),
+                )
+                request.session.pop(session_key, None)
+                messages.success(
+                    request, f"Recorded {added} new and {amended} amended result(s). Another manager must confirm them."
+                )
+                return redirect(here)
+            elif action == "confirm":
+                count, own = confirm_results(user=request.user, series=series)
+                note = f" {own} you imported yourself need another manager to confirm." if own else ""
+                messages.success(request, f"Confirmed {count} result(s).{note}")
+                return redirect(here)
+        except ValidationError as exc:
+            messages.error(request, " ".join(exc.messages))
+    results = (
+        OfficialResult.objects.filter(candidate__series=series)
+        .select_related("candidate__student", "recorded_by", "checked_by", "supersedes")
+        .order_by("candidate__candidate_number", "syllabus_code", "-created_at")
+    )
+    waiting = results.filter(is_current=True, checked_at__isnull=True).count()
+    return render(
+        request,
+        "examinations/series_results.html",
+        {
+            "series": series,
+            "results": results,
+            "preview": preview,
+            "waiting": waiting,
+            "today": timezone.localdate().isoformat(),
+            "page_title": f"Official results · {series}",
+        },
+    )

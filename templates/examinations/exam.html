@@ -92,6 +92,10 @@
       </form>
       {% endif %}
 
+      {% if perms.examinations.view_examseries %}
+        <p class="text-sm"><a href="{% url 'examinations:series_list' %}" class="link">Board exam series, entries and official results</a></p>
+      {% endif %}
+
       <p class="text-xs text-slate-500">
         Report cards print whatever the results currently say; before publication each is marked DRAFT.
       </p>

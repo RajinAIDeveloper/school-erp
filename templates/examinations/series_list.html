@@ -1,0 +1,34 @@
+{% extends "layouts/base.html" %}
+{% block header_actions %}
+  {% if perms.examinations.add_examseries %}<a href="{% url 'examinations:series_create' %}" class="btn-primary btn-sm">New series</a>{% endif %}
+{% endblock %}
+{% block content %}
+<div class="mb-4 rounded-md border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+  A series is one sitting of an awarding body's exams, such as Cambridge June 2027. Here the exam
+  officer keeps the school's record of candidates and entries, and the official results the body
+  sends back. Entries themselves are submitted through the body's own portal. Official results are
+  kept apart from the school's own assessments and are never mixed into report cards.
+</div>
+<div class="card overflow-x-auto">
+  <table class="table">
+    <thead><tr><th>Series</th><th>Centre</th><th>Entry deadline</th><th>Results</th><th class="text-right">Candidates</th><th class="text-right"></th></tr></thead>
+    <tbody>
+      {% for s in series %}
+        <tr>
+          <td class="font-medium"><a href="{% url 'examinations:series_detail' s.pk %}" class="link">{{ s }}</a></td>
+          <td>{{ s.centre_number|default:"—" }}</td>
+          <td>{{ s.entry_deadline|date:"d M Y"|default:"—" }}</td>
+          <td>{{ s.results_date|date:"d M Y"|default:"—" }}</td>
+          <td class="text-right">{{ s.candidate_count }}</td>
+          <td class="space-x-3 text-right">
+            {% if perms.examinations.view_officialresult %}<a href="{% url 'examinations:series_results' s.pk %}" class="link text-xs">Official results</a>{% endif %}
+            {% if perms.examinations.change_examseries %}<a href="{% url 'examinations:series_update' s.pk %}" class="link text-xs">Edit</a>{% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="6">{% include "components/empty.html" with message="No exam series yet." %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

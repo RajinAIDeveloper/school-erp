@@ -1,0 +1,92 @@
+{% extends "layouts/base.html" %}
+{% block header_actions %}
+  <a href="{% url 'examinations:series_detail' series.pk %}" class="btn-secondary btn-sm">Candidates and entries</a>
+{% endblock %}
+{% block content %}
+<div class="mb-4 rounded-md border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+  Record results exactly as {{ series.get_body_display }} issued them. Rows are matched to candidates by
+  candidate number, never by name. A result that differs from one already recorded is an amendment:
+  the earlier result is kept and the reason recorded. Families see a result only after another manager
+  has confirmed it against the statement of results.
+</div>
+
+{% if perms.examinations.add_officialresult %}
+  <form method="post" enctype="multipart/form-data" class="card card-body mb-4 flex flex-wrap items-end gap-3">
+    {% csrf_token %}<input type="hidden" name="action" value="check">
+    <div><label class="label" for="file">Results file (CSV)</label><input id="file" type="file" name="file" accept=".csv" class="input" required></div>
+    <button class="btn-secondary">Check file</button>
+    <p class="w-full text-xs text-slate-500">Columns: candidate_number, syllabus_code, grade; optionally syllabus_title, points, kind (subject, unit or overall).</p>
+  </form>
+{% endif %}
+
+{% if preview %}
+  <div class="card mb-4">
+    <div class="card-header"><h3 class="font-semibold">What this file will do</h3>
+      <span class="text-sm">{{ preview.new }} new · {{ preview.amend }} amended · {{ preview.unchanged }} unchanged{% if preview.unentered %} · {{ preview.unentered }} for a code with no entry{% endif %}</span></div>
+    {% if preview.errors %}
+      <div class="card-body text-sm text-red-700">
+        <p class="font-medium">Nothing can be imported until these are fixed:</p>
+        <ul class="mt-1 list-inside list-disc">{% for e in preview.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+      </div>
+    {% endif %}
+    <div class="overflow-x-auto">
+      <table class="table">
+        <thead><tr><th>Candidate</th><th>Student</th><th>Code</th><th>Grade</th><th>Change</th></tr></thead>
+        <tbody>
+          {% for r in preview.rows %}
+            <tr class="{% if r.action == 'amend' %}bg-amber-50{% endif %}">
+              <td class="font-mono">{{ r.candidate_number }}</td><td>{{ r.student }}</td>
+              <td>{{ r.syllabus_code }}{% if not r.entered %} <span class="text-xs text-amber-700">not entered</span>{% endif %}</td>
+              <td class="font-semibold">{{ r.grade }}{% if r.points %} <span class="text-xs font-normal">{{ r.points }}</span>{% endif %}</td>
+              <td class="text-sm">{% if r.action == "amend" %}Amends {{ r.previous }}{% elif r.action == "new" %}New{% else %}Unchanged{% endif %}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if not preview.errors %}
+      <form method="post" class="grid gap-3 border-t border-slate-200 px-5 py-4 sm:grid-cols-3">
+        {% csrf_token %}<input type="hidden" name="action" value="import">
+        <div><label class="label">Source</label><input name="source" class="input" required placeholder="Statement of results"></div>
+        <div><label class="label">Received on</label><input type="date" name="received_on" max="{{ today }}" value="{{ today }}" class="input" required></div>
+        {% if preview.amend %}<div><label class="label">Reason for the amendments</label><input name="amendment_reason" maxlength="200" class="input" required placeholder="e.g. enquiry about results"></div>{% endif %}
+        <div class="sm:col-span-3 text-right"><button class="btn-primary">Record these results</button></div>
+      </form>
+    {% endif %}
+  </div>
+{% endif %}
+
+{% if waiting and perms.examinations.change_officialresult %}
+  <form method="post" class="mb-4 flex items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+        data-confirm="Confirm that these results match the body's statement of results?">
+    {% csrf_token %}<input type="hidden" name="action" value="confirm">
+    <span>{{ waiting }} result{{ waiting|pluralize }} waiting to be confirmed against the statement of results.</span>
+    <button class="btn-primary btn-sm">Confirm results</button>
+  </form>
+{% endif %}
+
+<div class="card overflow-x-auto">
+  <table class="table">
+    <thead><tr><th>Candidate</th><th>Student</th><th>Code</th><th>Grade</th><th>Source</th><th>Status</th></tr></thead>
+    <tbody>
+      {% for r in results %}
+        <tr class="{% if not r.is_current %}text-slate-400{% endif %}">
+          <td class="font-mono">{{ r.candidate.candidate_number }}</td>
+          <td>{{ r.candidate.student.full_name }}</td>
+          <td>{{ r.syllabus_code }} <span class="text-xs">{{ r.syllabus_title }}</span></td>
+          <td class="font-semibold">{{ r.grade }}{% if r.points %} <span class="text-xs font-normal">{{ r.points }}</span>{% endif %}</td>
+          <td class="text-xs">{{ r.source }}, {{ r.received_on|date:"d M Y" }}{% if r.recorded_by %}<br>recorded by {{ r.recorded_by }}{% endif %}</td>
+          <td class="text-xs">
+            {% if not r.is_current %}Superseded
+            {% elif r.checked_at %}<span class="text-emerald-700">Confirmed by {{ r.checked_by }}</span>
+            {% else %}<span class="text-amber-700">Waiting</span>{% endif %}
+            {% if r.supersedes %}<br>Amends {{ r.supersedes.grade }}: {{ r.amendment_reason }}{% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="6">{% include "components/empty.html" with message="No official results recorded for this series." %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

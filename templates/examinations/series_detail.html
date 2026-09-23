@@ -1,0 +1,101 @@
+{% extends "layouts/base.html" %}
+{% block header_actions %}
+  <a href="{% url 'examinations:series_list' %}" class="btn-secondary btn-sm">All series</a>
+  {% if perms.examinations.view_officialresult %}<a href="{% url 'examinations:series_results' series.pk %}" class="btn-secondary btn-sm">Official results</a>{% endif %}
+{% endblock %}
+{% block content %}
+<div class="mb-4 grid gap-3 text-sm sm:grid-cols-4">
+  <div class="card card-body"><p class="text-xs text-slate-500">Centre number</p><p class="font-semibold">{{ series.centre_number|default:"—" }}</p></div>
+  <div class="card card-body"><p class="text-xs text-slate-500">Entry deadline</p><p class="font-semibold">{{ series.entry_deadline|date:"d M Y"|default:"—" }}</p></div>
+  <div class="card card-body"><p class="text-xs text-slate-500">Results released</p><p class="font-semibold">{{ series.results_date|date:"d M Y"|default:"—" }}</p></div>
+  <div class="card card-body"><p class="text-xs text-slate-500">Candidates</p><p class="font-semibold">{{ candidates|length }}</p></div>
+</div>
+
+{% if perms.examinations.add_seriescandidate %}
+  <form method="post" class="card card-body mb-4 flex flex-wrap items-end gap-3">
+    {% csrf_token %}<input type="hidden" name="action" value="add_candidates">
+    <div><label class="label" for="section">Register a section's students</label>
+      <select id="section" name="section" class="input w-64">{% for s in sections %}<option value="{{ s.pk }}">{{ s }}</option>{% endfor %}</select></div>
+    <div><label class="label" for="first_number">First candidate number</label>
+      <input id="first_number" name="first_number" inputmode="numeric" class="input w-36" placeholder="next free"></div>
+    <button class="btn-secondary">Register</button>
+    <p class="w-full text-xs text-slate-500">Students already registered are left as they are. Correct any number to match the one the body issued.</p>
+  </form>
+{% endif %}
+
+<form method="post" class="card mb-4" id="entries">
+  {% csrf_token %}<input type="hidden" name="action" value="add_entries">
+  <div class="overflow-x-auto">
+    <table class="table">
+      <thead><tr>{% if perms.examinations.add_seriesentry %}<th class="w-8"></th>{% endif %}<th>Candidate no.</th><th>UCI</th><th>Student</th><th>Entries</th></tr></thead>
+      <tbody>
+        {% for c in candidates %}
+          <tr class="align-top">
+            {% if perms.examinations.add_seriesentry %}<td><input type="checkbox" name="candidates" value="{{ c.pk }}" class="h-4 w-4 rounded border-slate-300"></td>{% endif %}
+            <td class="font-mono">{{ c.candidate_number }}</td>
+            <td class="font-mono text-xs">{{ c.uci|default:"—" }}</td>
+            <td class="font-medium">{{ c.student.full_name }} <span class="text-xs text-slate-500">{{ c.student.student_id }}</span></td>
+            <td class="text-sm">
+              {% for e in c.entries.all %}
+                <span class="mr-3 inline-block {% if e.status == 'withdrawn' %}text-slate-400 line-through{% endif %}">
+                  {{ e.syllabus_code }}{% if e.option_code %}/{{ e.option_code }}{% endif %}{% if e.tier %} {{ e.get_tier_display }}{% endif %}{% if e.level %} {{ e.level }}{% endif %}
+                </span>
+              {% empty %}<span class="text-slate-400">None yet</span>{% endfor %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5">{% include "components/empty.html" with message="No candidates registered for this series." %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if candidates and perms.examinations.add_seriesentry %}
+    <div class="grid gap-3 border-t border-slate-200 px-5 py-4 sm:grid-cols-4">
+      <p class="font-semibold sm:col-span-4">Enter the ticked candidates for a syllabus</p>
+      <div><label class="label">Qualification</label><input name="qualification" class="input" placeholder="IGCSE" required></div>
+      <div><label class="label">Syllabus code</label><input name="syllabus_code" class="input" placeholder="0625" required></div>
+      <div class="sm:col-span-2"><label class="label">Syllabus title</label><input name="syllabus_title" class="input" placeholder="Physics" required></div>
+      <div><label class="label">Option or component</label><input name="option_code" class="input" maxlength="10"></div>
+      <div><label class="label">Tier</label><select name="tier" class="input">{% for v, l in tiers %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select></div>
+      <div><label class="label">IB level</label><select name="level" class="input"><option value="">—</option><option value="HL">Higher Level</option><option value="SL">Standard Level</option></select></div>
+      <div><label class="label">School subject</label><select name="subject" class="input"><option value="">—</option>{% for s in subjects %}<option value="{{ s.pk }}">{{ s }}</option>{% endfor %}</select></div>
+      <div class="sm:col-span-4 text-right"><button class="btn-primary">Enter ticked candidates</button></div>
+    </div>
+  {% endif %}
+</form>
+
+{% if perms.examinations.change_seriescandidate or perms.examinations.change_seriesentry %}
+  <details class="card">
+    <summary class="card-header cursor-pointer font-semibold">Correct candidate numbers and withdraw entries</summary>
+    <div class="overflow-x-auto">
+      <table class="table">
+        <tbody>
+          {% for c in candidates %}
+            <tr class="align-top">
+              <td class="w-72">
+                {% if perms.examinations.change_seriescandidate %}
+                  <form method="post" class="flex gap-2">
+                    {% csrf_token %}<input type="hidden" name="action" value="update_candidate"><input type="hidden" name="candidate" value="{{ c.pk }}">
+                    <input name="candidate_number" value="{{ c.candidate_number }}" maxlength="12" class="input w-24 py-1 text-sm font-mono">
+                    <input name="uci" value="{{ c.uci }}" maxlength="20" placeholder="UCI" class="input w-32 py-1 text-sm font-mono">
+                    <button class="btn-secondary btn-sm">Save</button>
+                  </form>
+                {% endif %}
+              </td>
+              <td>{{ c.student.full_name }}</td>
+              <td class="text-sm">
+                {% for e in c.entries.all %}{% if e.status == "entered" and perms.examinations.change_seriesentry %}
+                  <form method="post" class="mr-2 inline" data-confirm="Withdraw {{ c.student.full_name }} from {{ e.syllabus_code }}?">
+                    {% csrf_token %}<input type="hidden" name="action" value="withdraw"><input type="hidden" name="entry" value="{{ e.pk }}">
+                    <button class="link text-xs">Withdraw {{ e.syllabus_code }}</button>
+                  </form>
+                {% endif %}{% endfor %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </details>
+{% endif %}
+{% endblock %}

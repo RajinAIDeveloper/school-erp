@@ -1,0 +1,20 @@
+<div class="overflow-x-auto">
+  <table class="table">
+    <thead><tr><th>Series</th><th>Code</th><th>Subject</th><th>Grade</th><th>Source</th>{% if staff %}<th>Checked</th>{% endif %}</tr></thead>
+    <tbody>
+      {% for r in results %}
+        <tr>
+          <td>{{ r.candidate.series }}</td>
+          <td class="text-slate-500">{{ r.syllabus_code }}</td>
+          <td>{{ r.syllabus_title|default:"—" }}{% if r.kind != "subject" %} <span class="text-xs text-slate-500">({{ r.get_kind_display }})</span>{% endif %}</td>
+          <td class="font-semibold">{{ r.grade }}{% if r.points %} <span class="text-xs font-normal text-slate-500">{{ r.points }}</span>{% endif %}
+            {% if r.supersedes %}<br><span class="text-xs font-normal text-amber-700">Amended from {{ r.supersedes.grade }}{% if r.amendment_reason %}: {{ r.amendment_reason }}{% endif %}</span>{% endif %}</td>
+          <td class="text-xs text-slate-500">{{ r.source }}, received {{ r.received_on|date:"d M Y" }}</td>
+          {% if staff %}<td class="text-xs">{% if r.checked_at %}<span class="text-emerald-700">Confirmed</span>{% else %}<span class="text-amber-700">Waiting to be confirmed</span>{% endif %}</td>{% endif %}
+        </tr>
+      {% empty %}
+        <tr><td colspan="6">{% include "components/empty.html" with message="No official results recorded." %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

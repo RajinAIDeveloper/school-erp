@@ -198,6 +198,7 @@ def detail(request, pk):
             "attendance_pct": round(summary["present"] * 100 / summary["total"]) if summary["total"] else None,
             "recent_attendance": attendance.order_by("-date")[:14],
             "published_exams": published,
+            "official_results": _official_for_staff(request.user, student),
             "status_form": StatusChangeForm(),
         },
     )
@@ -619,3 +620,12 @@ def certificate_verify(request, code):
             "page_title": "Certificate verification",
         },
     )
+
+
+def _official_for_staff(user, student):
+    """Official results for staff who keep them, including ones not yet confirmed."""
+    if not user.has_perm("examinations.view_officialresult"):
+        return None
+    from examinations.official import official_results_for
+
+    return official_results_for(student, confirmed_only=False)

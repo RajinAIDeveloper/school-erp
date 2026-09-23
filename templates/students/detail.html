@@ -143,4 +143,10 @@
     </ul>
   </section>
 </div>
+{% if official_results is not None %}
+  <section class="card mt-6">
+    <div class="card-header"><h3 class="font-semibold">Official results</h3><span class="text-xs text-slate-500">As issued by the awarding body</span></div>
+    {% include "examinations/_official_results.html" with results=official_results staff=True %}
+  </section>
+{% endif %}
 {% endblock %}

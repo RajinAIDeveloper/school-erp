@@ -444,3 +444,132 @@ class GradeForecast(SchoolScopedModel):
 
     def __str__(self):
         return f"{self.enrollment.student} {self.subject} {self.get_kind_display()}: {self.grade}"
+
+
+class AwardingBody(models.TextChoices):
+    CAMBRIDGE = "cambridge", "Cambridge International Education"
+    PEARSON = "pearson", "Pearson Edexcel"
+    IB = "ib", "International Baccalaureate"
+    BOARD = "board", "Bangladesh education board"
+    OTHER = "other", "Other awarding body"
+
+
+class ExamSeries(SchoolScopedModel):
+    """
+    One sitting of an awarding body's exams, such as Cambridge June 2027: the frame for the
+    school's entries to that body and for the official results it sends back.
+    """
+
+    body = models.CharField(max_length=10, choices=AwardingBody.choices)
+    name = models.CharField(max_length=60, help_text="As the body names it, e.g. June 2027 or May 2027.")
+    centre_number = models.CharField(max_length=20, blank=True, help_text="The school's centre number with this body.")
+    entry_deadline = models.DateField(null=True, blank=True)
+    results_date = models.DateField(null=True, blank=True, help_text="When the body releases results.")
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-results_date", "-created_at"]
+        constraints = [models.UniqueConstraint(fields=["school", "body", "name"], name="unique_series_per_body")]
+
+    def __str__(self):
+        return f"{self.get_body_display()} {self.name}"
+
+
+class SeriesCandidate(SchoolScopedModel):
+    """A student entered for a series, with the candidate number the body knows them by."""
+
+    series = models.ForeignKey(ExamSeries, on_delete=models.CASCADE, related_name="candidates")
+    student = models.ForeignKey("students.Student", on_delete=models.PROTECT, related_name="series_candidacies")
+    candidate_number = models.CharField(max_length=12)
+    uci = models.CharField("Unique candidate identifier", max_length=20, blank=True)
+
+    class Meta:
+        ordering = ["candidate_number"]
+        constraints = [
+            models.UniqueConstraint(fields=["series", "student"], name="one_candidacy_per_series"),
+            models.UniqueConstraint(fields=["series", "candidate_number"], name="unique_candidate_number_per_series"),
+        ]
+
+    def __str__(self):
+        return f"{self.candidate_number} {self.student}"
+
+
+class SeriesEntry(SchoolScopedModel):
+    """One syllabus a candidate is entered for in a series. Withdrawn entries are kept."""
+
+    class Tier(models.TextChoices):
+        NONE = "", "No tier"
+        CORE = "core", "Core"
+        EXTENDED = "extended", "Extended"
+        FOUNDATION = "foundation", "Foundation"
+        HIGHER = "higher", "Higher"
+
+    class Status(models.TextChoices):
+        ENTERED = "entered", "Entered"
+        WITHDRAWN = "withdrawn", "Withdrawn"
+
+    candidate = models.ForeignKey(SeriesCandidate, on_delete=models.CASCADE, related_name="entries")
+    subject = models.ForeignKey(
+        Subject, null=True, blank=True, on_delete=models.SET_NULL, related_name="series_entries"
+    )
+    qualification = models.CharField(max_length=40, help_text="e.g. IGCSE, International AS, IB Diploma.")
+    syllabus_code = models.CharField(max_length=20, help_text="Syllabus, specification or unit code, e.g. 0625.")
+    syllabus_title = models.CharField(max_length=100)
+    option_code = models.CharField(max_length=10, blank=True, help_text="Component or option code, if any.")
+    tier = models.CharField(max_length=10, choices=Tier.choices, blank=True)
+    level = models.CharField(
+        max_length=2, blank=True, choices=[("", "—"), ("HL", "Higher Level"), ("SL", "Standard Level")]
+    )
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.ENTERED)
+    withdrawn_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["syllabus_code"]
+        constraints = [
+            models.UniqueConstraint(fields=["candidate", "syllabus_code"], name="one_entry_per_syllabus"),
+        ]
+
+    def __str__(self):
+        return f"{self.candidate} {self.syllabus_code}"
+
+
+class OfficialResult(SchoolScopedModel):
+    """
+    A result as the awarding body issued it, recorded from its statement of results.
+
+    Never edited in place: an amended result is a new record that supersedes the old one,
+    with the reason, so the history of what the body said stays visible. Imported results
+    are seen only by staff until someone other than the importer has checked them.
+    """
+
+    class Kind(models.TextChoices):
+        SUBJECT = "subject", "Subject or qualification grade"
+        UNIT = "unit", "Unit or component"
+        OVERALL = "overall", "Overall award (e.g. IB Diploma)"
+
+    candidate = models.ForeignKey(SeriesCandidate, on_delete=models.PROTECT, related_name="official_results")
+    entry = models.ForeignKey(SeriesEntry, null=True, blank=True, on_delete=models.SET_NULL, related_name="results")
+    kind = models.CharField(max_length=10, choices=Kind.choices, default=Kind.SUBJECT)
+    syllabus_code = models.CharField(max_length=20)
+    syllabus_title = models.CharField(max_length=100, blank=True)
+    grade = models.CharField(max_length=10)
+    points = models.CharField(max_length=10, blank=True, help_text="Points, UMS or percentage uniform mark, if given.")
+    source = models.CharField(max_length=100, help_text="Where it came from, e.g. Cambridge statement of results.")
+    received_on = models.DateField()
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
+    checked_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    checked_at = models.DateTimeField(null=True, blank=True)
+    supersedes = models.OneToOneField(
+        "self", null=True, blank=True, on_delete=models.PROTECT, related_name="superseded_by"
+    )
+    amendment_reason = models.CharField(max_length=200, blank=True)
+    is_current = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["syllabus_code", "-created_at"]
+        indexes = [models.Index(fields=["candidate", "syllabus_code", "is_current"])]
+
+    def __str__(self):
+        return f"{self.candidate} {self.syllabus_code}: {self.grade}"
