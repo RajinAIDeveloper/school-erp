@@ -42,9 +42,11 @@ def test_leave_form_rejects_an_overlapping_request(erp):
 
 def test_leave_form_rejects_going_past_the_entitlement(erp):
     kind = leave_type(erp, days=2)
+    # 21 to 25 September 2026 is Monday to Friday; Friday is a weekend day here, so the
+    # request costs four working days against an entitlement of two.
     form = LeaveForm(request_payload(erp, kind, "2026-09-21", "2026-09-25"), school=erp.school)
     assert not form.is_valid()
-    assert "remain this year" in " ".join(form.errors["leave_type"])
+    assert "remain in 2026" in " ".join(form.errors["leave_type"])
 
 
 def test_leave_form_rejects_an_end_before_the_start(erp):

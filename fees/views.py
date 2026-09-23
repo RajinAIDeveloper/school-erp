@@ -25,6 +25,7 @@ from .services import (
     cancel_payment,
     collect_payment,
     create_invoice,
+    edit_invoice,
     generate_invoices,
     outstanding_invoices,
     send_due_reminders,
@@ -88,7 +89,7 @@ def invoice_queryset(request):
     return qs
 
 
-@require_permission(None)
+@require_permission(None, also="own invoices unless you hold fees")
 def detail(request, pk):
     inv = get_object_or_404(invoice_queryset(request), pk=pk)
     form = PaymentForm(request.POST or None, invoice=inv, school=request.school)
@@ -113,11 +114,16 @@ def detail(request, pk):
             "page_title": inv.invoice_no,
             "items": inv.items.select_related("category"),
             "payments": inv.payments.all(),
+            "can_edit": (
+                request.user.has_perm("fees.change_feeinvoice")
+                and inv.status != FeeInvoice.Status.CANCELLED
+                and not inv.payments.filter(is_cancelled=False).exists()
+            ),
         },
     )
 
 
-@require_permission(None)
+@require_permission(None, also="own receipts unless you hold fees")
 def receipt(request, pk):
     from .documents import receipt_pdf
 
@@ -130,7 +136,7 @@ def receipt(request, pk):
     return receipt_pdf(request.school, payment, copy=request.GET.get("copy") == "1")
 
 
-@require_permission(None)
+@require_permission(None, also="own children only")
 def statement(request, student_pk):
     """Every charge and receipt for one student, for the office or the family."""
     from students.models import Student
@@ -245,6 +251,67 @@ def invoice_create(request):
         request,
         "fees/invoice_form.html",
         {"form": form, "items": items, "page_title": "Raise an invoice"},
+    )
+
+
+@require_permission("fees.change_feeinvoice")
+def invoice_edit(request, pk):
+    """Correct an invoice raised with the wrong figures, while no money has been taken."""
+    invoice = get_object_or_404(
+        FeeInvoice.objects.select_related("student", "enrollment", "academic_year"), school=request.school, pk=pk
+    )
+    if invoice.status == FeeInvoice.Status.CANCELLED or invoice.payments.filter(is_cancelled=False).exists():
+        messages.error(
+            request,
+            "This invoice can no longer be edited: it is cancelled, or money has been received against it.",
+        )
+        return redirect("fees:invoice_detail", pk=pk)
+    lines = list(invoice.items.select_related("category"))
+    initial = {
+        "student": invoice.student_id,
+        "issue_date": invoice.issue_date,
+        "due_date": invoice.due_date,
+        "month": invoice.month,
+        "discount": invoice.discount,
+        "late_fee": invoice.late_fee,
+        "notes": invoice.notes,
+    }
+    form = InvoiceForm(request.POST or None, school=request.school, invoice=invoice, initial=initial)
+    items = InvoiceItemFormSet(
+        request.POST or None,
+        school=request.school,
+        prefix="items",
+        initial=[
+            {"category": line.category_id, "description": line.description, "amount": line.amount} for line in lines
+        ],
+    )
+    if request.method == "POST" and form.is_valid() and items.is_valid():
+        try:
+            edit_invoice(
+                school=request.school,
+                user=request.user,
+                invoice=invoice,
+                items=items.lines(),
+                discount=form.cleaned_data["discount"],
+                late_fee=form.cleaned_data["late_fee"],
+                notes=form.cleaned_data["notes"],
+                due_date=form.cleaned_data["due_date"],
+                month=form.cleaned_data.get("month") or None,
+            )
+            messages.success(request, f"Updated invoice {invoice.invoice_no}.")
+            return redirect("fees:invoice_detail", pk=pk)
+        except ValidationError as exc:
+            form.add_error(None, exc)
+    return render(
+        request,
+        "fees/invoice_form.html",
+        {
+            "form": form,
+            "items": items,
+            "invoice": invoice,
+            "page_title": f"Edit {invoice.invoice_no}",
+            "submit_label": "Save changes",
+        },
     )
 
 

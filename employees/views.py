@@ -91,7 +91,7 @@ def _may_open(user, employee):
     return employee.user_id == user.pk or user.has_perm("employees.view_employee")
 
 
-@require_permission(None)
+@require_permission(None, also="own file unless you hold the roster")
 def detail(request, pk):
     """One person's file: assignments, attendance, leave and (for payroll staff) salary."""
     from attendance.models import LeaveRequest, StaffAttendance
@@ -154,7 +154,7 @@ def document_upload(request, pk):
     return render(request, "generic/form.html", {"form": form, "page_title": f"Upload document for {employee}"})
 
 
-@require_permission(None)
+@require_permission(None, also="own documents unless a manager")
 def document_download(request, pk):
     """Staff files are visible to managers, and to the employee they belong to."""
     document = get_object_or_404(EmployeeDocument.objects.select_related("employee"), school=request.school, pk=pk)

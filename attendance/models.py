@@ -63,6 +63,10 @@ class StaffAttendance(SchoolScopedModel):
 class LeaveType(SchoolScopedModel):
     name = models.CharField(max_length=50, help_text="e.g. Casual, Sick, Earned")
     days_per_year = models.PositiveSmallIntegerField(default=10)
+    allow_negative = models.BooleanField(
+        default=False,
+        help_text="Let a request go past the annual entitlement. The balance is then shown as negative.",
+    )
 
     is_active = models.BooleanField(
         default=True, help_text="Clear this to retire the record without losing the history that uses it."
@@ -102,4 +106,12 @@ class LeaveRequest(SchoolScopedModel):
 
     @property
     def days(self):
-        return (self.end_date - self.start_date).days + 1
+        """Working days the request covers: weekends and school holidays cost nothing."""
+        from .services import leave_days
+
+        return leave_days(self.school, self.start_date, self.end_date)
+
+    def days_in_year(self, year):
+        from .services import leave_days_in_year
+
+        return leave_days_in_year(self.school, self.start_date, self.end_date, year)

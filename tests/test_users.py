@@ -122,19 +122,52 @@ def test_provisioning_a_section_can_skip_guardians(erp):
     assert [row["role"] for row in rows] == ["Student"]
 
 
-def test_bulk_provision_screen_offers_a_one_time_csv(erp):
+def test_bulk_provision_offers_a_download_built_in_the_browser(erp):
+    """The CSV is assembled client-side from the page, so nothing has to be stored server-side."""
     client = Client()
     client.force_login(erp.admin)
     response = client.post("/users/provision/", {"section": erp.section.pk, "include_guardians": "on"})
     assert response.status_code == 200
     assert b"Download CSV" in response.content
+    assert b'id="credentials-data"' in response.content
+    assert b"new-logins.csv" in response.content
 
-    csv_response = client.get("/users/provision/credentials.csv")
-    assert csv_response.status_code == 200
-    assert "Temporary password" in csv_response.content.decode("utf-8-sig")
 
-    # The credentials are not kept after that download.
-    assert client.get("/users/provision/credentials.csv").status_code == 404
+def test_provisioned_passwords_are_never_written_to_the_session(erp):
+    """
+    The default session store is a database table: signed, but not encrypted.
+
+    Anything left there is readable by anyone who can read the database, so the temporary
+    passwords live in the one response that shows them and nowhere else.
+    """
+    from django.contrib.sessions.models import Session
+
+    client = Client()
+    client.force_login(erp.admin)
+    response = client.post("/users/provision/", {"section": erp.section.pk, "include_guardians": "on"})
+    passwords = [row["password"] for row in response.context["rows"]]
+    assert passwords
+
+    assert "provisioned_credentials" not in client.session
+    stored = "".join(session.session_data for session in Session.objects.all())
+    decoded = "".join(str(session.get_decoded()) for session in Session.objects.all())
+    for password in passwords:
+        assert password not in stored
+        assert password not in decoded
+
+
+def test_a_single_provision_and_a_reset_leave_nothing_behind_either(erp):
+    from django.contrib.sessions.models import Session
+
+    client = Client()
+    client.force_login(erp.admin)
+    provisioned = client.post(f"/users/provision/student/{erp.student.pk}/", {"next": "/students/"})
+    reset_page = client.post(f"/users/{erp.teacher.pk}/reset/")
+    secrets = [row["password"] for row in provisioned.context["rows"]]
+    secrets += [row["password"] for row in reset_page.context["rows"]]
+    decoded = "".join(str(session.get_decoded()) for session in Session.objects.all())
+    for secret in secrets:
+        assert secret and secret not in decoded
 
 
 def test_login_sms_only_when_admission_messages_are_on(erp):

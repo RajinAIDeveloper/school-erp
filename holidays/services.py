@@ -15,18 +15,41 @@ from core.models import AuditLog
 
 from .models import Holiday
 
-# Fixed-date national holidays observed by Bangladeshi schools. Religious dates move with
-# the lunar calendar and are deliberately left out: a school enters those from the
-# government's annual notice rather than trusting a guess baked into software.
+# Fixed-date national holidays observed by Bangladeshi schools, with the years each one
+# actually applies to. Religious dates move with the lunar calendar and are deliberately
+# left out: a school enters those from the government's annual notice rather than trusting
+# a guess baked into software.
+#
+# The list is versioned by year because a public holiday is a political decision, not a
+# fact about the calendar. Importing a year should reproduce what that year's notice said,
+# so a school looking back at 2023 sees the calendar it actually kept.
+#
+# Sources: the Ministry of Public Administration's public holiday page,
+# https://mopa.gov.bd/pages/public-holiday, and its annual holiday notice for the year in
+# question.
+#
+# name, month, day, type, first year observed, last year observed (None = still observed)
 BD_FIXED_HOLIDAYS = [
-    ("International Mother Language Day", 2, 21, Holiday.Type.PUBLIC),
-    ("Independence Day", 3, 26, Holiday.Type.PUBLIC),
-    ("Bengali New Year (Pohela Boishakh)", 4, 14, Holiday.Type.PUBLIC),
-    ("May Day", 5, 1, Holiday.Type.PUBLIC),
-    ("National Mourning Day", 8, 15, Holiday.Type.PUBLIC),
-    ("Victory Day", 12, 16, Holiday.Type.PUBLIC),
-    ("Christmas Day", 12, 25, Holiday.Type.RELIGIOUS),
+    ("International Mother Language Day", 2, 21, Holiday.Type.PUBLIC, None, None),
+    ("Independence Day", 3, 26, Holiday.Type.PUBLIC, None, None),
+    ("Bengali New Year (Pohela Boishakh)", 4, 14, Holiday.Type.PUBLIC, None, None),
+    ("May Day", 5, 1, Holiday.Type.PUBLIC, None, None),
+    # Cancelled as a public holiday by the MOPA notice of 13 August 2024,
+    # "১৫ আগস্ট এর সাধারণ ছুটি বাতিল". It was a holiday up to and including 2023, so a school
+    # importing an earlier year still gets the calendar that year was kept to.
+    ("National Mourning Day", 8, 15, Holiday.Type.PUBLIC, None, 2023),
+    ("Victory Day", 12, 16, Holiday.Type.PUBLIC, None, None),
+    ("Christmas Day", 12, 25, Holiday.Type.RELIGIOUS, None, None),
 ]
+
+
+def fixed_holidays_for(year):
+    """The fixed-date holidays that applied in one year."""
+    return [
+        (name, month, day, kind)
+        for name, month, day, kind, first, last in BD_FIXED_HOLIDAYS
+        if (first is None or year >= first) and (last is None or year <= last)
+    ]
 
 
 @transaction.atomic
@@ -34,10 +57,12 @@ def import_national_holidays(school, year, user=None):
     """
     Add the fixed-date national holidays for a year, skipping any already entered.
 
-    Returns the ones created, so the screen can say what it actually did.
+    Only the dates that were holidays in that year are added; see BD_FIXED_HOLIDAYS for
+    which notice each one rests on. Returns the ones created, so the screen can say what
+    it actually did.
     """
     created = []
-    for name, month, day, kind in BD_FIXED_HOLIDAYS:
+    for name, month, day, kind in fixed_holidays_for(year):
         when = date(year, month, day)
         if Holiday.objects.filter(school=school, name=name, start_date=when).exists():
             continue

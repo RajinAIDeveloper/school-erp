@@ -5,7 +5,7 @@
   {% csrf_token %}
   <div class="card-header">
     <h2 class="font-semibold">Opening balances</h2>
-    <input type="date" name="date" value="{{ today|date:'Y-m-d' }}" class="input w-48">
+    <div>{{ date_form.date }}{% for error in date_form.date.errors %}<p class="mt-1 text-xs text-red-700">{{ error }}</p>{% endfor %}</div>
   </div>
   <div class="card-body">
     <p class="mb-4 text-sm text-slate-600">

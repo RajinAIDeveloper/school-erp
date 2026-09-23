@@ -58,7 +58,7 @@ def _template_body(school, key, fallback_name):
     return DEFAULT_TEMPLATES[key][1]
 
 
-def queue(school, *, key, phone, body, name="", dedupe_key=""):
+def queue(school, *, key, phone, body, name="", dedupe_key="", redact_after_send=False):
     """
     Queue one message, ignoring duplicates for the same event.
 
@@ -74,7 +74,12 @@ def queue(school, *, key, phone, body, name="", dedupe_key=""):
             if dedupe_key and SMSMessage.objects.filter(school=school, dedupe_key=dedupe_key).exists():
                 return None
             return SMSMessage.objects.create(
-                school=school, recipient_name=name, phone=number, body=body, dedupe_key=dedupe_key
+                school=school,
+                recipient_name=name,
+                phone=number,
+                body=body,
+                dedupe_key=dedupe_key,
+                redact_after_send=redact_after_send,
             )
     except Exception:  # noqa: BLE001 - including the unique constraint losing a race
         log.info("Skipping %s notification: already queued (%s)", key, dedupe_key)

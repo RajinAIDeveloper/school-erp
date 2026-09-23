@@ -174,16 +174,124 @@ def test_worker_sends_queued_messages_once(erp, capsys):
 
 
 def test_worker_gives_up_after_three_attempts(erp, settings):
+    """Each retry is scheduled further out, so a refusing gateway is not hammered."""
     from django.core.management import call_command
 
     settings.SMS_BACKEND = "tests.test_messaging.AlwaysFailingBackend"
     queue_batch(erp.school, "Test", "custom", "Hello", [("One", "01712345678")], erp.admin)
     for _ in range(4):
         call_command("process_sms", verbosity=0)
+        # Pretend the backoff has elapsed, rather than making the test sleep for it.
+        SMSMessage.objects.all().update(next_attempt_at=None)
     message = SMSMessage.objects.get()
     assert message.attempts == 3
     assert message.status == "failed"
     assert "Gateway down" in message.provider_response
+
+
+def test_a_failed_message_waits_before_it_is_tried_again(erp, settings):
+    from django.core.management import call_command
+    from django.utils import timezone
+
+    settings.SMS_BACKEND = "tests.test_messaging.AlwaysFailingBackend"
+    queue_batch(erp.school, "Test", "custom", "Hello", [("One", "01712345678")], erp.admin)
+    call_command("process_sms", verbosity=0)
+    message = SMSMessage.objects.get()
+    assert message.status == "queued" and message.attempts == 1
+    assert message.next_attempt_at > timezone.now()
+
+    # A second pass straight away does nothing: the message is not due yet.
+    call_command("process_sms", verbosity=0)
+    assert SMSMessage.objects.get().attempts == 1
+
+
+def test_a_message_stranded_by_a_crashed_worker_is_reclaimed(erp):
+    """A worker killed mid-send used to leave its message as 'processing' for ever."""
+    from datetime import timedelta
+
+    from django.core.management import call_command
+    from django.utils import timezone
+
+    queue_batch(erp.school, "Test", "custom", "Hello", [("One", "01712345678")], erp.admin)
+    stranded = SMSMessage.objects.get()
+    SMSMessage.objects.filter(pk=stranded.pk).update(
+        status="processing", attempts=1, claimed_at=timezone.now() - timedelta(minutes=30)
+    )
+    call_command("process_sms", verbosity=0)
+    stranded.refresh_from_db()
+    assert stranded.status == "sent"
+    # The attempt made before the crash still counts, so a message that kills the worker
+    # every time runs out of attempts instead of looping.
+    assert stranded.attempts == 2
+
+
+def test_a_claim_that_is_still_fresh_is_left_alone(erp):
+    from django.core.management import call_command
+    from django.utils import timezone
+
+    queue_batch(erp.school, "Test", "custom", "Hello", [("One", "01712345678")], erp.admin)
+    busy = SMSMessage.objects.get()
+    SMSMessage.objects.filter(pk=busy.pk).update(status="processing", claimed_at=timezone.now())
+    call_command("process_sms", verbosity=0)
+    busy.refresh_from_db()
+    assert busy.status == "processing" and busy.attempts == 0
+
+
+def test_two_workers_racing_for_one_message_send_it_once(erp, capsys):
+    """The claim is a conditional update, so only one worker can win it."""
+    from django.core.management import call_command
+
+    queue_batch(erp.school, "Test", "custom", "Hello", [("One", "01712345678")], erp.admin)
+    call_command("process_sms", verbosity=0)
+    call_command("process_sms", verbosity=0)
+    message = SMSMessage.objects.get()
+    assert message.status == "sent" and message.attempts == 1
+    assert capsys.readouterr().out.count("[SMS ->") == 1
+
+
+def test_a_credential_message_keeps_its_audit_trail_but_not_the_password(erp):
+    """The password has to reach the queue to be sent; it does not stay there afterwards."""
+    from django.core.management import call_command
+
+    from students.models import Guardian
+    from users.services import provision_login
+
+    erp.school.notify_admission_sms = True
+    erp.school.save()
+    guardian = Guardian.objects.create(school=erp.school, full_name="Texted", phone="01712345686")
+    _account, password = provision_login(school=erp.school, user=erp.admin, profile=guardian, send_sms=True)
+    queued = SMSMessage.objects.get()
+    assert password in queued.body and queued.redact_after_send
+
+    call_command("process_sms", verbosity=0)
+    queued.refresh_from_db()
+    assert queued.status == "sent"
+    assert password not in queued.body
+    # What a school still needs for an audit survives: who, which number, and when.
+    assert queued.recipient_name and queued.phone == "8801712345686" and queued.sent_at
+
+
+def test_a_credential_message_keeps_its_text_while_retries_remain(erp, settings):
+    """Redacting a message that has not gone yet would destroy the password unsent."""
+    from django.core.management import call_command
+
+    from students.models import Guardian
+    from users.services import provision_login
+
+    settings.SMS_BACKEND = "tests.test_messaging.AlwaysFailingBackend"
+    erp.school.notify_admission_sms = True
+    erp.school.save()
+    guardian = Guardian.objects.create(school=erp.school, full_name="Texted", phone="01712345686")
+    _account, password = provision_login(school=erp.school, user=erp.admin, profile=guardian, send_sms=True)
+    call_command("process_sms", verbosity=0)
+    message = SMSMessage.objects.get()
+    assert message.status == "queued" and password in message.body
+
+    for _ in range(3):
+        SMSMessage.objects.all().update(next_attempt_at=None)
+        call_command("process_sms", verbosity=0)
+    message.refresh_from_db()
+    assert message.status == "failed" and password not in message.body
 
 
 class AlwaysFailingBackend(BaseSMSBackend):

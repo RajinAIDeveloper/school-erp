@@ -3,6 +3,10 @@ from django.db import models
 
 from core.models import SchoolScopedModel
 
+# Three tries, then the message is left alone. A gateway that has refused a number three
+# times is not going to accept it on the fourth, and a family should not be texted in a loop.
+MAX_ATTEMPTS = 3
+
 
 class SMSTemplate(SchoolScopedModel):
     """
@@ -85,6 +89,20 @@ class SMSMessage(SchoolScopedModel):
     )
     provider_response = models.TextField(blank=True)
     sent_at = models.DateTimeField(null=True, blank=True)
+    claimed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When a worker took this message. A stale claim is reclaimed after the timeout.",
+    )
+    next_attempt_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Earliest the next delivery attempt may run, so a failing gateway is backed off.",
+    )
+    redact_after_send = models.BooleanField(
+        default=False,
+        help_text="Set on a message whose text is a secret. The body is cleared once delivery ends.",
+    )
 
     class Meta:
         ordering = ["-created_at"]
@@ -96,5 +114,32 @@ class SMSMessage(SchoolScopedModel):
             )
         ]
 
+    REDACTED = "[Credentials were sent to this number. The text is not kept.]"
+
     def __str__(self):
         return f"{self.phone} [{self.status}]"
+
+    def finish(self, status, response=""):
+        """
+        Record the end of a delivery attempt, purging any secret the body carried.
+
+        A temporary password has to exist in the queue long enough to be sent. Once the
+        gateway has answered it has no further use, so what stays on file is the fact of
+        the message, its number and its outcome, and not the password itself.
+        """
+        from django.utils import timezone
+
+        fields = ["status", "provider_response", "claimed_at", "next_attempt_at", "updated_at"]
+        self.status = status
+        self.provider_response = str(response)[:2000]
+        self.claimed_at = None
+        self.next_attempt_at = None
+        if status == self.Status.SENT:
+            self.sent_at = timezone.now()
+            fields.append("sent_at")
+        done = status == self.Status.SENT or self.attempts >= MAX_ATTEMPTS
+        if done and self.redact_after_send and self.body != self.REDACTED:
+            self.body = self.REDACTED
+            fields.append("body")
+        self.save(update_fields=fields)
+        return self

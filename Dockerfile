@@ -3,8 +3,13 @@ FROM debian:bookworm-slim AS css
 WORKDIR /build
 RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+# Pinned and verified. "latest" means the image silently changes what it builds, and a
+# stylesheet that differs from the one CI compared against is a UI nobody reviewed.
+ARG TAILWIND_VERSION=4.3.3
+ARG TAILWIND_SHA256=dc61b3ac6b8c9ca874c0cc4c57b2409791a64c5540404ca5f5367360babc313a
 RUN curl -fsSL -o /usr/local/bin/tailwindcss \
-    https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64 \
+    "https://github.com/tailwindlabs/tailwindcss/releases/download/v${TAILWIND_VERSION}/tailwindcss-linux-x64" \
+    && echo "${TAILWIND_SHA256}  /usr/local/bin/tailwindcss" | sha256sum -c - \
     && chmod +x /usr/local/bin/tailwindcss
 COPY static/src ./static/src
 COPY templates ./templates

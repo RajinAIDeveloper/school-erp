@@ -1,4 +1,5 @@
 import calendar
+from dataclasses import dataclass, field
 from datetime import date, timedelta
 
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -8,6 +9,7 @@ from django.utils import timezone
 from core.access import assert_actor_school, assert_school, sections_for
 from core.models import AuditLog
 from holidays.models import holiday_dates_between, is_holiday
+from holidays.services import working_days
 from messaging.notifications import notify_absences
 from students.models import Enrollment
 
@@ -26,6 +28,32 @@ def enrollments_for(section, day):
         .exclude(status="left")
         .select_related("student", "academic_year")
     )
+
+
+def roster_size(section, academic_year):
+    """How many students a register for this section is expected to cover."""
+    if academic_year is None:
+        return 0
+    return Enrollment.objects.filter(
+        section=section,
+        academic_year=academic_year,
+        status=Enrollment.Status.ENROLLED,
+        student__status="active",
+    ).count()
+
+
+def register_state(recorded, expected):
+    """
+    Complete, partial or missing.
+
+    A register with one row out of thirty is not "taken"; a teacher who was interrupted
+    needs to know that, and so does the head.
+    """
+    if not recorded:
+        return "missing"
+    if expected and recorded < expected:
+        return "partial"
+    return "complete"
 
 
 @transaction.atomic
@@ -105,20 +133,48 @@ def monthly_matrix(school, objects, year, month, staff=False):
     return days, rows
 
 
+# ----------------------------------------------------------------------------- leave
+
+
+def leave_days(school, start, end):
+    """
+    How many days a leave request costs: the school's working days in the range.
+
+    This is the one definition used everywhere leave is counted: the request form, the
+    balance, the register rows an approval creates, and the leave register report. A
+    request from Thursday to Sunday costs two days at a school closed on Friday and
+    Saturday, not four.
+    """
+    return working_days(school, start, end)
+
+
+def leave_days_in_year(school, start, end, year):
+    """The part of a request that falls inside one calendar year, in working days."""
+    window_start = max(start, date(year, 1, 1))
+    window_end = min(end, date(year, 12, 31))
+    if window_end < window_start:
+        return 0
+    return leave_days(school, window_start, window_end)
+
+
 def leave_balance(employee, year):
     """
     Entitlement, days already approved and what is left, per leave type.
 
     Schools run entitlement by calendar year, and an approved request is counted from the
     day it is approved rather than when it is taken, so staff cannot book past a quota.
+    A request that straddles New Year charges each year only for the days inside it.
     """
     from .models import LeaveRequest, LeaveType
 
     counted = {}
     for request in LeaveRequest.objects.filter(
-        employee=employee, status=LeaveRequest.Status.APPROVED, start_date__year=year
+        employee=employee,
+        status=LeaveRequest.Status.APPROVED,
+        start_date__year__lte=year,
+        end_date__year__gte=year,
     ):
-        counted[request.leave_type_id] = counted.get(request.leave_type_id, 0) + request.days
+        counted[request.leave_type_id] = counted.get(request.leave_type_id, 0) + request.days_in_year(year)
     rows = []
     for leave_type in LeaveType.objects.filter(school=employee.school):
         taken = counted.get(leave_type.pk, 0)
@@ -128,6 +184,7 @@ def leave_balance(employee, year):
                 "entitlement": leave_type.days_per_year,
                 "used": taken,
                 "remaining": leave_type.days_per_year - taken,
+                "allow_negative": leave_type.allow_negative,
             }
         )
     return rows
@@ -145,11 +202,32 @@ def overlapping_leave(employee, start, end, exclude_pk=None):
     return qs.exclude(pk=exclude_pk) if exclude_pk else qs
 
 
+@dataclass
+class LeaveApplied:
+    """What approving a request did to the register, so the screen can say so."""
+
+    created: int = 0
+    skipped: list = field(default_factory=list)  # dates that already had a manual entry
+
+    @property
+    def summary(self):
+        text = f"{self.created} working day(s) marked as leave on the register."
+        if self.skipped:
+            days = ", ".join(f"{day:%d %b}" for day in self.skipped)
+            text += f" {len(self.skipped)} day(s) already had an attendance entry and were left as they are: {days}."
+        return text
+
+
 @transaction.atomic
 def apply_leave(leave_request, user):
     """
     Turn an approved request into attendance rows so registers, reports and any payroll
     rule see the same truth. Holidays and weekends inside the range are skipped.
+
+    A day that already has a register entry is never touched: someone recorded that the
+    person was in, late or absent, and a leave approval must not quietly rewrite it. Such
+    days are reported back rather than overwritten, and they stay outside the request, so
+    withdrawing the approval later cannot delete them either.
     """
 
     from .models import StaffAttendance
@@ -157,22 +235,31 @@ def apply_leave(leave_request, user):
     school = leave_request.school
     closed = holiday_dates_between(school, leave_request.start_date, leave_request.end_date)
     weekend = school.weekend_day_numbers
-    created = 0
+    existing = {
+        row.date: row
+        for row in StaffAttendance.objects.filter(
+            employee=leave_request.employee,
+            date__range=(leave_request.start_date, leave_request.end_date),
+        )
+    }
+    outcome = LeaveApplied()
     day = leave_request.start_date
     while day <= leave_request.end_date:
         if day not in closed and day.isoweekday() not in weekend:
-            _row, was_created = StaffAttendance.objects.update_or_create(
-                employee=leave_request.employee,
-                date=day,
-                defaults={
-                    "school": school,
-                    "status": AttendanceStatus.LEAVE,
-                    "remarks": f"{leave_request.leave_type} (approved)",
-                    "recorded_by": user,
-                    "created_by_leave": leave_request,
-                },
-            )
-            created += int(was_created)
+            current = existing.get(day)
+            if current is None:
+                StaffAttendance.objects.create(
+                    school=school,
+                    employee=leave_request.employee,
+                    date=day,
+                    status=AttendanceStatus.LEAVE,
+                    remarks=f"{leave_request.leave_type} (approved)",
+                    recorded_by=user,
+                    created_by_leave=leave_request,
+                )
+                outcome.created += 1
+            elif current.created_by_leave_id != leave_request.pk:
+                outcome.skipped.append(day)
         day += timedelta(days=1)
     AuditLog.objects.create(
         school=school,
@@ -180,9 +267,9 @@ def apply_leave(leave_request, user):
         action="leave.applied",
         model=leave_request._meta.label,
         object_id=str(leave_request.pk),
-        description=f"{created} attendance day(s) marked as leave",
+        description=outcome.summary,
     )
-    return created
+    return outcome
 
 
 @transaction.atomic

@@ -136,15 +136,23 @@
       <ul class="divide-y divide-slate-100 text-sm">
         {% for row in panel.registers %}
           <li class="flex items-center justify-between px-5 py-2.5">
-            <span class="font-medium">{{ row.section }}</span>
-            {% if row.taken %}
-              <span class="text-xs text-emerald-700">Taken</span>
+            <div>
+              <span class="font-medium">{{ row.section }}</span>
+              <span class="ml-2 text-xs text-slate-500">{{ row.recorded }} of {{ row.expected }} recorded</span>
+            </div>
+            {% if row.state == "complete" %}
+              <span class="text-xs text-emerald-700">Complete</span>
             {% else %}
               <a href="{% url 'attendance:student_take' %}?date={{ today|date:'Y-m-d' }}&amp;section={{ row.section.pk }}"
-                 class="btn-primary btn-sm">Take now</a>
+                 class="btn-primary btn-sm">{% if row.state == "partial" %}Finish{% else %}Take now{% endif %}</a>
             {% endif %}
           </li>
-        {% empty %}<li class="px-5 py-6 text-center text-slate-500">No sections are assigned to you yet.</li>{% endfor %}
+        {% empty %}
+          <li class="px-5 py-6 text-center text-slate-500">
+            {% if panel.closed_today %}The school is closed today, so there is no register to take.
+            {% else %}No sections are assigned to you yet.{% endif %}
+          </li>
+        {% endfor %}
       </ul>
     </section>
 

@@ -1,5 +1,20 @@
 from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+
+
+class HttpsURLField(models.URLField):
+    """
+    A URL field whose forms assume https when no scheme is typed.
+
+    Django 6 changes that default from http to https and warns until a choice is made.
+    Making it here rather than setting the transitional flag means the answer travels with
+    the field, and a school typing "bulksmsbd.net" into the gateway box gets the secure
+    address, not the one that would send its API key in clear.
+    """
+
+    def formfield(self, **kwargs):
+        return super().formfield(**{"assume_scheme": "https", **kwargs})
 
 
 class TimeStampedModel(models.Model):
@@ -24,7 +39,7 @@ class School(TimeStampedModel):
     address = models.TextField(blank=True)
     phone = models.CharField(max_length=25, blank=True)
     email = models.EmailField(blank=True)
-    website = models.URLField(blank=True)
+    website = HttpsURLField(blank=True)
     logo = models.ImageField(upload_to="school/logos/", blank=True)
     principal_name = models.CharField(max_length=150, blank=True)
     currency = models.CharField(max_length=3, default=settings.ERP_DEFAULT_CURRENCY)
@@ -54,9 +69,10 @@ class School(TimeStampedModel):
         max_digits=5,
         decimal_places=2,
         default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
         help_text=(
             "Taken off every younger sibling's fees when two or more children share a primary "
-            "guardian. The eldest pays in full. Zero switches it off."
+            "guardian. The eldest pays in full. Zero switches it off. 0 to 100."
         ),
     )
     # Notifications. Every one of these is off until a school turns it on, because each
@@ -71,7 +87,7 @@ class School(TimeStampedModel):
     )
     # SMS gateway (generic HTTP)
     sms_sender_id = models.CharField(max_length=20, blank=True)
-    sms_api_url = models.URLField(blank=True, help_text="Gateway endpoint, e.g. https://bulksmsbd.net/api/smsapi")
+    sms_api_url = HttpsURLField(blank=True, help_text="Gateway endpoint, e.g. https://bulksmsbd.net/api/smsapi")
     sms_api_key = models.CharField(max_length=200, blank=True)
     sms_extra_params = models.CharField(
         max_length=300, blank=True, help_text="Extra query params as key=value&key2=value2"
@@ -80,6 +96,14 @@ class School(TimeStampedModel):
 
     class Meta:
         ordering = ["name"]
+        constraints = [
+            # A rate above 100 would make a fee line negative, and a "paid" invoice nobody
+            # paid. The form checks it too; this is the floor under every other path.
+            models.CheckConstraint(
+                condition=models.Q(sibling_discount_percent__gte=0, sibling_discount_percent__lte=100),
+                name="sibling_discount_is_a_percentage",
+            ),
+        ]
 
     def __str__(self):
         return self.name

@@ -17,14 +17,16 @@
         {% if current %}This is a current, published report card.{% else %}This code refers to a superseded or unpublished version.{% endif %}
       </p>
       <p class="mt-2 text-sm text-slate-600">
+        {{ exam.name }}, {{ exam.academic_year }}.
         Version {{ snapshot.version }}{% if not current %}, which has since been replaced or withdrawn{% endif %}.
         Issued {{ snapshot.created_at|date:"d M Y" }}.
       </p>
     </div>
 
     <p class="mt-6 text-sm text-slate-500">
-      For privacy, verification confirms only that a record exists and whether it is current.
-      It names no student and shows no marks. To query a result, contact the school office.
+      Verification confirms which examination a card is for, and whether the card in hand is the
+      current version. It names no student and shows no marks, because anyone may be holding the
+      code. To query a result, contact the school office.
     </p>
   </main>
 </body>

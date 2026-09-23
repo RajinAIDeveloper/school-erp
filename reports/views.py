@@ -14,12 +14,27 @@ from django.db.models import Count, Q, Sum
 from django.shortcuts import render
 from django.urls import reverse
 
-from core.access import is_manager, require_permission
+from core.access import is_manager, plans_timetable, require_permission
 from core.exports import spreadsheet
 from core.forms import TailwindFormMixin
 from core.pdf import table_document
 
 ZERO = Decimal("0.00")
+
+
+def holds(permission):
+    """A report gated by one Django permission."""
+
+    def check(user):
+        return user.has_perm(permission)
+
+    return check
+
+
+def timetable_planner(user):
+    """A planning report: heads and whoever edits the routine, never a family."""
+    return user.has_perm("timetable.view_routineslot") and plans_timetable(user)
+
 
 # Reports that live in the module owning their data, linked rather than duplicated.
 LINKED_REPORTS = [
@@ -65,8 +80,13 @@ LINKED_REPORTS = [
         "examinations.view_mark",
         "Class and section ranks with per-subject statistics.",
     ),
-    ("Class routine", "timetable:routine", "timetable.view_routineslot", "The week as a grid, per class or teacher."),
-    ("Routine utilisation", "timetable:utilisation", "timetable.view_routineslot", "Room use and periods per teacher."),
+    (
+        "Class routine",
+        "timetable:routine",
+        holds("timetable.view_routineslot"),
+        "The week as a grid, per class or teacher.",
+    ),
+    ("Routine utilisation", "timetable:utilisation", timetable_planner, "Room use and periods per teacher."),
     ("Holiday calendar", "holidays:calendar", "holidays.view_holiday", "The school calendar as iCalendar."),
 ]
 
@@ -99,7 +119,7 @@ HUB_REPORTS = [
     (
         "Teacher load",
         "reports:teacher_load",
-        "timetable.view_routineslot",
+        timetable_planner,
         "Periods per week per teacher, heaviest first.",
     ),
 ]
@@ -147,8 +167,10 @@ def _export(request, title, headers, rows, filename, align_right=()):
 def hub(request):
     """Every report this role may open, grouped so the list is readable."""
     links = []
-    for name, route, permission, description in HUB_REPORTS + LINKED_REPORTS:
-        if request.user.has_perm(permission):
+    for name, route, rule, description in HUB_REPORTS + LINKED_REPORTS:
+        # The same predicate the destination view uses, so the hub never offers a 403.
+        allowed = rule(request.user) if callable(rule) else request.user.has_perm(rule)
+        if allowed:
             links.append({"name": name, "url": reverse(route), "description": description})
 
     personal = []
@@ -218,13 +240,19 @@ def overview(request):
         ["Student attendance recorded", student_attendance["total"]],
         ["Student attendance present or late", student_attendance["present"]],
         [
-            "Student attendance rate",
+            "Student attendance rate among recorded rows",
             f"{round(student_attendance['present'] * 100 / student_attendance['total'])}%"
             if student_attendance["total"]
             else "—",
         ],
         ["Staff attendance recorded", staff_attendance["total"]],
         ["Staff attendance present or late", staff_attendance["present"]],
+        [
+            "Staff attendance rate among recorded rows",
+            f"{round(staff_attendance['present'] * 100 / staff_attendance['total'])}%"
+            if staff_attendance["total"]
+            else "—",
+        ],
         ["Fee receipts in range", payments["count"]],
         ["Fee collected in range", payments["total"] or ZERO],
         ["Outstanding invoices now", dues["count"] or 0],
@@ -251,7 +279,12 @@ def strength(request):
 
     year = AcademicYear.current_for(request.school)
     by_class = list(
-        Enrollment.objects.filter(school=request.school, academic_year=year)
+        Enrollment.objects.filter(
+            school=request.school,
+            academic_year=year,
+            status=Enrollment.Status.ENROLLED,
+            student__status="active",
+        )
         .values("section__class_level__name", "section__name")
         .annotate(
             total=Count("id"),
@@ -346,7 +379,7 @@ def payroll_register(request):
     )
 
 
-@require_permission("attendance.view_leaverequest")
+@require_permission("attendance.view_leaverequest", also="own requests unless a manager")
 def leave_register(request):
     """Who asked for leave, what was decided, and how many days it came to."""
     from attendance.models import LeaveRequest
@@ -388,11 +421,16 @@ def leave_register(request):
     )
 
 
-@require_permission("timetable.view_routineslot")
+@require_permission("timetable.view_routineslot", also="timetable editors only")
 def teacher_load(request):
     """Periods a week per teacher, heaviest first."""
+    from django.core.exceptions import PermissionDenied
+
     from academics.models import AcademicYear
     from timetable.services import teacher_load as load_rows
+
+    if not plans_timetable(request.user):
+        raise PermissionDenied("This report is for staff who plan the timetable.")
 
     year = AcademicYear.current_for(request.school)
     rows_data = load_rows(request.school, year) if year else []

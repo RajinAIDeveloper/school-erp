@@ -93,6 +93,19 @@ def test_employee_detail_is_school_scoped(admin_client, erp):
     assert admin_client.get(f"/employees/{foreign.pk}/").status_code == 404
 
 
+def test_a_teacher_has_no_staff_roster_but_keeps_their_own_file(erp):
+    """A colleague's phone, NID and qualification are the office's business, not a teacher's."""
+    colleague = make_staff(erp, employee_id="S21", first_name="Colleague", phone="01712345615")
+    client = Client()
+    client.force_login(erp.teacher)
+    assert client.get("/employees/").status_code == 403
+    assert client.get("/employees/export/").status_code == 403
+    assert client.get(f"/employees/{colleague.pk}/").status_code == 403
+    # Their own file is still one click away.
+    assert client.get("/employees/me/").status_code == 302
+    assert client.get(f"/employees/{erp.employee.pk}/").status_code == 200
+
+
 def test_staff_may_open_their_own_file_but_not_the_roster(erp):
     """A staff member is not an HR browser; they may still read their own record."""
     mine = make_staff(erp, user=erp.staff, employee_id="S11", first_name="Mine")
@@ -149,13 +162,22 @@ def test_employee_documents_are_private_to_managers_and_their_owner(erp, setting
 
 
 def test_employee_export_includes_salary_only_for_payroll_roles(erp):
+    """The accountant runs payroll, so they export the roster; a teacher has no roster at all."""
     make_staff(erp, designation=Designation.objects.create(school=erp.school, name="Clerk"))
     client = Client()
     client.force_login(erp.accountant)
     assert "Basic salary" in client.get("/employees/export/").content.decode("utf-8-sig")
-    client.force_login(erp.teacher)
+
+    principal = User.objects.create_user("exporter", school=erp.school, password="Test-pass-9842")
+    from django.contrib.auth.models import Group
+
+    principal.groups.add(Group.objects.get(name="Principal"))
+    client.force_login(principal)
     body = client.get("/employees/export/").content.decode("utf-8-sig")
     assert "Basic salary" not in body and "Nadia" in body
+
+    client.force_login(erp.teacher)
+    assert client.get("/employees/export/").status_code == 403
 
 
 def test_leave_balance_counts_only_approved_days(erp):

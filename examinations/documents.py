@@ -61,7 +61,7 @@ def attendance_for(enrollment):
     }
 
 
-def report_card_flowables(school, exam, enrollment, row, snapshot, style):
+def report_card_flowables(school, exam, enrollment, row, snapshot, style, verify_url=""):
     student = enrollment.student
     attendance = attendance_for(enrollment)
     facts = [
@@ -163,10 +163,11 @@ def report_card_flowables(school, exam, enrollment, row, snapshot, style):
             Paragraph("<font color='#b91c1c'><b>DRAFT</b> — these results are not published.</font>", style["normal"])
         )
     if snapshot:
+        where = escape(verify_url) if verify_url else "the school's report verification page"
         flow.append(
             Paragraph(
                 f"<font color='#475569' size='7.5'>Version {exam.publication_version} · "
-                f"verification code {snapshot.verification_code}</font>",
+                f"verify this card at {where}</font>",
                 style["cell"],
             )
         )
@@ -175,12 +176,12 @@ def report_card_flowables(school, exam, enrollment, row, snapshot, style):
     return flow
 
 
-def report_card_pdf(school, exam, enrollment, row, snapshot):
+def report_card_pdf(school, exam, enrollment, row, snapshot, verify_url=""):
     style = styles()
     return document(
         school,
         f"Report card · {exam.name}",
-        report_card_flowables(school, exam, enrollment, row, snapshot, style),
+        report_card_flowables(school, exam, enrollment, row, snapshot, style, verify_url),
         subtitle=f"{enrollment.student.full_name} · {enrollment.section}",
         filename=f"report-card-{enrollment.student.student_id}.pdf",
     )
@@ -190,7 +191,9 @@ def bulk_report_cards_pdf(school, exam, cards):
     """One PDF holding a card per student, ready for the printer."""
     style = styles()
     flow = []
-    for index, (enrollment, row, snapshot) in enumerate(cards):
+    for index, card in enumerate(cards):
+        enrollment, row, snapshot = card[0], card[1], card[2]
+        verify_url = card[3] if len(card) > 3 else ""
         if index:
             flow.append(PageBreak())
         flow.extend(
@@ -198,7 +201,7 @@ def bulk_report_cards_pdf(school, exam, cards):
                 school, f"Report card · {exam.name}", f"{enrollment.student.full_name} · {enrollment.section}", style
             )
         )
-        flow.extend(report_card_flowables(school, exam, enrollment, row, snapshot, style))
+        flow.extend(report_card_flowables(school, exam, enrollment, row, snapshot, style, verify_url))
     buffer = BytesIO()
     doc = SimpleDocTemplate(
         buffer,

@@ -9,7 +9,16 @@ from django.db.models import Q
 from core.roles import has_role
 
 
-def require_permission(permission):
+def require_permission(permission, *, also=""):
+    """
+    Guard a view with a Django permission.
+
+    `also` records, in a few words, any further narrowing the view does for itself —
+    "managers only", "own record only". Holding the permission is then necessary but not
+    sufficient, and the generated access matrix can say so instead of overstating what a
+    role can reach.
+    """
+
     def decorate(view):
         @login_required
         @wraps(view)
@@ -23,6 +32,7 @@ def require_permission(permission):
         # Declared rather than inferred, so tooling can report what a view requires
         # without having to guess from decorator closures.
         wrapped.erp_permission = permission or "(sign-in only)"
+        wrapped.erp_also = also
         return wrapped
 
     return decorate
@@ -32,26 +42,89 @@ def is_manager(user):
     return has_role(user, "Administrator", "Principal")
 
 
-def sections_for(user, school):
+def plans_timetable(user):
+    """Who the routine's planning tools are for: heads, and whoever edits the timetable."""
+    return is_manager(user) or user.has_perm("timetable.change_routineslot")
+
+
+def sections_for(user, school, academic_year=None):
+    """
+    The sections this person teaches, in one year.
+
+    Without a year this answers for the current session, which is what a register, a
+    dashboard and a class roster mean. Pass a year to authorise something historical —
+    a past exam's marks or report cards — and the answer comes from that year's teaching
+    assignments rather than from whatever the person happens to teach today.
+    """
+    from academics.models import AcademicYear, Section
+
+    qs = Section.objects.filter(school=school)
+    if is_manager(user):
+        return qs
+    employee = getattr(user, "employee_profile", None)
+    if employee is None:
+        return qs.none()
+    current = AcademicYear.current_for(school)
+    year = academic_year if academic_year is not None else current
+    if year is None:
+        return qs.none()
+    condition = Q(subject_teachers__teacher=employee, subject_teachers__academic_year=year)
+    # Class teacher is a standing role with no year of its own, so it only speaks for now.
+    if current is not None and year.pk == current.pk:
+        condition |= Q(class_teacher=employee)
+    return qs.filter(condition).distinct()
+
+
+def taught_sections(user, school):
+    """
+    Every section this person has ever been assigned to, across all years.
+
+    Used only to populate a picker for historical records; whatever is chosen is then
+    authorised against the year of the exam or report it belongs to.
+    """
     from academics.models import Section
 
     qs = Section.objects.filter(school=school)
     if is_manager(user):
         return qs
     employee = getattr(user, "employee_profile", None)
-    if employee:
-        return qs.filter(Q(class_teacher=employee) | Q(subject_teachers__teacher=employee)).distinct()
-    return qs.none()
+    if employee is None:
+        return qs.none()
+    return qs.filter(Q(class_teacher=employee) | Q(subject_teachers__teacher=employee)).distinct()
+
+
+def may_use_section(user, school, section, academic_year=None):
+    """Whether this person may act on a section's records for a given year."""
+    if is_manager(user):
+        return True
+    return sections_for(user, school, academic_year).filter(pk=section.pk).exists()
 
 
 def students_for(user, school):
-    from students.models import Student
+    """
+    The students this person may see.
+
+    A teacher sees the children currently on the roll of a section they currently teach:
+    active students, enrolled this year. A former pupil of a section they took three years
+    ago is not their business, and neither is one who has since left.
+    """
+    from students.models import Enrollment, Student
 
     qs = Student.objects.filter(school=school)
     if is_manager(user) or has_role(user, "Accountant"):
         return qs
     if has_role(user, "Teacher"):
-        return qs.filter(enrollments__section__in=sections_for(user, school)).distinct()
+        from academics.models import AcademicYear
+
+        year = AcademicYear.current_for(school)
+        if year is None:
+            return qs.none()
+        return qs.filter(
+            status=Student.Status.ACTIVE,
+            enrollments__academic_year=year,
+            enrollments__status=Enrollment.Status.ENROLLED,
+            enrollments__section__in=sections_for(user, school),
+        ).distinct()
     return qs.filter(Q(user=user) | Q(guardian_links__guardian__user=user)).distinct()
 
 

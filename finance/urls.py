@@ -24,6 +24,7 @@ urlpatterns = [
     path("payroll/new/", views.payroll_create, name="payroll_create"),
     path("payroll/run/", views.payroll_run, name="payroll_run"),
     path("payroll/<int:pk>/pay/", views.payroll_pay, name="payroll_pay"),
+    path("payroll/<int:pk>/reverse/", views.payroll_reverse, name="payroll_reverse"),
     path("payroll/<int:pk>.pdf", views.payslip, name="payslip"),
 ]
 urlpatterns += crud(

@@ -348,6 +348,15 @@ class FeePayment(SchoolScopedModel):
     def cancel(self, reason, user=None):
         if self.is_cancelled:
             return
+        # Checked before anything is written, so a refused cancellation leaves the receipt
+        # exactly as it was rather than marking it cancelled with no matching reversal.
+        from django.utils import timezone
+
+        from finance.models import assert_period_open
+
+        assert_period_open(self.school, self.date)
+        if self.journal_entry_id and self.journal_entry.status == "posted":
+            assert_period_open(self.school, timezone.localdate())
         self.is_cancelled = True
         self.cancel_reason = reason
         self.save(update_fields=["is_cancelled", "cancel_reason", "updated_at"])

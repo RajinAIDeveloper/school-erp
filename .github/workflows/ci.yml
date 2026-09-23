@@ -33,9 +33,13 @@ jobs:
         run: pytest -q --cov=. --cov-report=term:skip-covered --cov-fail-under=87
 
       - name: Tailwind stylesheet is up to date
+        env:
+          TAILWIND_VERSION: "4.3.3"
+          TAILWIND_SHA256: dc61b3ac6b8c9ca874c0cc4c57b2409791a64c5540404ca5f5367360babc313a
         run: |
           curl -fsSL -o tailwindcss \
-            https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64
+            "https://github.com/tailwindlabs/tailwindcss/releases/download/v${TAILWIND_VERSION}/tailwindcss-linux-x64"
+          echo "${TAILWIND_SHA256}  tailwindcss" | sha256sum -c -
           chmod +x tailwindcss
           ./tailwindcss -i static/src/input.css -o /tmp/app.css --minify
           # The committed stylesheet must match a fresh build, or the deployed UI drifts
@@ -61,8 +65,13 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - run: python -m playwright install --with-deps chromium
       - name: Build the stylesheet the browser test asserts against
+        env:
+          TAILWIND_VERSION: "4.3.3"
+          TAILWIND_SHA256: dc61b3ac6b8c9ca874c0cc4c57b2409791a64c5540404ca5f5367360babc313a
         run: |
-          curl -fsSL -o tailwindcss             https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64
+          curl -fsSL -o tailwindcss \
+            "https://github.com/tailwindlabs/tailwindcss/releases/download/v${TAILWIND_VERSION}/tailwindcss-linux-x64"
+          echo "${TAILWIND_SHA256}  tailwindcss" | sha256sum -c -
           chmod +x tailwindcss
           ./tailwindcss -i static/src/input.css -o static/css/app.css --minify
       - name: End-to-end

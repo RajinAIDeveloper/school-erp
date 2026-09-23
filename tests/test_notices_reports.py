@@ -125,11 +125,18 @@ def test_downloads_page_shows_the_latest_notices(erp):
     [
         ("Administrator", [b"Management overview", b"Payroll register", b"Teacher load"], []),
         ("Accountant", [b"Payroll register", b"Trial balance"], [b"Student attendance"]),
-        ("Teacher", [b"Student attendance", b"Teacher load"], [b"Payroll register", b"Trial balance"]),
+        # Teacher load is a planning report: the routine editor's, not every teacher's.
+        ("Teacher", [b"Student attendance"], [b"Payroll register", b"Trial balance", b"Teacher load"]),
+        ("Guardian", [], [b"Teacher load", b"Routine utilisation", b"Payroll register"]),
     ],
 )
 def test_reports_hub_offers_only_what_a_role_may_open(erp, role, expected, forbidden):
-    user = {"Administrator": erp.admin, "Accountant": erp.accountant, "Teacher": erp.teacher}[role]
+    user = {
+        "Administrator": erp.admin,
+        "Accountant": erp.accountant,
+        "Teacher": erp.teacher,
+        "Guardian": erp.parent,
+    }[role]
     client = Client()
     client.force_login(user)
     body = client.get("/reports/").content
@@ -139,13 +146,36 @@ def test_reports_hub_offers_only_what_a_role_may_open(erp, role, expected, forbi
         assert fragment not in body, (role, fragment)
 
 
-def test_every_hub_link_actually_opens(erp):
-    """A report list that offers a dead link is worse than a shorter list."""
+@pytest.mark.parametrize(
+    "role", ["Administrator", "Principal", "Accountant", "Teacher", "Staff", "Student", "Guardian"]
+)
+def test_every_hub_link_actually_opens_for_every_role(erp, role):
+    """
+    A report list that offers a dead link is worse than a shorter list.
+
+    Checked for all seven roles, because the hub and the destination used to disagree for
+    exactly the roles nobody tested: a family was shown Routine utilisation and got a 403.
+    """
+    from django.contrib.auth.models import Group
+
+    from users.models import User
+
+    user = {
+        "Administrator": erp.admin,
+        "Accountant": erp.accountant,
+        "Teacher": erp.teacher,
+        "Staff": erp.staff,
+        "Guardian": erp.parent,
+    }.get(role)
+    if user is None:
+        user = User.objects.create_user("hub-" + role, school=erp.school, password="Test-pass-9842")
+        user.groups.add(Group.objects.get(name=role))
     client = Client()
-    client.force_login(erp.admin)
+    client.force_login(user)
     response = client.get("/reports/")
-    for item in response.context["links"]:
-        assert client.get(item["url"]).status_code == 200, item["url"]
+    assert response.status_code == 200
+    for item in response.context["links"] + response.context["personal"]:
+        assert client.get(item["url"]).status_code == 200, (role, item["url"])
 
 
 def test_student_strength_counts_by_class_and_gender(admin_client, erp):

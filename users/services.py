@@ -3,8 +3,12 @@ Creating logins for people who already have a record.
 
 A school office should not have to invent a username, remember which role goes with a
 guardian, and then go back to the student record to link the two. Provisioning does all
-three in one step, and shows the temporary password exactly once: it is never stored in
-readable form, so if it is missed the account is simply reset.
+three in one step, and shows the temporary password exactly once.
+
+The account itself keeps only a hash. The one place a readable password exists is a
+credential SMS waiting in the queue, because it has to be sent to be useful; that body is
+cleared the moment delivery ends. Nothing is written to the session. If a password is
+missed, the account is reset rather than looked up.
 """
 
 import secrets
@@ -116,6 +120,9 @@ def _notify_new_login(school, profile, account, password):
         body=body,
         name=account.get_full_name(),
         dedupe_key=f"login:{account.pk}",
+        # The password has to reach the queue to be sent; it is cleared from the record as
+        # soon as the gateway answers, so the outbox is not a list of live credentials.
+        redact_after_send=True,
     )
 
 

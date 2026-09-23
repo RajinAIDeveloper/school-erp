@@ -153,7 +153,7 @@ def admission(request):
     return render(request, "students/admission.html", {"form": form, "page_title": "Admit a student"})
 
 
-@require_permission(None)
+@require_permission(None, also="own children or your own sections")
 def detail(request, pk):
     from attendance.models import StudentAttendance
     from examinations.models import Exam
@@ -292,23 +292,11 @@ def import_csv(request):
     form = ImportForm(request.POST or None, request.FILES or None)
     preview = None
     if request.method == "POST" and request.POST.get("confirm") and request.session.get(IMPORT_SESSION_KEY):
+        # The rows the preview checked, handed straight to the import. Writing them back
+        # out as CSV and parsing them again would be a second chance to disagree.
         rows = request.session.pop(IMPORT_SESSION_KEY)
         try:
-            import io
-
-            from django.core.files.uploadedfile import SimpleUploadedFile
-
-            buffer = io.StringIO()
-            import csv as csv_module
-
-            writer = csv_module.DictWriter(buffer, fieldnames=list(rows[0].keys()))
-            writer.writeheader()
-            writer.writerows(rows)
-            count = import_students(
-                request.school,
-                SimpleUploadedFile("students.csv", buffer.getvalue().encode("utf-8")),
-                user=request.user,
-            )
+            count = import_students(request.school, rows, user=request.user)
             messages.success(request, f"Imported {count} students.")
             return redirect("students:list")
         except ValidationError as exc:

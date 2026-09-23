@@ -37,13 +37,33 @@ def view_permission(callback):
     return "(sign-in only)" if hasattr(callback, "__wrapped__") else "(public)"
 
 
+def view_narrowing(callback):
+    """
+    Any further limit the view applies for itself, in the view's own words.
+
+    A permission alone overstates what several of these screens actually hand over: the
+    staff file is open to whoever owns it, a leave list shows a teacher only their own
+    requests. Those checks live inside the view and no amount of reading the permission
+    tables would reveal them, so the view declares them and the matrix repeats them.
+    """
+    view_class = getattr(callback, "view_class", None)
+    if view_class is not None:
+        return getattr(view_class, "erp_also", "")
+    return getattr(callback, "erp_also", "")
+
+
 def walk(patterns, prefix="", namespace=""):
     for pattern in patterns:
         if isinstance(pattern, URLResolver):
             yield from walk(pattern.url_patterns, prefix + str(pattern.pattern), pattern.namespace or namespace)
         elif isinstance(pattern, URLPattern):
             name = f"{namespace}:{pattern.name}" if namespace else (pattern.name or "")
-            yield prefix + str(pattern.pattern), name, view_permission(pattern.callback)
+            yield (
+                prefix + str(pattern.pattern),
+                name,
+                view_permission(pattern.callback),
+                view_narrowing(pattern.callback),
+            )
 
 
 class Command(BaseCommand):
@@ -62,15 +82,15 @@ class Command(BaseCommand):
         }
         roles = [role for role in ALL_ROLES if role in groups]
         rows = [
-            (url, name, permission)
-            for url, name, permission in walk(get_resolver().url_patterns)
+            (url, name, permission, also)
+            for url, name, permission, also in walk(get_resolver().url_patterns)
             if not url.startswith(SKIP_PREFIXES)
         ]
 
         if options["format"] == "markdown":
-            self.stdout.write("| URL | View | Permission | " + " | ".join(roles) + " |")
-            self.stdout.write("|---|---|---|" + "|".join([":-:"] * len(roles)) + "|")
-        for url, name, permission in sorted(rows):
+            self.stdout.write("| URL | View | Permission | Also enforced | " + " | ".join(roles) + " |")
+            self.stdout.write("|---|---|---|---|" + "|".join([":-:"] * len(roles)) + "|")
+        for url, name, permission, also in sorted(rows):
             marks = []
             for role in roles:
                 if permission == "(public)":
@@ -80,13 +100,17 @@ class Command(BaseCommand):
                 else:
                     marks.append("Y" if permission in groups[role] else ".")
             if options["format"] == "markdown":
-                self.stdout.write(f"| /{url} | {name} | `{permission}` | " + " | ".join(marks) + " |")
+                self.stdout.write(f"| /{url} | {name} | `{permission}` | {also or '-'} | " + " | ".join(marks) + " |")
             else:
-                self.stdout.write(f"/{url:55} {permission:40} " + " ".join(marks))
+                self.stdout.write(f"/{url:55} {permission:40} {also or '-':45} " + " ".join(marks))
 
         self.stdout.write("")
         # Deliberately ASCII: this output is routinely redirected to a file on
         # Windows, where the console encoding would mangle anything else.
         self.stdout.write(
             "Y = allowed | . = 403 | o = any signed-in user, scoped inside the view | * = no sign-in needed."
+        )
+        self.stdout.write(
+            "A Y is necessary, not always sufficient: where 'Also enforced' names a further limit, "
+            "the view applies it to the records themselves."
         )

@@ -8,7 +8,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from academics.models import AcademicYear, Section, Subject
-from core.access import is_manager, require_permission, sections_for, students_for
+from core.access import is_manager, plans_timetable, require_permission, sections_for, students_for
 from core.exports import spreadsheet
 from core.forms import TailwindFormMixin
 from core.pdf import table_document
@@ -40,9 +40,20 @@ class RoutineFilter(TailwindFormMixin, forms.Form):
             self.fields["teacher"].queryset = self.fields["teacher"].queryset.filter(user=user)
 
 
-def _pick(queryset, raw):
-    """A select that was left on its blank option must not become a lookup."""
-    return queryset.filter(pk=int(raw)).first() if str(raw).isdigit() else None
+def _pick(queryset, raw, required=True):
+    """
+    Resolve a select's value.
+
+    Blank means "none chosen". A value that is present but matches nothing is a problem,
+    not a blank: returning None there would silently clear a period that the person was
+    trying to set. Optional fields answer False so the caller can tell the two apart.
+    """
+    if not str(raw).strip():
+        return None
+    chosen = queryset.filter(pk=int(raw)).first() if str(raw).isdigit() else None
+    if chosen is None and not required:
+        return False
+    return chosen
 
 
 def visible_slots(request, queryset):
@@ -56,7 +67,7 @@ def visible_slots(request, queryset):
     ).distinct()
 
 
-@require_permission("timetable.view_routineslot")
+@require_permission("timetable.view_routineslot", also="own class or children unless a manager")
 def routine(request):
     """The week as a grid, for a class or for a teacher."""
     form = RoutineFilter(request.GET or None, school=request.school, user=request.user)
@@ -152,17 +163,20 @@ def grid_edit(request):
     )
     section = get_object_or_404(Section, school=request.school, pk=section_pk) if str(section_pk).isdigit() else None
     periods = all_periods(request.school)
-    subjects = Subject.objects.filter(school=request.school).order_by("name")
+    # Retired master data stays on the historical rows that use it, but is not offered
+    # for a new one: a school that closed a room should not be able to book it again.
+    subjects = Subject.objects.filter(school=request.school, is_active=True).order_by("name")
     teachers = Employee.objects.filter(
         school=request.school, employee_type=Employee.Type.TEACHER, status=Employee.Status.ACTIVE
     ).order_by("first_name")
-    rooms = Room.objects.filter(school=request.school).order_by("name")
+    rooms = Room.objects.filter(school=request.school, is_active=True).order_by("name")
     cell_errors = {}
 
     if request.method == "POST" and section and year:
         cells = {}
+        cell_errors = {}
         for period in periods:
-            if period.is_break:
+            if period.is_break or not period.is_active:
                 continue
             for weekday, _label in WEEKDAYS:
                 prefix = f"{weekday}-{period.pk}"
@@ -170,17 +184,31 @@ def grid_edit(request):
                 if not subject_pk:
                     cells[(weekday, period.pk)] = None
                     continue
-                cells[(weekday, period.pk)] = {
-                    "subject": _pick(subjects, subject_pk),
-                    "teacher": _pick(teachers, request.POST.get(f"{prefix}-teacher", "")),
-                    "room": _pick(rooms, request.POST.get(f"{prefix}-room", "")),
-                }
+                # A non-blank value that resolves to nothing is a tampered or stale form,
+                # not an instruction to clear the period. The whole grid is refused.
+                subject = _pick(subjects, subject_pk)
+                if subject is None:
+                    cell_errors[(weekday, period.pk)] = "That subject is not available. Reload the page."
+                    continue
+                teacher = _pick(teachers, request.POST.get(f"{prefix}-teacher", ""), required=False)
+                room = _pick(rooms, request.POST.get(f"{prefix}-room", ""), required=False)
+                if teacher is False:
+                    cell_errors[(weekday, period.pk)] = "That teacher is not available. Reload the page."
+                    continue
+                if room is False:
+                    cell_errors[(weekday, period.pk)] = "That room is not available. Reload the page."
+                    continue
+                cells[(weekday, period.pk)] = {"subject": subject, "teacher": teacher, "room": room}
+        if cell_errors:
+            messages.error(request, "Nothing was saved. The cells marked below could not be read.")
+            cells = None
         try:
-            saved, cleared = save_week(
-                school=request.school, user=request.user, academic_year=year, section=section, cells=cells
-            )
-            messages.success(request, f"Saved {saved} period(s); cleared {cleared}.")
-            return redirect(f"/routine/?academic_year={year.pk}&section={section.pk}")
+            if cells is not None:
+                saved, cleared = save_week(
+                    school=request.school, user=request.user, academic_year=year, section=section, cells=cells
+                )
+                messages.success(request, f"Saved {saved} period(s); cleared {cleared}.")
+                return redirect(f"/routine/?academic_year={year.pk}&section={section.pk}")
         except WeekGridError as exc:
             cell_errors = exc.errors
             messages.error(request, "Nothing was saved. The cells marked below clash with another class.")
@@ -204,7 +232,8 @@ def grid_edit(request):
                     "error": cell_errors.get((weekday, period.pk)),
                 }
             )
-        rows.append({"period": period, "cells": cells})
+        # A retired period still shows what it used to hold, but takes nothing new.
+        rows.append({"period": period, "cells": cells, "retired": not period.is_active})
 
     return render(
         request,
@@ -212,7 +241,9 @@ def grid_edit(request):
         {
             "year": year,
             "section": section,
-            "sections": Section.objects.filter(school=request.school).select_related("class_level"),
+            # Retired sections keep their history on the routine screen, but a new week
+            # is never built into one.
+            "sections": Section.objects.filter(school=request.school, is_active=True).select_related("class_level"),
             "years": AcademicYear.objects.filter(school=request.school),
             "weekdays": WEEKDAYS,
             "rows": rows,
@@ -224,10 +255,17 @@ def grid_edit(request):
     )
 
 
-@require_permission("timetable.view_routineslot")
+@require_permission("timetable.view_routineslot", also="timetable editors only")
 def free_teachers_json(request):
     """Who is free in a given slot, for the editor's helper."""
-    year = AcademicYear.current_for(request.school)
+    if not plans_timetable(request.user):
+        raise PermissionDenied("This helper is for staff who plan the timetable.")
+    raw_year = request.GET.get("academic_year", "")
+    year = (
+        AcademicYear.objects.filter(school=request.school, pk=raw_year).first()
+        if str(raw_year).isdigit()
+        else AcademicYear.current_for(request.school)
+    )
     weekday = request.GET.get("weekday", "")
     period = Period.objects.filter(school=request.school, pk=request.GET.get("period", 0)).first()
     if not (year and period and weekday.isdigit()):
@@ -236,10 +274,10 @@ def free_teachers_json(request):
     return JsonResponse([{"id": t.pk, "name": t.full_name} for t in rows], safe=False)
 
 
-@require_permission("timetable.view_routineslot")
+@require_permission("timetable.view_routineslot", also="timetable editors only")
 def utilisation(request):
     """Room use and teacher load for the current year."""
-    if not is_manager(request.user) and not request.user.has_perm("timetable.change_routineslot"):
+    if not plans_timetable(request.user):
         raise PermissionDenied("This report is for staff who plan the timetable.")
     year = AcademicYear.current_for(request.school)
     rooms = room_utilisation(request.school, year) if year else []

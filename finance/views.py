@@ -1,6 +1,6 @@
 """Accounts: journals, ledgers, financial statements and payroll."""
 
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from django import forms
 from django.contrib import messages
@@ -23,6 +23,7 @@ from .services import (
     post_journal,
     record_opening_balances,
     reverse_journal,
+    reverse_payroll,
 )
 
 
@@ -143,6 +144,12 @@ class CloseBooksForm(TailwindFormMixin, forms.Form):
     through = forms.DateField(label="Close the books through")
 
 
+class OpeningDateForm(TailwindFormMixin, forms.Form):
+    """A typed date is parsed here, so the service never receives a raw string."""
+
+    date = forms.DateField(label="As at", initial=timezone.localdate)
+
+
 @require_permission("finance.view_journalentry")
 def dashboard(request):
     school = request.school
@@ -248,23 +255,30 @@ def reverse_entry(request, pk):
 @require_permission("finance.add_journalentry")
 def opening_balances(request):
     accounts = list(Account.objects.filter(school=request.school, is_active=True).exclude(code="3010").order_by("code"))
+    date_form = OpeningDateForm(request.POST or None)
     if request.method == "POST":
         balances = []
         for account in accounts:
             raw = request.POST.get(f"amount-{account.pk}", "").strip()
             if raw:
                 try:
-                    balances.append((account, Decimal(raw)))
-                except Exception:  # noqa: BLE001 - a typed figure that is not a number
+                    amount = Decimal(raw)
+                    if not amount.is_finite():
+                        raise InvalidOperation(raw)
+                except (InvalidOperation, ValueError, ArithmeticError):
                     messages.error(request, f"{account}: '{raw}' is not an amount.")
                     balances = None
                     break
+                balances.append((account, amount))
+        if balances is not None and not date_form.is_valid():
+            messages.error(request, "Enter the date these balances are as at, as YYYY-MM-DD.")
+            balances = None
         if balances is not None:
             try:
                 entry = record_opening_balances(
                     school=request.school,
                     user=request.user,
-                    date=request.POST.get("date") or timezone.localdate(),
+                    date=date_form.cleaned_data["date"],
                     balances=balances,
                 )
                 messages.success(request, f"Opening balances posted as {entry}.")
@@ -274,7 +288,12 @@ def opening_balances(request):
     return render(
         request,
         "finance/opening_balances.html",
-        {"accounts": accounts, "today": timezone.localdate(), "page_title": "Opening balances"},
+        {
+            "accounts": accounts,
+            "date_form": date_form,
+            "today": timezone.localdate(),
+            "page_title": "Opening balances",
+        },
     )
 
 
@@ -518,6 +537,28 @@ def payroll_pay(request, pk):
             method=request.POST.get("method", "cash"),
         )
         messages.success(request, f"Recorded the salary payment for {row.employee.full_name}.")
+    except ValidationError as exc:
+        messages.error(request, " ".join(exc.messages))
+    return redirect("finance:payroll")
+
+
+@require_permission("finance.change_payroll")
+@require_POST
+def payroll_reverse(request, pk):
+    """Undo a salary payment from payroll, which is where the ledger sends you."""
+    row = get_object_or_404(Payroll, school=request.school, pk=pk)
+    try:
+        reverse_payroll(
+            school=request.school,
+            user=request.user,
+            payroll=row,
+            reason=request.POST.get("reason", ""),
+        )
+        messages.success(
+            request,
+            f"Reversed the salary payment for {row.employee.full_name}. "
+            "Both entries stay on the ledger; the row can be paid again.",
+        )
     except ValidationError as exc:
         messages.error(request, " ".join(exc.messages))
     return redirect("finance:payroll")

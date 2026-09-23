@@ -58,6 +58,18 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+  // Mark a whole class absent, or clear the lot. Scoped to the button's own form, and
+  // clearing a student's absence also clears the score box that the absence disabled.
+  document.querySelectorAll("[data-check-all]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const scope = btn.closest("form") || document;
+      const absent = btn.dataset.checkAll === "absent";
+      scope.querySelectorAll("input[data-absent]:not([disabled])").forEach((box) => {
+        box.checked = absent;
+      });
+    });
+  });
+
   // Confirm dialogs
   document.querySelectorAll("form[data-confirm]").forEach((f) => {
     f.addEventListener("submit", (e) => { if (!confirm(f.dataset.confirm)) e.preventDefault(); });

@@ -7,12 +7,12 @@ ones, and says exactly how to put them back — a backup nobody knows how to res
 not a backup.
 """
 
+import os
 import shutil
 import subprocess
 import tarfile
 from datetime import datetime
 from pathlib import Path
-from urllib.parse import urlparse
 
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
@@ -61,18 +61,32 @@ class Command(BaseCommand):
             return target
         if "postgresql" in engine:
             target = folder / "database.sql"
-            url = (
-                f"postgresql://{config['USER']}:{config['PASSWORD']}@{config['HOST']}:{config['PORT']}/{config['NAME']}"
-            )
+            # Arguments, not a URI. A connection URI puts the password in the process
+            # list, where every other user on the machine can read it, and it also has to
+            # be percent-encoded: a password containing @ or / silently builds a URI that
+            # points somewhere else. PGPASSWORD is read by libpq and never appears in ps.
+            command = [
+                "pg_dump",
+                "--no-password",
+                "--format=plain",
+                f"--host={config['HOST'] or 'localhost'}",
+                f"--port={config['PORT'] or 5432}",
+                f"--username={config['USER']}",
+                f"--dbname={config['NAME']}",
+            ]
+            environment = {**os.environ}
+            if config.get("PASSWORD"):
+                environment["PGPASSWORD"] = config["PASSWORD"]
             try:
                 with target.open("wb") as handle:
-                    subprocess.run(["pg_dump", url], stdout=handle, check=True)
+                    subprocess.run(command, stdout=handle, stderr=subprocess.PIPE, env=environment, check=True)
             except FileNotFoundError as exc:
                 raise CommandError("pg_dump is not on PATH; install the PostgreSQL client tools.") from exc
             except subprocess.CalledProcessError as exc:
-                raise CommandError(f"pg_dump failed: {exc}") from exc
-            # Never leave credentials in a file the backup folder might be shared from.
-            _ = urlparse(url)
+                # The message may quote the connection; the password is not in it, but
+                # keep the report to what pg_dump itself said.
+                detail = (exc.stderr or b"").decode("utf-8", errors="replace").strip()
+                raise CommandError(f"pg_dump failed: {detail or exc}") from exc
             return target
         raise CommandError(f"Backing up {engine} is not supported here.")
 

@@ -15,6 +15,7 @@ services:
 
   web:
     build: .
+    restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
@@ -31,6 +32,14 @@ services:
       - backups:/app/backups
     ports:
       - "8000:8000"
+    healthcheck:
+      # /healthz/ answers only once migrations have run and the cache table exists, which
+      # is exactly the readiness the worker is waiting on.
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/healthz/', timeout=5).status == 200 else 1)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
     # createcachetable is idempotent and needed for the shared login rate limit.
     command: >
       sh -c "python manage.py migrate --noinput &&
@@ -40,12 +49,20 @@ services:
 
   worker:
     build: .
+    restart: unless-stopped
     depends_on:
-      - web
+      db:
+        condition: service_healthy
+      web:
+        condition: service_healthy
     environment: *erp_env
     volumes:
       - media:/app/media
     # Sends whatever the web app has queued. Nothing sends inside a request.
+    #
+    # It waits for the web container to report healthy, not merely to start: the web
+    # container is the one that runs the migrations and creates the cache table, and a
+    # worker that starts first would query tables that do not exist yet.
     command: python manage.py process_sms --loop --interval 30
 
 volumes:

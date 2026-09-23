@@ -31,13 +31,17 @@
       </thead>
       <tbody>
         {% for row in rows %}
-          <tr class="{% if row.period.is_break %}bg-slate-50{% endif %}">
+          <tr class="{% if row.period.is_break or row.retired %}bg-slate-50{% endif %}">
             <td class="align-top">
               <p class="font-medium">{{ row.period.name }}</p>
               <p class="text-xs text-slate-500">{{ row.period.start_time|time:"H:i" }}–{{ row.period.end_time|time:"H:i" }}</p>
             </td>
             {% if row.period.is_break %}
               <td colspan="{{ weekdays|length }}" class="text-center text-sm italic text-slate-500">Break — not taught</td>
+            {% elif row.retired %}
+              <td colspan="{{ weekdays|length }}" class="text-center text-sm italic text-slate-500">
+                This period has been retired. What it already holds is kept; nothing new can be set in it.
+              </td>
             {% else %}
               {% for cell in row.cells %}
                 <td class="align-top {% if cell.error %}bg-red-50{% endif %}">

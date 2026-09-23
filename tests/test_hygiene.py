@@ -174,7 +174,7 @@ def test_the_public_surface_is_exactly_what_we_intend(erp):
 
     public = {
         f"/{url}"
-        for url, _name, permission in walk(get_resolver().url_patterns)
+        for url, _name, permission, _also in walk(get_resolver().url_patterns)
         if permission == "(public)" and not url.startswith(SKIP_PREFIXES)
     }
     assert public == {

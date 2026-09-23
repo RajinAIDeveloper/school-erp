@@ -3,6 +3,7 @@
 from datetime import date, time
 from decimal import Decimal
 
+import pytest
 from django.contrib.auth.models import Group
 from django.test import Client
 
@@ -59,18 +60,93 @@ def test_teacher_dashboard_names_the_registers_still_missing(erp):
     client.force_login(erp.teacher)
     body = client.get("/").content
     assert b"Registers" in body
+    if is_holiday(erp.school, date.today()):
+        # A closed day has no register to take, which the dashboard says instead of
+        # listing sections as outstanding.
+        assert b"closed today" in body
+        return
     assert b"Take now" in body
     assert b"Class 1 - A" in body
 
-    if is_holiday(erp.school, date.today()):
-        return  # a closed day has no register to take, which the dashboard says instead
     save_register(
         school=erp.school,
         user=erp.teacher,
         day=date.today(),
         entries=[(erp.enrollment, "present", "", None, None)],
     )
-    assert b"Taken" in client.get("/").content
+    assert b"Complete" in client.get("/").content
+
+
+def test_teacher_dashboard_calls_a_half_taken_register_partial(erp):
+    """One row out of two is not a register that has been taken."""
+    from holidays.models import is_holiday
+
+    if is_holiday(erp.school, date.today()):
+        pytest.skip("the school is closed today, so no register is expected")
+    other = Student.objects.create(
+        school=erp.school,
+        student_id="PART-1",
+        first_name="Second",
+        gender="M",
+        date_of_birth=date(2016, 1, 1),
+        admission_date=date(2026, 1, 1),
+    )
+    Enrollment.objects.create(
+        school=erp.school,
+        student=other,
+        academic_year=erp.year,
+        class_level=erp.level,
+        section=erp.section,
+        roll_number=2,
+    )
+    save_register(
+        school=erp.school,
+        user=erp.teacher,
+        day=date.today(),
+        entries=[(erp.enrollment, "present", "", None, None)],
+    )
+    client = Client()
+    client.force_login(erp.teacher)
+    body = client.get("/").content
+    assert b"1 of 2 recorded" in body
+    assert b"Finish" in body
+    assert b"Complete" not in body
+
+
+def test_a_manager_sees_attendance_against_the_roll_not_the_rows(erp):
+    """One child marked present in a class of three is 33 percent, not 100."""
+    from holidays.models import is_holiday
+
+    if is_holiday(erp.school, date.today()):
+        pytest.skip("the school is closed today, so no register is expected")
+    for roll in (2, 3):
+        student = Student.objects.create(
+            school=erp.school,
+            student_id=f"ROLL-{roll}",
+            first_name=f"Pupil {roll}",
+            gender="M",
+            date_of_birth=date(2016, 1, 1),
+            admission_date=date(2026, 1, 1),
+        )
+        Enrollment.objects.create(
+            school=erp.school,
+            student=student,
+            academic_year=erp.year,
+            class_level=erp.level,
+            section=erp.section,
+            roll_number=roll,
+        )
+    save_register(
+        school=erp.school,
+        user=erp.admin,
+        day=date.today(),
+        entries=[(erp.enrollment, "present", "", None, None)],
+    )
+    client = Client()
+    client.force_login(erp.admin)
+    body = client.get("/").content.decode()
+    assert "33%" in body
+    assert "1 of 3 on the roll recorded" in body
 
 
 def test_teacher_dashboard_lists_papers_still_to_mark(erp):

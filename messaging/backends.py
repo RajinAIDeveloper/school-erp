@@ -13,7 +13,6 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from django.conf import settings
-from django.utils import timezone
 from django.utils.module_loading import import_string
 
 log = logging.getLogger(__name__)
@@ -24,18 +23,21 @@ class BaseSMSBackend:
         raise NotImplementedError
 
     def deliver(self, message):
+        """
+        Send one message and record how it went.
+
+        The outcome goes through the message's own `finish`, which clears the body of
+        anything that was a secret once delivery has actually ended. Provider failures
+        are recorded, never raised: the caller is a worker, not a user waiting.
+        """
         from .models import SMSMessage
 
         try:
             response = self.send(message)
-            message.status = SMSMessage.Status.SENT
-            message.provider_response = str(response)[:2000]
-            message.sent_at = timezone.now()
-        except Exception as exc:  # noqa: BLE001 - provider failures must never crash the request
+            message.finish(SMSMessage.Status.SENT, response)
+        except Exception as exc:  # noqa: BLE001 - provider failures must never crash the worker
             log.exception("SMS send failed")
-            message.status = SMSMessage.Status.FAILED
-            message.provider_response = str(exc)[:2000]
-        message.save(update_fields=["status", "provider_response", "sent_at", "updated_at"])
+            message.finish(SMSMessage.Status.FAILED, exc)
         return message.status == SMSMessage.Status.SENT
 
 

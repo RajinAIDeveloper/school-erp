@@ -1,15 +1,16 @@
 # Build status
 
 Last updated: 23 September 2026. This records what was built against
-[the audit and plan](AUDIT_AND_UPDATE_PLAN.md), and what deliberately was not.
+[the audit and plan](AUDIT_AND_UPDATE_PLAN.md), what a later re-audit found and fixed, and what
+deliberately was not built.
 
 ## Where it stands
 
 | Measure | Before | Now |
 |---|---:|---:|
-| Tests passing | 148 | 452 (+1 browser) |
+| Tests passing | 148 | 548 (+1 browser) |
 | Python line coverage | 87 % | 92 % |
-| Lint / format | none configured | ruff clean, 181 files formatted |
+| Lint / format | none configured | ruff clean, 186 files |
 | `check --deploy` | 2 warnings | clean at `--fail-level WARNING` |
 | Dead templates | ~30 | 0 (a test now fails if one appears) |
 | Screens rendering on a fresh seeded database | — | 37 / 37 |
@@ -43,6 +44,51 @@ All sixteen are complete, each its own commit.
 | 14 | Notices & reports | Noticeboard with audiences, shared audience rule, five new reports |
 | 15 | Production | Docker, compose, WhiteNoise, shared cache, health check, backups, `role_matrix`, runbook |
 
+## What a re-audit found
+
+The build above passed its own tests. A second pass over it, looking for the cases those tests
+did not describe, found twenty-odd defects; they are fixed, and `tests/test_audit_fixes.py`
+names each one as a way the software was wrong rather than a feature it has. The ones worth
+knowing about:
+
+- **A leave approval destroyed manual attendance.** Approving leave over a day already marked
+  present took ownership of that row and rewrote it, then deleted it outright when the approval
+  was withdrawn. Approval now creates rows only for days with no entry, reports the days it left
+  alone, and withdrawal removes only what it created.
+- **A closed accounting period had three ways round it.** Cancelling a fee receipt, reversing a
+  journal, and the two-line entry helper all wrote without checking. Worse, a refused
+  cancellation still marked the receipt cancelled, leaving a receipt with no reversal behind it.
+  The lock is now one function on the model layer, checked before anything is written.
+- **There was no way to undo a salary.** The ledger refused to reverse a salary entry and said
+  to do it from payroll, where no such workflow existed. There is one now.
+- **A teacher held the whole staff roster**, including every colleague's phone, NID and
+  qualification, and could export it. Removed; their own file is still one click away.
+- **A teacher's student list included anyone ever enrolled in a section they are ever assigned
+  to**, including pupils who left years ago. It is now this year's active roll of the sections
+  they currently teach, with historical exam access authorised against the exam's own year.
+- **Families could open the teacher-load report** and the free-teacher helper, both of which
+  list staff names and workloads. Both are now for the people who plan the timetable, and the
+  reports hub uses the same predicate as the destination, so it never offers a 403.
+- **Temporary passwords were written to the session table**, which is signed but not encrypted.
+  They now live in one response; the bulk CSV is built in the browser.
+- **The SMS worker could strand a message for ever.** A crash after claiming left it
+  "processing" with nothing to reclaim it. Claims now expire, retries back off, and the attempt
+  is counted at claim time so a message that kills the worker still runs out of attempts.
+- **The import preview and the import disagreed.** The preview checked the student and little
+  else, so confirmation could drop an enrollment, replace a roll the operator supplied, accept
+  a relation that is not one, or fail on a duplicate roll. Everything is validated up front and
+  the write consumes what the preview checked.
+- **"Register taken" meant one row existed**, and a class of thirty with one child marked showed
+  100% attendance. Registers are now complete, partial or missing against the actual roll.
+- **The iCalendar export replaced a newline with a newline**, so a multi-line holiday
+  description produced a file real calendar clients reject. Escaping and folding now follow
+  RFC 5545.
+- **15 August was imported as a public holiday** after the government cancelled it. The
+  fixed-date list is versioned by year and cites its notices, so importing 2023 still reproduces
+  the calendar that year was kept to.
+- **The health probe returned raw exception text** on an endpoint with no sign-in, and
+  `pg_dump` took the password on the command line.
+
 ## Notable decisions
 
 - **Ownership, not blanket permissions.** A staff member reads their own file without being
@@ -60,7 +106,10 @@ All sixteen are complete, each its own commit.
 - **Off by default where it costs money or reaches a family.** All five SMS notification
   types start switched off, and a guardian can be opted out individually.
 - **Generated documentation.** `manage.py role_matrix` prints the access matrix from the URLs
-  and the groups, so it cannot drift from the code.
+  and the groups, and a test compares the committed file with a fresh run, so it cannot drift
+  from the code. Where a view narrows access beyond its declared permission, it says so in the
+  decorator and the matrix repeats it, rather than the table quietly overstating what a role
+  can reach.
 - **A guardian with several children is the ordinary case, not an edge case.** One login
   covers the family, home totals the fees across children, and a class notice names each
   child rather than the first one alphabetically. Messages are deduplicated on what the
@@ -83,6 +132,16 @@ API and an app belong after the web flows have been used by a real school for a 
 
 - **SMS delivery means the gateway accepted the request.** Provider delivery receipts are not
   integrated, so "sent" is not proof a handset received it. The gateway test screen says so.
+  Nor can delivery be exactly-once: these gateways offer no idempotency key, so a worker killed
+  between the gateway accepting a message and the answer being recorded will retry it. The claim
+  and backoff machinery narrows that window; it cannot close it.
+- **A credential SMS holds a readable password until it is delivered.** It has to, to be sent.
+  The body is cleared the moment delivery ends, but a school that queues credential messages and
+  never runs the worker is storing passwords in its outbox.
+- **Guardian phone numbers are canonicalised, not merged.** Existing records were rewritten to
+  one spelling by a migration, which reports any two guardians of a school that then share a
+  number. Whether those are one family entered twice or two people sharing a handset is a
+  question only the office can answer, so nothing is merged automatically.
 - **Bangla PDF typography is wired and verified in code, not on paper.** Noto Sans Bengali
   (OFL) ships in `static/fonts/`; tests assert it registers, that every assigned Bengali
   letter maps to a real glyph, that a report card with a Bangla name embeds the face, and

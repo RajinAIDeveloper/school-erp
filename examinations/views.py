@@ -9,7 +9,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from academics.models import ClassLevel, Section
-from core.access import is_manager, require_permission, sections_for, students_for
+from core.access import is_manager, may_use_section, require_permission, sections_for, students_for, taught_sections
 from core.exports import spreadsheet
 from core.forms import TailwindFormMixin
 from core.generic import ERPListView
@@ -27,6 +27,18 @@ from .services import (
     save_mark,
     save_marks,
 )
+
+
+def verification_url(request, snapshot):
+    """
+    The address printed on a report card, in full.
+
+    A code on its own is no use to the employer or college holding the card: they have to
+    know where to type it. This is the whole link, so it can be read off paper.
+    """
+    if snapshot is None:
+        return ""
+    return request.build_absolute_uri(reverse("examinations:verify", args=[snapshot.verification_code]))
 
 
 class ExamListView(ERPListView):
@@ -111,7 +123,7 @@ class MarkForm(TailwindFormMixin, forms.Form):
     expected_version = forms.IntegerField(min_value=0, widget=forms.HiddenInput)
 
 
-@require_permission("examinations.view_mark")
+@require_permission("examinations.view_mark", also="assigned subjects and sections only")
 def marks(request):
     """
     A grid: every student of the section on one screen, saved in one submission.
@@ -190,6 +202,11 @@ def marks(request):
             )
 
     entered = sum(1 for row in rows if row["score"] is not None or row["absent"])
+    scored = [row["score"] for row in rows if row["score"] is not None and not row["absent"]]
+    # Averaged over the students who actually sat the paper, so an absence does not drag
+    # the class down and a blank row does not count as a zero.
+    average = (sum(scored) / len(scored)).quantize(Decimal("0.01")) if scored else None
+    passed = sum(1 for score in scored if schedule and score >= schedule.pass_marks) if scored and schedule else 0
     return render(
         request,
         "examinations/marks.html",
@@ -201,6 +218,14 @@ def marks(request):
             "locked": locked,
             "entered": entered,
             "missing": len(rows) - entered,
+            "average": average,
+            "average_percent": (
+                (average * 100 / schedule.full_marks).quantize(Decimal("0.1"))
+                if average is not None and schedule and schedule.full_marks
+                else None
+            ),
+            "sat": len(scored),
+            "passed": passed,
             "page_title": "Mark entry",
         },
     )
@@ -246,15 +271,29 @@ def mark_save(request):
 
 
 class ResultsFilter(TailwindFormMixin, forms.Form):
+    term = forms.ModelChoiceField(
+        queryset=None, required=False, help_text="Narrows the exam list to one term of the year."
+    )
     exam = forms.ModelChoiceField(queryset=None)
     class_level = forms.ModelChoiceField(queryset=None)
     section = forms.ModelChoiceField(queryset=None, required=False, help_text="Leave blank for a class-wide sheet.")
 
     def __init__(self, *args, user, school, **kwargs):
         super().__init__(*args, **kwargs)
+        from academics.models import Term
+
+        self.user, self.school = user, school
+        self.fields["term"].queryset = Term.objects.filter(school=school).select_related("academic_year")
         self.fields["exam"].queryset = Exam.objects.filter(school=school)
+        # A school running three terms a year accumulates exams quickly; picking a term
+        # shortens the exam list to the ones that belong to it.
+        raw_term = (self.data.get("term") or "").strip()
+        if raw_term.isdigit():
+            self.fields["exam"].queryset = self.fields["exam"].queryset.filter(term_id=int(raw_term))
         self.fields["class_level"].queryset = ClassLevel.objects.filter(school=school)
-        self.fields["section"].queryset = sections_for(user, school)
+        # Any section this person has taught may be picked; whether they may see it for
+        # the chosen exam is decided below, against that exam's own year.
+        self.fields["section"].queryset = taught_sections(user, school)
         if not is_manager(user):
             self.fields["section"].required = True
 
@@ -262,15 +301,23 @@ class ResultsFilter(TailwindFormMixin, forms.Form):
         d = super().clean()
         if d.get("section") and d.get("class_level") and d["section"].class_level_id != d["class_level"].pk:
             raise forms.ValidationError("Section does not belong to this class.")
+        exam, section, term = d.get("exam"), d.get("section"), d.get("term")
+        if exam and term and exam.term_id != term.pk:
+            self.add_error("exam", f"{exam.name} does not belong to {term}.")
+        if exam and section and not may_use_section(self.user, self.school, section, exam.academic_year):
+            raise forms.ValidationError(
+                f"You did not teach {section} in {exam.academic_year}, so these results are not yours to read."
+            )
         return d
 
 
-@require_permission("examinations.view_mark")
+@require_permission("examinations.view_mark", also="own sections only")
 def results(request):
     form = ResultsFilter(request.GET or None, user=request.user, school=request.school)
     sheet = None
     if form.is_bound and form.is_valid():
-        sheet = build_result_sheet(**form.cleaned_data)
+        chosen = {key: value for key, value in form.cleaned_data.items() if key != "term"}
+        sheet = build_result_sheet(**chosen)
         fmt = request.GET.get("format")
         if fmt in ("csv", "xlsx", "pdf"):
             subjects = [c["subject"] for c in sheet["rows"][0]["cells"]] if sheet["rows"] else []
@@ -377,7 +424,7 @@ def report_card(request, exam_pk, student_pk):
     if request.GET.get("format") == "pdf":
         from .documents import report_card_pdf
 
-        return report_card_pdf(request.school, exam, enr, row, snap)
+        return report_card_pdf(request.school, exam, enr, row, snap, verify_url=verification_url(request, snap))
     return render(
         request,
         "examinations/report_card.html",
@@ -392,7 +439,9 @@ def verify(request, code):
     It confirms the school, the version and whether that version is still current, and
     deliberately names no child and no mark: anyone may be holding the code.
     """
-    snapshot = get_object_or_404(ResultSnapshot.objects.select_related("exam", "school"), verification_code=code)
+    snapshot = get_object_or_404(
+        ResultSnapshot.objects.select_related("exam__academic_year", "school"), verification_code=code
+    )
     current = snapshot.exam.status == "published" and snapshot.version == snapshot.exam.publication_version
     return render(
         request,
@@ -400,13 +449,14 @@ def verify(request, code):
         {
             "snapshot": snapshot,
             "school": snapshot.school,
+            "exam": snapshot.exam,
             "current": current,
             "page_title": "Report verification",
         },
     )
 
 
-@require_permission("examinations.view_mark")
+@require_permission("examinations.view_mark", also="own requests unless a manager")
 def unlocks(request):
     qs = UnlockRequest.objects.filter(school=request.school).select_related("schedule", "requested_by")
     if not is_manager(request.user):
@@ -485,15 +535,15 @@ def grade_rules(request, pk):
     )
 
 
-@require_permission("examinations.view_exam")
+@require_permission("examinations.view_exam", also="own sections only")
 def admit_cards(request):
     """Printable admit cards for one section of an exam."""
     from .documents import admit_cards_pdf
 
     exam = get_object_or_404(Exam, school=request.school, pk=request.GET.get("exam", 0))
     section = get_object_or_404(Section, school=request.school, pk=request.GET.get("section", 0))
-    if not is_manager(request.user) and not sections_for(request.user, request.school).filter(pk=section.pk).exists():
-        raise PermissionDenied("You can print admit cards only for your own sections.")
+    if not may_use_section(request.user, request.school, section, exam.academic_year):
+        raise PermissionDenied("You can print admit cards only for sections you taught that year.")
     schedules = list(
         exam.schedules.filter(class_level=section.class_level).select_related("subject").order_by("date", "start_time")
     )
@@ -544,15 +594,22 @@ def exam_routine(request, pk):
     )
 
 
-@require_permission("examinations.view_mark")
+@require_permission("examinations.view_mark", also="own sections, published only")
 def report_cards(request):
     """Every card for a section in one PDF, for printing in a single run."""
     from .documents import bulk_report_cards_pdf
 
     exam = get_object_or_404(Exam, school=request.school, pk=request.GET.get("exam", 0))
     section = get_object_or_404(Section, school=request.school, pk=request.GET.get("section", 0))
-    if not is_manager(request.user) and not sections_for(request.user, request.school).filter(pk=section.pk).exists():
-        raise PermissionDenied("You can print cards only for your own sections.")
+    if not may_use_section(request.user, request.school, section, exam.academic_year):
+        raise PermissionDenied("You can print cards only for sections you taught that year.")
+    if exam.status != "published" and not is_manager(request.user):
+        # A draft card is a working document. Thirty of them printed and sent home before
+        # the results are agreed cannot be recalled.
+        raise PermissionDenied(
+            "These results are not published yet. A whole section can be printed once they are, "
+            "or a head can print the drafts."
+        )
     sheet = build_result_sheet(exam, section.class_level, section)
     enrollments = {
         e.pk: e
@@ -562,7 +619,12 @@ def report_cards(request):
     }
     snapshots = {s.enrollment_id: s for s in ResultSnapshot.objects.filter(exam=exam, version=exam.publication_version)}
     cards = [
-        (enrollments[row["enrollment_id"]], row, snapshots.get(row["enrollment_id"]))
+        (
+            enrollments[row["enrollment_id"]],
+            row,
+            snapshots.get(row["enrollment_id"]),
+            verification_url(request, snapshots.get(row["enrollment_id"])),
+        )
         for row in sheet["rows"]
         if row["enrollment_id"] in enrollments
     ]

@@ -21,8 +21,10 @@ from .services import (
     apply_leave,
     enrollments_for,
     leave_balance,
+    leave_days_in_year,
     monthly_matrix,
     overlapping_leave,
+    register_state,
     save_register,
     self_check,
     withdraw_leave,
@@ -205,20 +207,25 @@ class LeaveForm(SchoolModelForm):
                 f"{employee.full_name} already has leave from {clash.start_date:%d %b} "
                 f"to {clash.end_date:%d %b} ({clash.get_status_display().lower()}).",
             )
-        if leave_type:
-            requested = (end - start).days + 1
-            balance = next(
-                (row for row in leave_balance(employee, start.year) if row["leave_type"] == leave_type), None
-            )
-            if balance and requested > balance["remaining"]:
-                self.add_error(
-                    "leave_type",
-                    f"{balance['remaining']} day(s) of {leave_type} remain this year, but {requested} were asked for.",
-                )
+        school = employee.school
+        if leave_days_in_year(school, start, end, start.year) + leave_days_in_year(school, start, end, end.year) == 0:
+            self.add_error("start_date", "The request covers no working days: every day in it is a weekend or holiday.")
+            return data
+        if leave_type and not leave_type.allow_negative:
+            # A request that straddles New Year is charged to each year for the days in it.
+            for year in sorted({start.year, end.year}):
+                requested = leave_days_in_year(school, start, end, year)
+                balance = next((row for row in leave_balance(employee, year) if row["leave_type"] == leave_type), None)
+                if balance and requested > balance["remaining"]:
+                    self.add_error(
+                        "leave_type",
+                        f"{balance['remaining']} working day(s) of {leave_type} remain in {year}, "
+                        f"but {requested} were asked for.",
+                    )
         return data
 
 
-@require_permission("attendance.view_studentattendance")
+@require_permission("attendance.view_studentattendance", also="own students only")
 def student_history(request, pk):
     """One student's month, for the office and for the family that asks about it."""
     from students.models import Enrollment
@@ -251,7 +258,7 @@ def student_history(request, pk):
     )
 
 
-@require_permission("attendance.view_studentattendance")
+@require_permission("attendance.view_studentattendance", also="own sections only")
 def daily_summary(request):
     """Which sections have been marked today, and how many were present in each."""
     day = _parse_date(request.GET.get("date")) or timezone.localdate()
@@ -267,25 +274,37 @@ def daily_summary(request):
         )
     )
     by_section = {row["enrollment__section"]: row for row in records}
+    from academics.models import AcademicYear
     from students.models import Enrollment
 
+    year = AcademicYear.current_for(request.school)
     rolls = dict(
-        Enrollment.objects.filter(school=request.school, section__in=sections, status="enrolled")
+        Enrollment.objects.filter(
+            school=request.school,
+            section__in=sections,
+            academic_year=year,
+            status=Enrollment.Status.ENROLLED,
+            student__status="active",
+        )
         .values_list("section")
         .annotate(n=Count("id"))
     )
+    labels = {"complete": "Complete", "partial": "Partial", "missing": "Not taken"}
     rows = []
     for section in sections:
         row = by_section.get(section.pk)
+        recorded = row["total"] if row else 0
+        expected = rolls.get(section.pk, 0)
+        state = register_state(recorded, expected)
         rows.append(
             [
                 str(section),
-                rolls.get(section.pk, 0),
-                row["total"] if row else 0,
+                expected,
+                recorded,
                 row["present"] if row else 0,
                 row["absent"] if row else 0,
                 row["leave"] if row else 0,
-                "Taken" if row else "Not taken",
+                f"{labels[state]} ({recorded} of {expected})" if state == "partial" else labels[state],
             ]
         )
     headers = ["Section", "On roll", "Recorded", "Present", "Absent", "On leave", "Register"]
@@ -299,14 +318,19 @@ def daily_summary(request):
             "headers": headers,
             "rows": rows,
             "form": None,
-            "intro": "Sections marked 'Not taken' still need a register for this date.",
+            "intro": (
+                "Sections marked 'Not taken' still need a register for this date; 'Partial' means fewer "
+                "rows were recorded than there are active students on the roll."
+            ),
         },
     )
 
 
-@require_permission("attendance.view_leaverequest")
+@require_permission("attendance.view_leaverequest", also="own requests unless a manager")
 def leaves(request):
     """Managers see the school's requests; everyone else sees their own."""
+    import calendar
+
     qs = LeaveRequest.objects.filter(school=request.school).select_related("employee", "leave_type", "reviewed_by")
     mine = getattr(request.user, "employee_profile", None)
     can_review = is_manager(request.user) and request.user.has_perm("attendance.change_leaverequest")
@@ -315,6 +339,15 @@ def leaves(request):
     status = request.GET.get("status", "")
     if status in dict(LeaveRequest.Status.choices):
         qs = qs.filter(status=status)
+    employee = request.GET.get("employee", "")
+    if can_review and employee.isdigit():
+        qs = qs.filter(employee_id=int(employee))
+    month = request.GET.get("month", "")
+    if month:
+        anchor = _month_anchor(month)
+        last = anchor.replace(day=calendar.monthrange(anchor.year, anchor.month)[1])
+        qs = qs.filter(start_date__lte=last, end_date__gte=anchor)
+        month = f"{anchor.year:04d}-{anchor.month:02d}"
     return render(
         request,
         "attendance/leaves.html",
@@ -324,6 +357,13 @@ def leaves(request):
             "can_review": can_review,
             "status": status,
             "statuses": LeaveRequest.Status.choices,
+            "employee": employee,
+            "employees": (
+                Employee.objects.filter(school=request.school).order_by("first_name", "last_name")
+                if can_review
+                else Employee.objects.none()
+            ),
+            "month": month,
             "pending_count": LeaveRequest.objects.filter(school=request.school, status="pending").count(),
             "balances": leave_balance(mine, timezone.localdate().year) if mine else [],
         },
@@ -341,7 +381,7 @@ def leave_create(request):
     return render(request, "generic/form.html", {"form": form, "page_title": "Request leave"})
 
 
-@require_permission("attendance.change_leaverequest")
+@require_permission("attendance.change_leaverequest", also="managers only")
 @require_POST
 def leave_review(request, pk):
     if not is_manager(request.user):
@@ -349,8 +389,11 @@ def leave_review(request, pk):
     obj = get_object_or_404(LeaveRequest, school=request.school, pk=pk)
     status = request.POST.get("status")
     if status not in ("approved", "rejected"):
-        raise ValidationError("Invalid review decision.")
+        messages.error(request, "Choose approve or reject.")
+        return redirect("attendance:leave_list")
+    # The decision and its register rows land together or not at all.
     with transaction.atomic():
+        obj = LeaveRequest.objects.select_for_update().get(pk=obj.pk)
         was_approved = obj.status == LeaveRequest.Status.APPROVED
         obj.status = status
         obj.reviewed_by = request.user
@@ -360,8 +403,8 @@ def leave_review(request, pk):
         # An approval marks those days as leave on the register; reversing a decision
         # removes only the rows it created, never a manual entry.
         if status == LeaveRequest.Status.APPROVED:
-            days = apply_leave(obj, request.user)
-            messages.success(request, f"Approved. {days} day(s) marked as leave on the register.")
+            outcome = apply_leave(obj, request.user)
+            (messages.warning if outcome.skipped else messages.success)(request, f"Approved. {outcome.summary}")
         else:
             if was_approved:
                 withdraw_leave(obj, request.user)

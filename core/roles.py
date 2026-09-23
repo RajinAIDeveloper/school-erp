@@ -64,6 +64,7 @@ EXPLICIT_PERMS = {
         ("academics", "view_classlevel"),
         ("academics", "view_section"),
         ("academics", "view_academicyear"),
+        # Payroll is theirs, and a salary run needs the people it pays.
         ("employees", "view_employee"),
         ("messaging", "add_smsmessage"),
         ("messaging", "view_smsmessage"),
@@ -96,8 +97,9 @@ EXPLICIT_PERMS = {
         ("downloads", "add_downloaditem"),
         ("downloads", "view_notice"),
         ("holidays", "view_holiday"),
-        ("employees", "view_employee"),
-        ("employees", "view_employeedocument"),
+        # Deliberately no employees.* here. A teacher opens their own staff file through
+        # /employees/me/, which is ownership-checked in the view; the roster carries every
+        # colleague's phone, NID and qualification and belongs to the office.
     ],
     STAFF: [
         ("attendance", "view_staffattendance"),

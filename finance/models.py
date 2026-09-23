@@ -17,6 +17,21 @@ from core.models import SchoolScopedModel
 ZERO = Decimal("0.00")
 
 
+def assert_period_open(school, date):
+    """
+    Refuse to write into a period the school has closed.
+
+    This lives on the model layer because every path that moves money ends here: a manual
+    journal, a fee receipt, its cancellation, a salary and its reversal. A rule enforced
+    only in a view is a rule with a back door.
+    """
+    locked_until = school.books_locked_until
+    if locked_until and date and date <= locked_until:
+        raise ValidationError(
+            f"The books are closed up to {locked_until:%d %b %Y}. Post the correction in an open period."
+        )
+
+
 class Account(SchoolScopedModel):
     class Type(models.TextChoices):
         ASSET = "asset", "Asset"
@@ -129,14 +144,21 @@ class JournalEntry(SchoolScopedModel):
         self.save(update_fields=["status", "updated_at"])
 
     @transaction.atomic
-    def reverse(self, user=None, narration=None):
-        """Create a mirrored posted entry that cancels this one."""
+    def reverse(self, user=None, narration=None, date=None):
+        """
+        Create a mirrored posted entry that cancels this one.
+
+        The reversal is dated today by default, and the lock is checked against the date
+        it will carry: a closed month stays closed whatever is being corrected.
+        """
         if self.status != self.Status.POSTED:
             raise ValidationError("Only posted entries can be reversed.")
+        date = date or timezone.localdate()
+        assert_period_open(self.school, date)
         rev = JournalEntry.objects.create(
             school=self.school,
             entry_no=JournalEntry.next_entry_no(self.school),
-            date=timezone.localdate(),
+            date=date,
             narration=narration or f"Reversal of JE-{self.entry_no:05d}: {self.narration}",
             reference=self.reference,
             source=self.Source.REVERSAL,
@@ -249,6 +271,7 @@ def record_simple_entry(
     from core.models import School
 
     assert_school(school, debit_account, credit_account)
+    assert_period_open(school, date)
     School.objects.select_for_update().get(pk=school.pk)
     if debit_account.pk == credit_account.pk:
         raise ValidationError("Debit and credit accounts must differ.")

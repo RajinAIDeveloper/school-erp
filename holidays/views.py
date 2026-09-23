@@ -16,12 +16,51 @@ from .services import import_national_holidays, month_calendar, year_summary
 
 
 def ical_escape(text):
-    return text.replace("\\", "\\\\").replace(";", "\;").replace(",", "\,").replace("\r", "").replace("\n", "\n")
+    """
+    Escape a value for iCalendar (RFC 5545 section 3.3.11).
+
+    A newline becomes the two characters backslash-n. Writing an actual newline into a
+    property value ends the line as far as a parser is concerned, and a multi-line holiday
+    description then produces a file that Google Calendar and Outlook simply refuse.
+    """
+    return (
+        str(text or "")
+        .replace("\\", "\\\\")
+        .replace(";", "\\;")
+        .replace(",", "\\,")
+        .replace("\r\n", "\\n")
+        .replace("\r", "\\n")
+        .replace("\n", "\\n")
+    )
+
+
+def ical_line(name, value):
+    """
+    One content line, folded to 75 octets as the specification requires.
+
+    Folding counts bytes, not characters: a Bangla holiday name is three bytes per letter,
+    so a name that looks short can still overrun the limit and be rejected.
+    """
+    raw = f"{name}:{value}".encode()
+    if len(raw) <= 75:
+        return [raw.decode()]
+    lines, rest = [], raw
+    limit = 75
+    while len(rest) > limit:
+        cut = limit
+        # Never split a multi-byte character across two folded lines.
+        while cut > 0 and (rest[cut] & 0xC0) == 0x80:
+            cut -= 1
+        lines.append(rest[:cut].decode())
+        rest = rest[cut:]
+        limit = 74  # continuation lines carry a leading space
+    lines.append(rest.decode())
+    return [lines[0]] + [" " + line for line in lines[1:]]
 
 
 @require_permission("holidays.view_holiday")
 def calendar_export(request):
-    lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//School ERP//School Calendar//EN"]
+    lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//School ERP//School Calendar//EN", "CALSCALE:GREGORIAN"]
     for h in Holiday.objects.filter(school=request.school):
         lines += [
             "BEGIN:VEVENT",
@@ -29,8 +68,8 @@ def calendar_export(request):
             f"DTSTAMP:{h.updated_at:%Y%m%dT%H%M%SZ}",
             f"DTSTART;VALUE=DATE:{h.start_date:%Y%m%d}",
             f"DTEND;VALUE=DATE:{h.end_date + timedelta(days=1):%Y%m%d}",
-            "SUMMARY:" + ical_escape(h.name),
-            "DESCRIPTION:" + ical_escape(h.description),
+            *ical_line("SUMMARY", ical_escape(h.name)),
+            *ical_line("DESCRIPTION", ical_escape(h.description)),
             "END:VEVENT",
         ]
     lines.append("END:VCALENDAR")

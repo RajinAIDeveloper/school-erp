@@ -59,11 +59,22 @@ def week_grid(school, academic_year, *, section=None, teacher=None):
 
 
 def free_teachers(school, academic_year, weekday, period, employee_type="teacher"):
-    """Who is not already teaching in this slot."""
+    """
+    Who is not already teaching in this slot.
+
+    Busy means busy at that time, not merely booked into the same named period: schools
+    run overlapping timetables (a laboratory double, a shortened assembly day), and a
+    teacher in a lesson from 9:00 to 9:45 is not free for one starting at 9:30.
+    """
     from employees.models import Employee
 
     busy = RoutineSlot.objects.filter(
-        school=school, academic_year=academic_year, weekday=weekday, period=period, teacher__isnull=False
+        school=school,
+        academic_year=academic_year,
+        weekday=weekday,
+        period__start_time__lt=period.end_time,
+        period__end_time__gt=period.start_time,
+        teacher__isnull=False,
     ).values_list("teacher_id", flat=True)
     return (
         Employee.objects.filter(school=school, employee_type=employee_type, status=Employee.Status.ACTIVE)

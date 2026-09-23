@@ -105,7 +105,7 @@ def test_daily_summary_counts_and_flags_missing_registers(admin_client, erp):
         entries=[(erp.enrollment, "present", "", None, None)],
     )
     body = admin_client.get(f"/attendance/summary/?date={DAY}").content
-    assert b"Taken" in body
+    assert b"Complete" in body
 
 
 def test_absence_alert_is_queued_once_per_student_and_day(erp, django_capture_on_commit_callbacks):
@@ -182,8 +182,9 @@ def test_approved_leave_marks_attendance_and_withdrawal_removes_only_those_rows(
         end_date=date(2026, 9, 23),
         status="approved",
     )
-    created = apply_leave(leave, erp.admin)
-    assert created == 2  # the holiday in the middle is skipped
+    outcome = apply_leave(leave, erp.admin)
+    assert outcome.created == 2  # the holiday in the middle is skipped
+    assert outcome.skipped == []
     assert StaffAttendance.objects.filter(created_by_leave=leave, status="leave").count() == 2
 
     removed = withdraw_leave(leave, erp.admin)

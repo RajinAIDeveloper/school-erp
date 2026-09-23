@@ -89,7 +89,7 @@ ACCESS = {
     "Teacher": {
         "dashboard",
         "students",
-        "employees",
+        # No "employees": the roster carries every colleague's contact details and NID.
         "student_attendance",
         "staff_attendance",
         "results",

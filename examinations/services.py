@@ -322,6 +322,14 @@ def save_marks(*, user, schedule, section, rows):
     assert_can_mark(user, schedule)
     errors = {}
     saved = []
+    # The section is what the caller was authorised for, so every row must belong to it.
+    # A hand-made POST could otherwise name any enrollment in the school and have its
+    # marks written under a section the sender does have rights to.
+    stray = [enrollment for enrollment, *_ in rows if enrollment.section_id != section.pk]
+    if stray:
+        raise ValidationError(
+            f"{len(stray)} student(s) in this submission are not in {section}. Reload the page and try again."
+        )
     for enrollment, score, absent, expected_version in rows:
         if score is None and not absent:
             continue  # nothing entered for this student yet

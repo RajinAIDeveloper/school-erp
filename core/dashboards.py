@@ -31,12 +31,27 @@ def manager_dashboard(school, user):
     from holidays.models import Holiday, is_holiday
     from students.models import Enrollment, Student
 
-    today = timezone.localdate()
-    month_start = today.replace(day=1)
     year = _current_year(school)
 
+    today = timezone.localdate()
+    month_start = today.replace(day=1)
+
+    closed_today = is_holiday(school, today)
     attendance = StudentAttendance.objects.filter(school=school, date=today).aggregate(
         total=Count("id"), present=Count("id", filter=Q(status__in=["present", "late"]))
+    )
+    # The denominator is the school's roll, not the rows that happen to exist. One child
+    # marked present in a class of thirty is 3%% attendance with 29 registers still to take,
+    # and reporting it as 100%% is how a missing register goes unnoticed for a week.
+    expected_today = (
+        Enrollment.objects.filter(
+            school=school,
+            academic_year=year,
+            status=Enrollment.Status.ENROLLED,
+            student__status="active",
+        ).count()
+        if year
+        else 0
     )
     outstanding = (
         FeeInvoice.objects.filter(school=school).outstanding().aggregate(total=Sum("balance_amount"), count=Count("id"))
@@ -60,7 +75,8 @@ def manager_dashboard(school, user):
 
     return {
         "kind": "manager",
-        "closed_today": is_holiday(school, today),
+        "closed_today": closed_today,
+        "registers_outstanding": max(expected_today - attendance["total"], 0) if not closed_today else 0,
         "tiles": [
             {
                 "label": "Active students",
@@ -75,12 +91,16 @@ def manager_dashboard(school, user):
             {
                 "label": "Attendance today",
                 "value": (
-                    f"{round(attendance['present'] * 100 / attendance['total'])}%"
-                    if attendance["total"]
-                    else "Not taken"
+                    f"{round(attendance['present'] * 100 / expected_today)}%"
+                    if expected_today and attendance["total"]
+                    else ("Closed" if closed_today else "Not taken")
                 ),
-                "note": f"{attendance['total']} recorded",
-                "tone": _attendance_tone(attendance),
+                "note": (
+                    "the school is closed"
+                    if closed_today
+                    else f"{attendance['total']} of {expected_today} on the roll recorded"
+                ),
+                "tone": "muted" if closed_today else _attendance_tone(attendance, expected_today),
             },
             {
                 "label": "Collected this month",
@@ -110,18 +130,22 @@ def manager_dashboard(school, user):
     }
 
 
-def _attendance_tone(attendance):
-    if not attendance["total"]:
+def _attendance_tone(attendance, expected=None):
+    """Colour the tile by the share of the people it should cover, not of those recorded."""
+    denominator = expected if expected is not None else attendance["total"]
+    if not denominator or not attendance["total"]:
         return "muted"
-    percent = attendance["present"] * 100 / attendance["total"]
+    percent = attendance["present"] * 100 / denominator
     return "good" if percent >= 90 else "warn" if percent >= 75 else "bad"
 
 
 def teacher_dashboard(school, user):
     """For a teacher: what is still waiting for me today?"""
     from attendance.models import StudentAttendance
+    from attendance.services import register_state
     from core.access import sections_for
     from examinations.models import ExamSchedule, Mark
+    from holidays.models import is_holiday
     from students.models import Enrollment
     from timetable.models import RoutineSlot
 
@@ -129,17 +153,42 @@ def teacher_dashboard(school, user):
     year = _current_year(school)
     sections = list(sections_for(user, school).select_related("class_level"))
     employee = getattr(user, "employee_profile", None)
+    closed_today = is_holiday(school, today)
 
-    taken = set(
-        StudentAttendance.objects.filter(school=school, date=today, enrollment__section__in=sections).values_list(
-            "enrollment__section", flat=True
-        )
+    # Two counts per section rather than a flag: a register with one row out of thirty is
+    # not "taken", and a teacher who was called away mid-roll needs to see that.
+    recorded = dict(
+        StudentAttendance.objects.filter(school=school, date=today, enrollment__section__in=sections)
+        .values_list("enrollment__section")
+        .annotate(n=Count("id"))
     )
-    registers = [
-        {"section": section, "taken": section.pk in taken}
-        for section in sections
-        if Enrollment.objects.filter(section=section, academic_year=year).exists()
-    ]
+    roll = dict(
+        Enrollment.objects.filter(
+            school=school,
+            section__in=sections,
+            academic_year=year,
+            status=Enrollment.Status.ENROLLED,
+            student__status="active",
+        )
+        .values_list("section")
+        .annotate(n=Count("id"))
+    )
+    registers = []
+    if not closed_today:
+        for section in sections:
+            expected = roll.get(section.pk, 0)
+            if not expected:
+                continue
+            done = recorded.get(section.pk, 0)
+            registers.append(
+                {
+                    "section": section,
+                    "state": register_state(done, expected),
+                    "taken": register_state(done, expected) == "complete",
+                    "recorded": done,
+                    "expected": expected,
+                }
+            )
 
     today_slots = (
         RoutineSlot.objects.filter(school=school, academic_year=year, weekday=today.isoweekday(), teacher=employee)
@@ -166,7 +215,12 @@ def teacher_dashboard(school, user):
                 .select_related("exam")
             )
             for schedule in schedules:
-                expected = Enrollment.objects.filter(section=assignment.section, academic_year=year).count()
+                expected = Enrollment.objects.filter(
+                    section=assignment.section,
+                    academic_year=year,
+                    status=Enrollment.Status.ENROLLED,
+                    student__status="active",
+                ).count()
                 entered = Mark.objects.filter(schedule=schedule, enrollment__section=assignment.section).count()
                 if expected and entered < expected:
                     pending_marks.append(
@@ -178,15 +232,23 @@ def teacher_dashboard(school, user):
                         }
                     )
 
+    complete = sum(1 for row in registers if row["state"] == "complete")
     return {
         "kind": "teacher",
+        "closed_today": closed_today,
         "tiles": [
             {"label": "My sections", "value": len(sections), "note": "assigned to you"},
             {
                 "label": "Registers today",
-                "value": f"{sum(1 for r in registers if r['taken'])}/{len(registers)}",
-                "note": "taken" if registers else "nothing to take",
-                "tone": "warn" if any(not r["taken"] for r in registers) else "good",
+                "value": "Closed" if closed_today else f"{complete}/{len(registers)}",
+                "note": (
+                    "the school is closed today" if closed_today else ("complete" if registers else "nothing to take")
+                ),
+                "tone": (
+                    "muted"
+                    if closed_today
+                    else ("warn" if any(r["state"] != "complete" for r in registers) else "good")
+                ),
             },
             {
                 "label": "Papers awaiting marks",
@@ -270,9 +332,14 @@ def staff_dashboard(school, user):
     if employee is None:
         return {"kind": "staff", "tiles": [], "unlinked": True}
 
+    from holidays.services import working_days
+
     attendance = StaffAttendance.objects.filter(employee=employee, date__gte=month_start).aggregate(
         total=Count("id"), present=Count("id", filter=Q(status__in=["present", "late"]))
     )
+    # Against the days the school was actually open, from whichever came later: the start
+    # of the month or the day this person joined.
+    expected = working_days(school, max(month_start, employee.joining_date), today)
     balances = leave_balance(employee, today.year)
     return {
         "kind": "staff",
@@ -280,11 +347,9 @@ def staff_dashboard(school, user):
         "tiles": [
             {
                 "label": "Attendance this month",
-                "value": (
-                    f"{round(attendance['present'] * 100 / attendance['total'])}%" if attendance["total"] else "—"
-                ),
-                "note": f"{attendance['present']}/{attendance['total']} days",
-                "tone": _attendance_tone(attendance),
+                "value": (f"{round(attendance['present'] * 100 / expected)}%" if expected else "—"),
+                "note": f"{attendance['present']} of {expected} working day(s)",
+                "tone": _attendance_tone(attendance, expected),
             },
             {
                 "label": "Leave remaining",

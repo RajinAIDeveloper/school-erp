@@ -1,11 +1,11 @@
 """User accounts: the roster, provisioning logins and password resets."""
 
-import csv
+import json
 
 from django import forms
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.http import Http404, HttpResponse
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
@@ -135,21 +135,23 @@ def provision(request, kind, pk):
     except ValidationError as exc:
         messages.error(request, " ".join(exc.messages))
         return redirect(request.POST.get("next") or "users:list")
+    rows = [
+        {
+            "person": str(profile),
+            "role": account.role_names,
+            "identifier": getattr(profile, "student_id", "")
+            or getattr(profile, "employee_id", "")
+            or getattr(profile, "phone", ""),
+            "username": account.username,
+            "password": password,
+        }
+    ]
     return render(
         request,
         "users/credentials.html",
         {
-            "rows": [
-                {
-                    "person": str(profile),
-                    "role": account.role_names,
-                    "identifier": getattr(profile, "student_id", "")
-                    or getattr(profile, "employee_id", "")
-                    or getattr(profile, "phone", ""),
-                    "username": account.username,
-                    "password": password,
-                }
-            ],
+            "rows": rows,
+            "download": json.dumps(rows),
             "back": request.POST.get("next") or "/users/",
             "page_title": "New login",
         },
@@ -188,34 +190,20 @@ def provision_bulk(request):
         if not rows:
             messages.info(request, "Everyone in that section already has a login.")
         else:
-            request.session["provisioned_credentials"] = rows
+            # The passwords exist in this one response and nowhere else. They are not put
+            # in the session: the default session store is a database table, signed but
+            # not encrypted, so anything left there is readable by anyone who can read the
+            # database. The CSV is built in the browser from the page already on screen.
             return render(
                 request,
                 "users/credentials.html",
-                {"rows": rows, "back": "/users/", "page_title": "New logins"},
+                {"rows": rows, "download": json.dumps(rows), "back": "/users/", "page_title": "New logins"},
             )
     return render(
         request,
         "users/provision_bulk.html",
         {"form": form, "page_title": "Create logins for a class"},
     )
-
-
-@require_permission("users.add_user")
-def credentials_csv(request):
-    """Download the credentials from the run just completed; they are not kept after that."""
-    rows = request.session.pop("provisioned_credentials", None)
-    if not rows:
-        raise Http404("There are no credentials to download. Passwords are never stored in readable form.")
-    response = HttpResponse(content_type="text/csv; charset=utf-8")
-    response["Content-Disposition"] = 'attachment; filename="new-logins.csv"'
-    response.write("﻿")
-    writer = csv.writer(response)
-    writer.writerow(["Person", "Role", "Identifier", "Username", "Temporary password"])
-    for row in rows:
-        writer.writerow([row["person"], row["role"], row["identifier"], row["username"], row["password"]])
-    audit(request, "users.credentials_downloaded", description=f"{len(rows)} login(s)")
-    return response
 
 
 @require_permission("users.change_user")

@@ -33,13 +33,29 @@
       {% endfor %}
     </select>
   </div>
+  {% if can_review %}
+  <div>
+    <label class="label" for="employee">Employee</label>
+    <select id="employee" name="employee" class="input w-56">
+      <option value="">Everyone</option>
+      {% for person in employees %}
+        <option value="{{ person.pk }}" {% if employee == person.pk|stringformat:"s" %}selected{% endif %}>{{ person.full_name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
+  <div>
+    <label class="label" for="month">Month</label>
+    <input type="month" id="month" name="month" value="{{ month }}" class="input w-44">
+  </div>
   <button class="btn-secondary">Filter</button>
+  {% if request.GET %}<a href="{% url 'attendance:leave_list' %}" class="link self-center text-sm">Clear</a>{% endif %}
 </form>
 
 <div class="card overflow-x-auto">
   <table class="table">
     <thead>
-      <tr><th>Employee</th><th>Type</th><th>From</th><th>To</th><th>Days</th><th>Reason</th>
+      <tr><th>Employee</th><th>Type</th><th>From</th><th>To</th><th>Working days</th><th>Reason</th>
         <th>Status</th>{% if can_review %}<th class="text-right">Decision</th>{% endif %}</tr>
     </thead>
     <tbody>

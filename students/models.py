@@ -5,6 +5,29 @@ from academics.models import AcademicYear, ClassLevel, Section
 from core.models import SchoolScopedModel
 
 
+def canonical_phone(phone):
+    """
+    One spelling per mobile number, so a family is never split across two records.
+
+    Bangladeshi numbers are stored the way schools write them, 01XXXXXXXXX, whatever was
+    typed: +8801..., 8801..., or with spaces and dashes. Anything that is not a valid
+    Bangladeshi mobile is left exactly as entered rather than mangled, because it may be
+    a landline or an overseas number the office still needs.
+    """
+    from django.core.exceptions import ValidationError as _ValidationError
+
+    from messaging.services import normalize_bd_phone
+
+    raw = (phone or "").strip()
+    if not raw:
+        return ""
+    try:
+        # normalize_bd_phone returns 8801XXXXXXXXX; the local form is what follows the 88.
+        return normalize_bd_phone(raw)[2:]
+    except _ValidationError:
+        return raw
+
+
 class Gender(models.TextChoices):
     MALE = "M", "Male"
     FEMALE = "F", "Female"
@@ -117,6 +140,13 @@ class Guardian(SchoolScopedModel):
     class Meta:
         ordering = ["full_name"]
 
+    def save(self, *args, **kwargs):
+        # Normalised on the way in, so every lookup elsewhere can simply compare strings.
+        self.phone = canonical_phone(self.phone)
+        if "update_fields" in kwargs and kwargs["update_fields"] is not None:
+            kwargs["update_fields"] = set(kwargs["update_fields"]) | {"phone"}
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.full_name} ({self.phone})"
 
@@ -138,10 +168,26 @@ class StudentGuardian(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=["student", "guardian"], name="unique_student_guardian"),
+            # A child has one guardian the school rings first. Without this, "who are this
+            # child's siblings" and "who do we text" both have more than one answer.
+            models.UniqueConstraint(
+                fields=["student"],
+                condition=models.Q(is_primary=True),
+                name="one_primary_guardian_per_student",
+            ),
         ]
 
     def __str__(self):
         return f"{self.guardian} ({self.get_relation_display()} of {self.student})"
+
+    def save(self, *args, **kwargs):
+        # Promoting a guardian stands the previous one down, rather than failing on the
+        # constraint and leaving the office to work out why.
+        if self.is_primary:
+            StudentGuardian.objects.filter(student_id=self.student_id, is_primary=True).exclude(pk=self.pk).update(
+                is_primary=False
+            )
+        super().save(*args, **kwargs)
 
 
 class Enrollment(SchoolScopedModel):

@@ -1,6 +1,7 @@
 """Fee forms: generation, ad-hoc invoices, collection and the dues filter."""
 
 from django import forms
+from django.db import models
 from django.utils import timezone
 
 from academics.models import AcademicYear, ClassLevel, Section
@@ -70,15 +71,39 @@ class InvoiceForm(TailwindFormMixin, forms.Form):
     late_fee = forms.DecimalField(max_digits=12, decimal_places=2, initial=0, min_value=0)
     notes = forms.CharField(max_length=200, required=False)
 
-    def __init__(self, *args, school, **kwargs):
+    def __init__(self, *args, school, invoice=None, **kwargs):
         self.school = school
+        self.invoice = invoice
         super().__init__(*args, **kwargs)
         self.fields["student"].queryset = Student.objects.filter(school=school, status="active")
+        if invoice is not None:
+            # The student and their enrollment are what the invoice was raised against;
+            # editing the figures must not silently move it to another child. The student
+            # stays selectable even if they have since left, or the form could not load.
+            self.fields["student"].queryset = Student.objects.filter(school=school).filter(
+                models.Q(status="active") | models.Q(pk=invoice.student_id)
+            )
+            self.fields["student"].disabled = True
+            self.fields["issue_date"].disabled = True
 
     def clean(self):
         data = super().clean()
-        student = data.get("student")
+        student = data.get("student") or getattr(self.invoice, "student", None)
         if not student:
+            return data
+        data["student"] = student
+        if self.invoice is not None:
+            data["enrollment"] = self.invoice.enrollment
+            data["academic_year"] = self.invoice.academic_year
+            data["issue_date"] = self.invoice.issue_date
+            if data.get("due_date") and data["due_date"] < self.invoice.issue_date:
+                self.add_error("due_date", "Due date cannot precede the issue date.")
+            if data.get("month") and data["month"] != self.invoice.month:
+                clash = FeeInvoice.objects.filter(enrollment=self.invoice.enrollment, month=data["month"]).exclude(
+                    pk=self.invoice.pk
+                )
+                if clash.exists():
+                    self.add_error("month", "This student already has an invoice for that month.")
             return data
         enrollment = (
             Enrollment.objects.filter(student=student, academic_year__is_current=True)
@@ -125,8 +150,13 @@ class BaseInvoiceItemFormSet(forms.BaseFormSet):
         return kwargs
 
     def lines(self):
+        """(category, amount, description) per filled row; the description is saved, not dropped."""
         return [
-            (form.cleaned_data["category"], form.cleaned_data["amount"])
+            (
+                form.cleaned_data["category"],
+                form.cleaned_data["amount"],
+                form.cleaned_data.get("description", ""),
+            )
             for form in self.forms
             if form.cleaned_data.get("category") and form.cleaned_data.get("amount")
         ]

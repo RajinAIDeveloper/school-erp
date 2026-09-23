@@ -19,6 +19,8 @@ from core.models import AuditLog, School
 from .models import Enrollment, Guardian, Student, StudentGuardian
 
 MAX_IMPORT_ROWS = 5000
+# A roll is a position in a class register, not an identifier; four digits is already generous.
+MAX_ROLL_NUMBER = 9999
 IMPORT_COLUMNS = [
     "student_id",
     "first_name",
@@ -38,6 +40,21 @@ IMPORT_COLUMNS = [
     "status",
 ]
 IMPORT_EXTRA_COLUMNS = ["guardian_name", "guardian_phone", "guardian_relation", "class_level", "section", "roll_number"]
+
+
+def find_guardian(school, phone):
+    """
+    The guardian already on file for this number, whatever form it was written in.
+
+    Numbers are matched on their canonical form, so a family entered once as 01712345678
+    and again as +8801712345678 is one family, not two.
+    """
+    from .models import canonical_phone
+
+    canonical = canonical_phone(phone)
+    if not canonical:
+        return None
+    return Guardian.objects.filter(school=school, phone=canonical).first()
 
 
 def next_roll_number(academic_year, section):
@@ -64,7 +81,7 @@ def admit(*, school, user, student, guardian_data, enrollment_data):
     student.save()
 
     phone = (guardian_data.get("phone") or "").strip()
-    guardian = Guardian.objects.filter(school=school, phone=phone).first() if phone else None
+    guardian = find_guardian(school, phone) if phone else None
     if guardian is None:
         guardian = Guardian.objects.create(
             school=school,
@@ -188,14 +205,113 @@ def read_import_rows(upload):
     return rows
 
 
+def _validate_guardian(extra, number, errors):
+    """
+    The guardian half of a row: a name, a usable Bangladeshi mobile and a real relation.
+
+    Returns the values to write, or None when the row names no guardian at all, which is
+    allowed — a school sometimes imports a roll sheet first and adds contacts later.
+    """
+    from messaging.services import normalize_bd_phone
+
+    name, phone = extra.get("guardian_name", ""), extra.get("guardian_phone", "")
+    relation = extra.get("guardian_relation", "") or StudentGuardian.Relation.OTHER
+    if not name and not phone:
+        if extra.get("guardian_relation"):
+            errors.append(f"Row {number}: a guardian relation was given with no name or phone number.")
+        return None
+    if not name or not phone:
+        errors.append(f"Row {number}: a guardian needs both a name and a mobile number.")
+        return None
+    if relation not in StudentGuardian.Relation.values:
+        allowed = ", ".join(StudentGuardian.Relation.values)
+        errors.append(f"Row {number}: '{relation}' is not a guardian relation. Use one of: {allowed}.")
+        return None
+    try:
+        normalize_bd_phone(phone)
+    except ValidationError:
+        errors.append(f"Row {number}: '{phone}' is not a Bangladeshi mobile number.")
+        return None
+    return {"full_name": name, "phone": phone, "relation": relation}
+
+
+def _validate_enrollment(school, year, extra, number, errors, claimed_rolls):
+    """
+    The class half of a row.
+
+    Every part is checked here rather than at write time: an unknown class, a section that
+    belongs to a different class, a roll that is not a number, and a roll already taken
+    either in the database or earlier in this same file. A roll the operator supplied is
+    never quietly replaced with another one.
+    """
+    from academics.models import ClassLevel, Section
+
+    class_name, section_name = extra.get("class_level", ""), extra.get("section", "")
+    roll_raw = extra.get("roll_number", "")
+    if not class_name and not section_name:
+        if roll_raw:
+            errors.append(f"Row {number}: a roll number was given with no class or section.")
+        return None
+    if not class_name or not section_name:
+        errors.append(f"Row {number}: placing a student on a roll needs both a class and a section.")
+        return None
+    if year is None:
+        errors.append(
+            f"Row {number}: this file places students in a class, but the school has no current "
+            "academic year. Set one under Basic Settings, or remove the class columns."
+        )
+        return None
+    level = ClassLevel.objects.filter(school=school, name=class_name).first()
+    if level is None:
+        errors.append(f"Row {number}: there is no class called '{class_name}'.")
+        return None
+    section = Section.objects.filter(school=school, class_level=level, name=section_name).first()
+    if section is None:
+        errors.append(f"Row {number}: '{class_name}' has no section '{section_name}'.")
+        return None
+
+    if roll_raw:
+        if not roll_raw.isdigit():
+            errors.append(f"Row {number}: roll '{roll_raw}' is not a number.")
+            return None
+        roll = int(roll_raw)
+        if not 1 <= roll <= MAX_ROLL_NUMBER:
+            errors.append(f"Row {number}: roll {roll} is outside 1 to {MAX_ROLL_NUMBER}.")
+            return None
+        if (section.pk, roll) in claimed_rolls:
+            first = claimed_rolls[(section.pk, roll)]
+            errors.append(f"Row {number}: roll {roll} in {section} is already used by row {first} of this file.")
+            return None
+        if Enrollment.objects.filter(academic_year=year, section=section, roll_number=roll).exists():
+            errors.append(f"Row {number}: roll {roll} in {section} is already taken this year.")
+            return None
+    else:
+        roll = next_roll_number(year, section)
+        while (section.pk, roll) in claimed_rolls:
+            roll += 1
+        if roll > MAX_ROLL_NUMBER:
+            errors.append(f"Row {number}: {section} has no free roll number left.")
+            return None
+    claimed_rolls[(section.pk, roll)] = number
+    return {"academic_year": year, "class_level": level, "section": section, "roll_number": roll}
+
+
 def validate_import(school, rows):
     """
     Return (prepared, errors) without writing anything, so the operator can see exactly
     what a file will do before committing to it.
+
+    Everything the confirmation step will write is validated here — the student, the
+    guardian, and the class placement — and the prepared rows carry the checked values.
+    The write then consumes those values rather than reading the raw CSV a second time,
+    so the preview and the import cannot disagree.
     """
+    from academics.models import AcademicYear
+
     from .forms import StudentForm
 
-    prepared, errors, seen = [], [], set()
+    year = AcademicYear.current_for(school)
+    prepared, errors, seen, claimed_rolls = [], [], set(), {}
     for number, raw in enumerate(rows, start=2):
         row = {key: (value or "").strip() for key, value in raw.items() if key in IMPORT_COLUMNS}
         # A roll sheet rarely carries a status column; everyone on it is a current student.
@@ -212,51 +328,56 @@ def validate_import(school, rows):
         if not valid:
             for field, messages in form.errors.items():
                 errors.append(f"Row {number} ({field}): {' '.join(messages)}")
-        prepared.append({"number": number, "form": form, "extra": extra, "valid": valid, "data": row})
+
+        before = len(errors)
+        guardian = _validate_guardian(extra, number, errors)
+        enrollment = _validate_enrollment(school, year, extra, number, errors, claimed_rolls)
+        if len(errors) > before:
+            valid = False
+        prepared.append(
+            {
+                "number": number,
+                "form": form,
+                "extra": extra,
+                "valid": valid,
+                "data": row,
+                "guardian": guardian,
+                "enrollment": enrollment,
+            }
+        )
     return prepared, errors
 
 
 @transaction.atomic
 def import_students(school, upload, user=None):
-    """Import a validated CSV. A single bad row rejects the whole file."""
-    rows = read_import_rows(upload)
+    """
+    Import a validated CSV. A single bad row rejects the whole file.
+
+    `upload` is a file, or the rows a preview already read from one.
+    """
+    rows = read_import_rows(upload) if hasattr(upload, "read") else list(upload)
     prepared, errors = validate_import(school, rows)
     if errors:
         raise ValidationError(errors)
-    from academics.models import AcademicYear, ClassLevel, Section
-
-    year = AcademicYear.current_for(school)
     for item in prepared:
         student = item["form"].save()
-        extra = item["extra"]
-        if extra.get("guardian_name") and extra.get("guardian_phone"):
-            guardian = Guardian.objects.filter(school=school, phone=extra["guardian_phone"]).first()
+        guardian_data = item["guardian"]
+        if guardian_data:
+            guardian = find_guardian(school, guardian_data["phone"])
             if guardian is None:
                 guardian = Guardian.objects.create(
-                    school=school, full_name=extra["guardian_name"], phone=extra["guardian_phone"]
+                    school=school,
+                    full_name=guardian_data["full_name"],
+                    phone=guardian_data["phone"],
                 )
             StudentGuardian.objects.get_or_create(
                 student=student,
                 guardian=guardian,
-                defaults={"relation": extra.get("guardian_relation") or "other", "is_primary": True},
+                defaults={"relation": guardian_data["relation"], "is_primary": True},
             )
-        if year and extra.get("class_level") and extra.get("section"):
-            level = ClassLevel.objects.filter(school=school, name=extra["class_level"]).first()
-            section = (
-                Section.objects.filter(school=school, class_level=level, name=extra["section"]).first()
-                if level
-                else None
-            )
-            if section:
-                roll = extra.get("roll_number")
-                Enrollment.objects.create(
-                    school=school,
-                    student=student,
-                    academic_year=year,
-                    class_level=level,
-                    section=section,
-                    roll_number=int(roll) if roll.isdigit() else next_roll_number(year, section),
-                )
+        placement = item["enrollment"]
+        if placement:
+            Enrollment.objects.create(school=school, student=student, **placement)
     if user is not None:
         AuditLog.objects.create(
             school=school, user=user, action="students.imported", description=f"{len(prepared)} students"

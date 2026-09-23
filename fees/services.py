@@ -120,6 +120,8 @@ def sibling_discount_for(school, student):
     rate = Decimal(school.sibling_discount_percent or 0)
     if rate <= ZERO:
         return ZERO
+    if rate > 100:
+        raise ValidationError("The sibling discount must be between 0 and 100 percent.")
     link = student.guardian_links.filter(is_primary=True).select_related("guardian").first()
     if link is None:
         return ZERO
@@ -192,6 +194,96 @@ def cancel_payment(*, school, user, payment, reason):
     )
 
 
+def _priced_lines(school, items):
+    """Validate the fee lines of an invoice and return them as (category, description, amount)."""
+    priced = []
+    for item in items:
+        category, amount = item[0], Decimal(item[1])
+        description = item[2] if len(item) > 2 else ""
+        if not amount.is_finite():
+            raise ValidationError("Fee amounts must be real numbers.")
+        if amount < ZERO:
+            raise ValidationError("A fee line cannot be negative. Use a discount instead.")
+        if amount == ZERO:
+            continue
+        assert_school(school, category)
+        priced.append((category, (description or "")[:150], amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)))
+    if not priced:
+        raise ValidationError("Add at least one fee line with an amount.")
+    return priced
+
+
+def _checked_adjustments(discount, late_fee, subtotal):
+    """Discount and late fee as finite, non-negative money that cannot drive a total below zero."""
+    discount, late_fee = Decimal(discount or 0), Decimal(late_fee or 0)
+    if not discount.is_finite() or not late_fee.is_finite():
+        raise ValidationError("Discount and late fee must be real numbers.")
+    if discount < ZERO or late_fee < ZERO:
+        raise ValidationError("Discount and late fee cannot be negative.")
+    if discount > subtotal:
+        raise ValidationError(f"The discount ({discount}) is more than the fees charged ({subtotal}).")
+    return discount, late_fee
+
+
+@transaction.atomic
+def edit_invoice(*, school, user, invoice, items, discount=ZERO, late_fee=ZERO, notes="", due_date=None, month=None):
+    """
+    Correct an invoice that has been raised but not paid against.
+
+    Once money has been received the invoice is part of a receipt and a ledger entry, so
+    it is no longer a document anyone may rewrite: reverse the receipt first. Everything
+    here lands in one transaction and is audited with what actually changed.
+    """
+    assert_actor_school(user, school)
+    assert_school(school, invoice)
+    if not user.has_perm("fees.change_feeinvoice"):
+        raise PermissionDenied
+    invoice = FeeInvoice.objects.select_for_update().get(pk=invoice.pk, school=school)
+    if invoice.status == FeeInvoice.Status.CANCELLED:
+        raise ValidationError("A cancelled invoice cannot be edited. Raise a new one.")
+    if invoice.payments.filter(is_cancelled=False).exists():
+        raise ValidationError(
+            "Money has been received against this invoice. Reverse the receipts first, so the "
+            "ledger and the invoice stay in step."
+        )
+    priced = _priced_lines(school, items)
+    subtotal = sum((amount for _category, _description, amount in priced), start=ZERO)
+    discount, late_fee = _checked_adjustments(discount, late_fee, subtotal)
+    if due_date and due_date < invoice.issue_date:
+        raise ValidationError("Due date cannot precede the issue date.")
+    if month is not None and month != invoice.month:
+        clash = FeeInvoice.objects.filter(enrollment=invoice.enrollment, month=month).exclude(pk=invoice.pk)
+        if month and clash.exists():
+            raise ValidationError("This student already has an invoice for that month.")
+
+    before = invoice.total
+    invoice.items.all().delete()
+    FeeInvoiceItem.objects.bulk_create(
+        [
+            FeeInvoiceItem(invoice=invoice, category=category, description=description, amount=amount)
+            for category, description, amount in priced
+        ]
+    )
+    invoice.discount = discount
+    invoice.late_fee = late_fee
+    invoice.notes = notes
+    if due_date:
+        invoice.due_date = due_date
+    if month is not None:
+        invoice.month = month
+    invoice.save(update_fields=["discount", "late_fee", "notes", "due_date", "month", "updated_at"])
+    invoice.refresh_status()
+    AuditLog.objects.create(
+        school=school,
+        user=user,
+        action="invoice.edited",
+        model=invoice._meta.label,
+        object_id=str(invoice.pk),
+        description=f"{invoice.invoice_no}: total {before} -> {invoice.total}",
+    )
+    return invoice
+
+
 @transaction.atomic
 def create_invoice(
     *,
@@ -218,11 +310,9 @@ def create_invoice(
         raise PermissionDenied
     if due_date < issue_date:
         raise ValidationError("Due date cannot precede the issue date.")
-    priced = [(category, Decimal(amount)) for category, amount in items if Decimal(amount) > ZERO]
-    if not priced:
-        raise ValidationError("Add at least one fee line with an amount.")
-    for category, _amount in priced:
-        assert_school(school, category)
+    priced = _priced_lines(school, items)
+    subtotal = sum((amount for _category, _description, amount in priced), start=ZERO)
+    discount, late_fee = _checked_adjustments(discount, late_fee, subtotal)
     invoice = FeeInvoice.objects.create(
         school=school,
         invoice_no=FeeInvoice.next_invoice_no(school, academic_year.name),
@@ -232,13 +322,16 @@ def create_invoice(
         month=month,
         issue_date=issue_date,
         due_date=due_date,
-        discount=Decimal(discount),
-        late_fee=Decimal(late_fee),
+        discount=discount,
+        late_fee=late_fee,
         notes=notes,
         created_by=user,
     )
     FeeInvoiceItem.objects.bulk_create(
-        [FeeInvoiceItem(invoice=invoice, category=category, amount=amount) for category, amount in priced]
+        [
+            FeeInvoiceItem(invoice=invoice, category=category, description=description, amount=amount)
+            for category, description, amount in priced
+        ]
     )
     invoice.refresh_status()
     AuditLog.objects.create(

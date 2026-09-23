@@ -303,24 +303,36 @@ def healthz(request):
 
     It checks the two things whose absence makes the site useless — the database and the
     cache — and answers plainly, without needing a session.
+
+    The answer is deliberately two words per check. This endpoint has no sign-in, so a
+    database driver's exception text, which readily carries a host name, a port, a user
+    and sometimes a query, is not something to hand to whoever asks. The detail goes to
+    the server log, where the people who can act on it are already looking.
     """
+    import logging
+
     from django.core.cache import cache
     from django.db import connection
     from django.http import JsonResponse
 
+    log = logging.getLogger(__name__)
     checks = {}
     try:
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
             cursor.fetchone()
         checks["database"] = "ok"
-    except Exception as exc:  # noqa: BLE001 - the probe must report, not raise
-        checks["database"] = f"failed: {exc}"
+    except Exception:  # noqa: BLE001 - the probe must report, not raise
+        log.exception("Health check: the database is not answering")
+        checks["database"] = "failed"
     try:
         cache.set("healthz", "ok", 5)
-        checks["cache"] = "ok" if cache.get("healthz") == "ok" else "failed: value not returned"
-    except Exception as exc:  # noqa: BLE001
-        checks["cache"] = f"failed: {exc}"
+        checks["cache"] = "ok" if cache.get("healthz") == "ok" else "failed"
+        if checks["cache"] == "failed":
+            log.error("Health check: the cache accepted a write but did not return it")
+    except Exception:  # noqa: BLE001
+        log.exception("Health check: the cache is not answering")
+        checks["cache"] = "failed"
 
     healthy = all(value == "ok" for value in checks.values())
     return JsonResponse({"status": "ok" if healthy else "unhealthy", "checks": checks}, status=200 if healthy else 503)

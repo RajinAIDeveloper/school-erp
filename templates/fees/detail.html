@@ -1,6 +1,7 @@
 {% extends "layouts/base.html" %}
 {% load erp %}
 {% block header_actions %}
+  {% if can_edit %}<a href="{% url 'fees:invoice_edit' invoice.pk %}" class="btn-secondary btn-sm">Edit invoice</a>{% endif %}
   <a href="{% url 'fees:statement' invoice.student.pk %}" class="btn-secondary btn-sm">Statement</a>
   <a href="{% url 'students:detail' invoice.student.pk %}" class="btn-secondary btn-sm">Student</a>
 {% endblock %}

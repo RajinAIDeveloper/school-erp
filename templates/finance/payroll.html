@@ -45,6 +45,13 @@
                 </select>
                 <button class="btn-success btn-sm">Pay</button>
               </form>
+            {% elif perms.finance.change_payroll and row.paid_on %}
+              <form method="post" action="{% url 'finance:payroll_reverse' row.pk %}" class="mt-1 flex flex-wrap items-center justify-end gap-2"
+                    data-confirm="Reverse this salary payment? The ledger keeps both entries and the row becomes unpaid.">
+                {% csrf_token %}
+                <input name="reason" required maxlength="200" class="input w-44 py-1 text-xs" placeholder="Reason">
+                <button class="link text-xs text-red-600">Reverse payment</button>
+              </form>
             {% endif %}
           </td>
         </tr>

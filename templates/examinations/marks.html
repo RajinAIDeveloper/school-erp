@@ -18,9 +18,17 @@
         {{ schedule.exam }} &middot; full marks {{ schedule.full_marks }} &middot; pass {{ schedule.pass_marks }}
       </p>
     </div>
-    <p class="text-sm {% if missing %}text-amber-700{% else %}text-emerald-700{% endif %}">
-      {{ entered }} of {{ rows|length }} entered{% if missing %} &middot; {{ missing }} still blank{% endif %}
-    </p>
+    <div class="text-right text-sm">
+      <p class="{% if missing %}text-amber-700{% else %}text-emerald-700{% endif %}">
+        {{ entered }} of {{ rows|length }} entered{% if missing %} &middot; {{ missing }} still blank{% endif %}
+      </p>
+      {% if average is not None %}
+        <p class="text-slate-600">
+          Class average {{ average }}/{{ schedule.full_marks }}{% if average_percent is not None %} ({{ average_percent }}%){% endif %}
+          &middot; {{ passed }} of {{ sat }} above the pass mark
+        </p>
+      {% endif %}
+    </div>
   </div>
 
   {% if locked %}
@@ -45,6 +53,14 @@
     {% csrf_token %}
     <input type="hidden" name="schedule" value="{{ schedule.pk }}">
     <input type="hidden" name="section" value="{{ section.pk }}">
+    {% if not locked %}
+      <div class="flex flex-wrap items-center gap-2 border-b border-slate-200 px-5 py-3">
+        <span class="text-sm text-slate-500">For the whole class:</span>
+        <button type="button" class="btn-secondary btn-sm" data-check-all="absent">Mark all absent</button>
+        <button type="button" class="btn-secondary btn-sm" data-check-all="present">Clear all absences</button>
+        <span class="text-xs text-slate-500">Useful for a paper nobody sat, then correct the few who did.</span>
+      </div>
+    {% endif %}
     <div class="overflow-x-auto">
       <table class="table">
         <thead>
@@ -64,7 +80,7 @@
               <td>
                 <label class="inline-flex items-center gap-2 text-sm">
                   <input type="checkbox" name="{{ row.enrollment.pk }}-absent" {% if row.absent %}checked{% endif %}
-                         class="h-4 w-4 rounded border-slate-300" {% if locked %}disabled{% endif %}>
+                         class="h-4 w-4 rounded border-slate-300" data-absent {% if locked %}disabled{% endif %}>
                   Absent
                 </label>
               </td>

@@ -15,18 +15,28 @@ from django.utils import timezone
 from core.access import assert_actor_school, assert_school
 from core.models import AuditLog, School
 
-from .models import ZERO, Account, JournalEntry, JournalLine, Payroll, ensure_default_accounts
+from .models import (
+    ZERO,
+    Account,
+    JournalEntry,
+    JournalLine,
+    Payroll,
+    assert_period_open,
+    ensure_default_accounts,
+)
 
 PAY_METHOD_ACCOUNTS = {"cash": "1010", "bank": "1020", "mobile": "1030"}
 
-
-def assert_period_open(school, date):
-    """Refuse to write into a period the school has closed."""
-    locked_until = school.books_locked_until
-    if locked_until and date <= locked_until:
-        raise ValidationError(
-            f"The books are closed up to {locked_until:%d %b %Y}. Post the correction in an open period."
-        )
+__all__ = [
+    "assert_period_open",
+    "close_books",
+    "generate_payroll",
+    "pay_payroll",
+    "post_journal",
+    "record_opening_balances",
+    "reverse_journal",
+    "reverse_payroll",
+]
 
 
 @transaction.atomic
@@ -227,6 +237,44 @@ def pay_payroll(*, school, user, payroll, method="cash", paid_on=None):
         model=payroll._meta.label,
         object_id=str(payroll.pk),
         description=f"{payroll.net} by {method}",
+    )
+    return payroll
+
+
+@transaction.atomic
+def reverse_payroll(*, school, user, payroll, reason, paid_on=None):
+    """
+    Undo a salary payment at its source, so the payroll row and the ledger stay in step.
+
+    The original entry is reversed rather than deleted, the row becomes unpaid again, and
+    a corrected payment can then be recorded in an open period. This is the workflow the
+    ledger screen points at when it refuses to reverse a salary entry directly.
+    """
+    assert_actor_school(user, school)
+    assert_school(school, payroll)
+    if not user.has_perm("finance.change_payroll"):
+        raise PermissionDenied
+    if not reason.strip():
+        raise ValidationError("Give a reason for reversing this salary; it goes on the record.")
+    School.objects.select_for_update().get(pk=school.pk)
+    payroll = Payroll.objects.select_for_update().get(pk=payroll.pk, school=school)
+    if not payroll.journal_entry_id:
+        raise ValidationError("This salary has not been paid, so there is nothing to reverse.")
+    entry = JournalEntry.objects.select_for_update().get(pk=payroll.journal_entry_id)
+    when = paid_on or timezone.localdate()
+    assert_period_open(school, when)
+    if entry.status == JournalEntry.Status.POSTED:
+        entry.reverse(user=user, narration=f"Reversal of {entry}: {reason.strip()}"[:250], date=when)
+    payroll.journal_entry = None
+    payroll.paid_on = None
+    payroll.save(update_fields=["journal_entry", "paid_on", "updated_at"])
+    AuditLog.objects.create(
+        school=school,
+        user=user,
+        action="payroll.reversed",
+        model=payroll._meta.label,
+        object_id=str(payroll.pk),
+        description=f"{payroll.net} reversed: {reason.strip()}",
     )
     return payroll
 

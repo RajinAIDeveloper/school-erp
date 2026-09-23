@@ -13,6 +13,7 @@ urlpatterns = [
     path("due/", views.dues, name="dues"),
     path("due/remind/", views.remind, name="remind"),
     path("due/late-fees/", views.late_fees, name="late_fees"),
+    path("<int:pk>/edit/", views.invoice_edit, name="invoice_edit"),
     path("<int:pk>/cancel/", views.invoice_cancel, name="invoice_cancel"),
     path("<int:pk>/", views.detail, name="invoice_detail"),
     path("receipts/<int:pk>.pdf", views.receipt, name="receipt"),

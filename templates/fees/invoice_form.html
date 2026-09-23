@@ -9,6 +9,14 @@
     </div>
   {% endif %}
 
+  {% if invoice %}
+    <div class="rounded-md border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+      Editing {{ invoice.invoice_no }} for {{ invoice.student.full_name }}. The student and issue date are
+      fixed; to bill a different child, cancel this invoice and raise a new one. Editing stops as soon as
+      any money is received.
+    </div>
+  {% endif %}
+
   <section class="card">
     <div class="card-header"><h2 class="font-semibold">Invoice</h2></div>
     <div class="card-body grid gap-4 sm:grid-cols-2">
@@ -44,8 +52,8 @@
   </section>
 
   <div class="flex items-center justify-end gap-3">
-    <a href="{% url 'fees:invoice_list' %}" class="btn-secondary">Cancel</a>
-    <button type="submit" class="btn-primary">Raise invoice</button>
+    <a href="{% if invoice %}{% url 'fees:invoice_detail' invoice.pk %}{% else %}{% url 'fees:invoice_list' %}{% endif %}" class="btn-secondary">Cancel</a>
+    <button type="submit" class="btn-primary">{{ submit_label|default:"Raise invoice" }}</button>
   </div>
 </form>
 {% endblock %}
