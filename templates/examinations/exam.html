@@ -81,6 +81,17 @@
       </form>
       {% endif %}
 
+      {% if perms.examinations.change_resultcomment %}
+      <form method="get" action="{% url 'examinations:comments' %}" class="flex flex-wrap items-end gap-3">
+        <input type="hidden" name="overall" value="1"><input type="hidden" name="exam" value="{{ exam.pk }}">
+        <div class="flex-1"><label class="label">Section</label>
+          <select name="section" class="input">
+            {% for s in sections %}<option value="{{ s.pk }}">{{ s }}</option>{% endfor %}
+          </select></div>
+        <button class="btn-secondary">Class teacher comments</button>
+      </form>
+      {% endif %}
+
       <p class="text-xs text-slate-500">
         Report cards print whatever the results currently say; before publication each is marked DRAFT.
       </p>

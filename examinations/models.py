@@ -368,3 +368,76 @@ def compute_result(exam, enrollment):
         "result": row["result"],
         "rank": row["rank"],
     }
+
+
+class ResultComment(SchoolScopedModel):
+    """
+    A teacher's words on one student's result: per subject with an effort grade, or overall
+    from the class teacher when no subject is given.
+
+    Written before publication and frozen into the published card with everything else.
+    """
+
+    exam = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name="comments")
+    enrollment = models.ForeignKey(Enrollment, on_delete=models.CASCADE, related_name="result_comments")
+    subject = models.ForeignKey(Subject, null=True, blank=True, on_delete=models.CASCADE, related_name="comments")
+    effort = models.CharField(
+        max_length=20,
+        blank=True,
+        help_text="Effort grade, or approaches to learning in an IB class, as the school reports it.",
+    )
+    comment = models.TextField(max_length=600, blank=True)
+    written_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["exam", "enrollment", "subject"],
+                condition=models.Q(subject__isnull=False),
+                name="one_subject_comment_per_student",
+            ),
+            models.UniqueConstraint(
+                fields=["exam", "enrollment"],
+                condition=models.Q(subject__isnull=True),
+                name="one_overall_comment_per_student",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.enrollment.student} {self.subject or 'overall'}: {self.comment[:30]}"
+
+
+class GradeForecast(SchoolScopedModel):
+    """
+    A grade the school expects, predicts or sets as a target for one student in one subject.
+
+    Each is a dated record, kept alongside earlier ones rather than overwriting them, and shown
+    on cards only once approved. It is the school's own judgement, never calculated from
+    marks, and never presented as an award by Cambridge, Pearson or the IB.
+    """
+
+    class Kind(models.TextChoices):
+        PREDICTED = "predicted", "Predicted grade"
+        FORECAST = "forecast", "Forecast grade"
+        TARGET = "target", "Target grade"
+
+    enrollment = models.ForeignKey(Enrollment, on_delete=models.CASCADE, related_name="forecasts")
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name="forecasts")
+    kind = models.CharField(max_length=10, choices=Kind.choices)
+    grade = models.CharField(max_length=5)
+    as_of = models.DateField()
+    note = models.CharField(max_length=200, blank=True)
+    recorded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    approved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-as_of", "-id"]
+        indexes = [models.Index(fields=["enrollment", "subject", "kind"])]
+
+    def __str__(self):
+        return f"{self.enrollment.student} {self.subject} {self.get_kind_display()}: {self.grade}"

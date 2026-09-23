@@ -38,7 +38,7 @@ OWN_RESULT_FIELDS = ("total", "gpa", "result")
 # ------------------------------------------------------------------------ permissions
 
 
-def assert_can_mark(user, schedule, enrollment=None, section=None):
+def assert_can_mark(user, schedule, enrollment=None, section=None, permission="examinations.change_mark"):
     """
     May this person read or write marks for this paper, in this section?
 
@@ -46,7 +46,7 @@ def assert_can_mark(user, schedule, enrollment=None, section=None):
     Science in section B gives no access to section B's Math marks, whether saving them or
     only looking at them.
     """
-    if not user.has_perm("examinations.change_mark"):
+    if not user.has_perm(permission):
         raise PermissionDenied
     if not user.is_superuser and user.school_id != schedule.school_id:
         raise PermissionDenied
@@ -280,6 +280,8 @@ def _attendance(enrollment, until):
         "total": counts["total"],
         "present": counts["present"],
         "percent": round(counts["present"] * 100 / counts["total"]),
+        # The cut-off is printed, so a family can see what period the figure covers.
+        "until": until.isoformat() if until else "",
     }
 
 
@@ -333,6 +335,9 @@ def live_class_sheet(exam, class_level):
     plan = subject_plan(exam.academic_year, class_level)
     until = exam.end_date or timezone.localdate()
     show_rank = book.show_rank(exam)
+    from .feedback import card_feedback, effort_label
+
+    feedback = card_feedback(exam, [e.pk for e in enrollments], until)
     rows = []
     for e in enrollments:
         taken = papers_for(e, schedules, plan)
@@ -398,6 +403,10 @@ def live_class_sheet(exam, class_level):
                 "result": outcome["result"],
                 "complete": outcome["complete"],
                 "attendance": _attendance(e, until),
+                "comments": feedback[e.pk]["comments"],
+                "overall_comment": feedback[e.pk]["overall_comment"],
+                "forecasts": feedback[e.pk]["forecasts"],
+                "effort_label": effort_label(system),
             }
         )
     for section_id in {r["section_id"] for r in rows}:

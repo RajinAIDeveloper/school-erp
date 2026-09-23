@@ -3,6 +3,8 @@
 {% block header_actions %}
   <a href="{% url 'examinations:results' %}" class="btn-secondary btn-sm">Results</a>
   {% if perms.examinations.view_mark %}<a href="{% url 'examinations:unlocks' %}" class="btn-secondary btn-sm">Unlock requests</a>{% endif %}
+  {% if schedule and section and perms.examinations.change_resultcomment %}<a href="{% url 'examinations:comments' %}?schedule={{ schedule.pk }}&section={{ section.pk }}" class="btn-secondary btn-sm">Comments</a>{% endif %}
+  {% if perms.examinations.add_gradeforecast %}<a href="{% url 'examinations:forecasts' %}" class="btn-secondary btn-sm">Grade estimates</a>{% endif %}
 {% endblock %}
 {% block content %}
 <form method="get" class="card card-body mb-4">

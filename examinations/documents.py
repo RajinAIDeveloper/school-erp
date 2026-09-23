@@ -6,6 +6,7 @@ school's letterhead, the student's own name (in Bangla too when the school recor
 the marks as published, and a verification code that can be checked later.
 """
 
+from datetime import date
 from decimal import Decimal
 from io import BytesIO
 from xml.sax.saxutils import escape
@@ -66,7 +67,18 @@ def attendance_for(enrollment, until=None):
         "total": counts["total"],
         "present": counts["present"],
         "percent": round(counts["present"] * 100 / counts["total"]),
+        "until": until.isoformat() if until else "",
     }
+
+
+def attendance_text(attendance):
+    """ "92% (184/200) to 12 Jun 2026": the figure and the date it runs to."""
+    from datetime import date
+
+    text = f"{attendance['percent']}% ({attendance['present']}/{attendance['total']})"
+    if attendance.get("until"):
+        text += f" to {date.fromisoformat(attendance['until']):%d %b %Y}"
+    return text
 
 
 def card_rows(row):
@@ -76,6 +88,7 @@ def card_rows(row):
     but no combined subjects, by treating each paper as a subject.
     """
     cells = {cell["schedule_id"]: cell for cell in row["cells"]}
+    notes = row.get("comments") or {}
     units = row.get("subjects") or [
         {
             "name": cell["subject"],
@@ -101,8 +114,11 @@ def card_rows(row):
                 for part in paper.get("components") or []
             )
             obtained = "ABS" if paper["absent"] else ("—" if paper["missing"] else paper["score"])
+            note = notes.get(str(paper.get("subject_id"))) or {}
             lines.append(
                 {
+                    "effort": note.get("effort", ""),
+                    "comment": note.get("comment", ""),
                     "code": paper.get("subject_code", ""),
                     "subject": paper["subject"] + (" (4th subject)" if paper.get("is_fourth") and not combined else ""),
                     "full_marks": paper["full_marks"],
@@ -117,6 +133,8 @@ def card_rows(row):
             obtained = "ABS" if unit["absent"] else ("—" if unit["missing"] else unit["score"])
             lines.append(
                 {
+                    "effort": "",
+                    "comment": "",
                     "code": "",
                     "subject": f"{unit['name']} (both papers)" + (" (4th subject)" if unit.get("is_fourth") else ""),
                     "full_marks": unit["full_marks"],
@@ -155,19 +173,45 @@ def report_card_flowables(school, exam, enrollment, row, snapshot, style, verify
     if row.get("father_name"):
         facts.append(("Father", row["father_name"]))
     if attendance:
-        facts.append(("Attendance", f"{attendance['percent']}% ({attendance['present']}/{attendance['total']})"))
+        facts.append(("Attendance", attendance_text(attendance)))
 
     lines = card_rows(row)
     show_parts = any(line["parts"] for line in lines)
-    headers = ["Code", "Subject", "Full marks"] + (["Parts"] if show_parts else []) + ["Obtained", "Grade", "Points"]
+    show_effort = any(line["effort"] for line in lines)
+    effort_heading = row.get("effort_label") or "Effort"
+    headers = (
+        ["Code", "Subject", "Full marks"]
+        + (["Parts"] if show_parts else [])
+        + ["Obtained", "Grade", "Points"]
+        + ([effort_heading] if show_effort else [])
+    )
     body = [
         [line["code"], line["subject"], line["full_marks"]]
         + ([line["parts"]] if show_parts else [])
         + [line["obtained"], line["letter"], line["grade_point"]]
+        + ([line["effort"]] if show_effort else [])
         for line in lines
     ]
     numeric = (2, 4, 6) if show_parts else (2, 3, 5)
     table = data_table(headers, body, style, align_right=numeric)
+    words = [
+        Paragraph(f"<b>{escape(line['subject'])}</b>: {escape(line['comment'])}", style["cell"])
+        for line in lines
+        if line["comment"]
+    ]
+    if row.get("overall_comment"):
+        words.append(Paragraph(f"<b>Class teacher</b>: {escape(row['overall_comment'])}", style["cell"]))
+    forecasts = row.get("forecasts") or []
+    forecast_table = None
+    if forecasts:
+        forecast_table = data_table(
+            ["Subject", "Kind", "Grade", "Decided"],
+            [
+                [f["subject"], f["kind_label"], f["grade"], f"{date.fromisoformat(f['as_of']):%d %b %Y}"]
+                for f in forecasts
+            ],
+            style,
+        )
 
     result_colour = "#047857" if row.get("result") == "PASS" else "#b91c1c"
     summary_cells = [("Total", f"{row['total']} / {row['full_total']}")]
@@ -236,6 +280,20 @@ def report_card_flowables(school, exam, enrollment, row, snapshot, style, verify
     )
 
     flow = [_facts(facts, style), Spacer(1, 6), table, Spacer(1, 8), summary, Spacer(1, 6)]
+    if words:
+        flow.append(Paragraph("<b>Comments</b>", style["normal"]))
+        flow.extend(words)
+        flow.append(Spacer(1, 6))
+    if forecast_table is not None:
+        flow.append(
+            Paragraph(
+                "<b>The school's grade estimates</b> <font color='#475569' size='7.5'>"
+                "The school's own judgement, not a result awarded by an examination board.</font>",
+                style["normal"],
+            )
+        )
+        flow.append(forecast_table)
+        flow.append(Spacer(1, 6))
     if exam.status != "published":
         flow.append(
             Paragraph("<font color='#b91c1c'><b>DRAFT</b> — these results are not published.</font>", style["normal"])

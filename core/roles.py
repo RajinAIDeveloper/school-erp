@@ -91,6 +91,12 @@ EXPLICIT_PERMS = {
         ("examinations", "add_mark"),
         ("examinations", "change_mark"),
         ("examinations", "view_mark"),
+        # Comments on their own subjects, and grade estimates that a manager approves.
+        ("examinations", "add_resultcomment"),
+        ("examinations", "change_resultcomment"),
+        ("examinations", "view_resultcomment"),
+        ("examinations", "add_gradeforecast"),
+        ("examinations", "view_gradeforecast"),
         ("timetable", "view_routineslot"),
         ("timetable", "view_period"),
         ("downloads", "view_downloaditem"),

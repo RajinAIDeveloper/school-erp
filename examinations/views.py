@@ -510,6 +510,9 @@ def report_card(request, exam_pk, student_pk):
 
     lines = card_rows(row)
     link = verification_url(request, snap)
+    attendance = row["attendance"] if "attendance" in row else attendance_for(enr, exam.end_date)
+    from datetime import date as _date
+
     return render(
         request,
         "examinations/report_card.html",
@@ -519,7 +522,13 @@ def report_card(request, exam_pk, student_pk):
             "snapshot": snap,
             "lines": lines,
             "show_parts": any(line["parts"] for line in lines),
-            "attendance": row["attendance"] if "attendance" in row else attendance_for(enr, exam.end_date),
+            "attendance": attendance,
+            "attendance_until": _date.fromisoformat(attendance["until"])
+            if attendance and attendance.get("until")
+            else None,
+            "show_effort": any(line["effort"] for line in lines),
+            "comment_span": 5 + any(line["parts"] for line in lines) + any(line["effort"] for line in lines),
+            "effort_label": row.get("effort_label") or "Effort",
             "board": row.get("system") == "national",
             # The working is for staff checking a result, never for a family's view of it.
             "trace": row.get("trace") if request.user.has_perm("examinations.view_mark") else None,
@@ -901,3 +910,234 @@ def paper_parts(request, pk):
             "page_title": f"Parts · {schedule.subject} · {schedule.class_level}",
         },
     )
+
+
+class OverallCommentFilter(TailwindFormMixin, forms.Form):
+    exam = forms.ModelChoiceField(queryset=None)
+    section = forms.ModelChoiceField(queryset=None)
+
+    def __init__(self, *args, user, school, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["exam"].queryset = Exam.objects.filter(school=school).select_related("academic_year")
+        self.fields["section"].queryset = sections_for(user, school).select_related("class_level")
+
+
+def _comment_rows(enrollments, existing, typed, errors):
+    rows = []
+    for enrollment in enrollments:
+        stored = existing.get(enrollment.pk)
+        entry = typed.get(enrollment.pk)
+        rows.append(
+            {
+                "enrollment": enrollment,
+                "effort": entry["effort"] if entry else (stored.effort if stored else ""),
+                "comment": entry["comment"] if entry else (stored.comment if stored else ""),
+                "error": errors.get(enrollment.pk),
+            }
+        )
+    return rows
+
+
+@require_permission("examinations.change_resultcomment", also="assigned subjects and sections; class teachers overall")
+def comments(request):
+    """
+    Written comments on results: per subject with an effort grade, for one paper in one
+    section, or with ?overall=1 the class teacher's comment on each student's whole result.
+
+    Fixed once the exam is published, and frozen into the published card.
+    """
+    from .feedback import (
+        COMMENT_LIMIT,
+        CommentError,
+        effort_label,
+        is_class_teacher,
+        save_overall_comments,
+        save_subject_comments,
+    )
+    from .models import ResultComment
+
+    overall = (request.GET.get("overall") or request.POST.get("overall")) == "1"
+    data = (
+        request.POST
+        if request.method == "POST"
+        else (request.GET if ("exam" in request.GET or "schedule" in request.GET) else None)
+    )
+    if overall:
+        selector = OverallCommentFilter(data, user=request.user, school=request.school)
+    else:
+        selector = MarkFilter(data, user=request.user, school=request.school)
+    context = {"selector": selector, "overall": overall, "rows": [], "limit": COMMENT_LIMIT, "page_title": "Comments"}
+    if not (selector.is_bound and selector.is_valid()):
+        return render(request, "examinations/comments.html", context)
+
+    section = selector.cleaned_data["section"]
+    if overall:
+        exam, schedule, subject = selector.cleaned_data["exam"], None, None
+        if section.class_level_id not in set(exam.schedules.values_list("class_level_id", flat=True)):
+            messages.error(request, f"{exam} has no papers for {section.class_level}.")
+            return render(request, "examinations/comments.html", context)
+        if not (is_manager(request.user) or is_class_teacher(request.user, section)):
+            raise PermissionDenied("Only the class teacher or the school's managers write overall comments.")
+    else:
+        schedule = selector.cleaned_data["schedule"]
+        exam, subject = schedule.exam, schedule.subject
+        assert_can_mark(request.user, schedule, section=section, permission="examinations.change_resultcomment")
+    enrollments = list(
+        Enrollment.objects.filter(school=request.school, academic_year=exam.academic_year, section=section)
+        .select_related("student")
+        .prefetch_related("chosen_subjects")
+        .order_by("roll_number")
+    )
+    if schedule is not None:
+        enrollments = enrollments_taking(schedule, enrollments, subject_plan(exam.academic_year, schedule.class_level))
+    existing = {
+        c.enrollment_id: c for c in ResultComment.objects.filter(exam=exam, subject=subject, enrollment__in=enrollments)
+    }
+    typed, errors = {}, {}
+    locked = exam.publication_version > 0
+    if request.method == "POST":
+        submitted = []
+        for enrollment in enrollments:
+            effort = request.POST.get(f"{enrollment.pk}-effort", "")
+            comment = request.POST.get(f"{enrollment.pk}-comment", "")
+            typed[enrollment.pk] = {"effort": effort, "comment": comment}
+            submitted.append((enrollment, effort, comment))
+        try:
+            if overall:
+                saved = save_overall_comments(user=request.user, exam=exam, section=section, rows=submitted)
+                query = {"overall": 1, "exam": exam.pk, "section": section.pk}
+            else:
+                saved = save_subject_comments(user=request.user, schedule=schedule, section=section, rows=submitted)
+                query = {"schedule": schedule.pk, "section": section.pk}
+            messages.success(request, f"Saved {saved} change(s)." if saved else "Nothing had changed.")
+            return redirect(reverse("examinations:comments") + "?" + urlencode(query))
+        except CommentError as exc:
+            errors = exc.errors
+            messages.error(request, "Nothing was saved. Fix the rows marked below and save again.")
+        except ValidationError as exc:
+            messages.error(request, " ".join(exc.messages))
+    context.update(
+        {
+            "exam": exam,
+            "schedule": schedule,
+            "section": section,
+            "locked": locked,
+            "effort_label": effort_label(exam.rules_for(section.class_level)),
+            "rows": _comment_rows(enrollments, existing, typed, errors),
+        }
+    )
+    return render(request, "examinations/comments.html", context)
+
+
+class ForecastFilter(TailwindFormMixin, forms.Form):
+    section = forms.ModelChoiceField(queryset=None)
+    subject = forms.ModelChoiceField(queryset=None)
+    kind = forms.ChoiceField(choices=())
+
+    def __init__(self, *args, user, school, **kwargs):
+        from academics.models import Subject
+
+        from .models import GradeForecast
+
+        super().__init__(*args, **kwargs)
+        self.fields["section"].queryset = sections_for(user, school).select_related("class_level")
+        self.fields["subject"].queryset = Subject.objects.filter(school=school)
+        self.fields["kind"].choices = GradeForecast.Kind.choices
+
+
+@require_permission("examinations.add_gradeforecast", also="subjects taught in the section; managers approve")
+def forecasts(request):
+    """
+    Predicted, forecast and target grades for one subject in one section.
+
+    Every entry is a new dated record, so the history stays. A teacher's entries wait for a
+    manager's approval before any card shows them; a manager's are approved as made.
+    """
+    from datetime import date as _date
+
+    from django.utils import timezone
+
+    from academics.models import AcademicYear
+
+    from .feedback import approve_forecasts, may_forecast, record_forecasts
+    from .models import GradeForecast
+    from .subjects import paper_role
+
+    data = request.POST if request.method == "POST" else (request.GET if "section" in request.GET else None)
+    selector = ForecastFilter(data, user=request.user, school=request.school)
+    year = AcademicYear.current_for(request.school)
+    context = {"selector": selector, "rows": [], "year": year, "page_title": "Grade estimates"}
+    if not (selector.is_bound and selector.is_valid()) or year is None:
+        return render(request, "examinations/forecasts.html", context)
+    section, subject, kind = (selector.cleaned_data[k] for k in ("section", "subject", "kind"))
+    if not may_forecast(request.user, subject, section, year):
+        raise PermissionDenied("You can record grades only for subjects you teach in this section.")
+    plan = subject_plan(year, section.class_level)
+    enrollments = [
+        e
+        for e in Enrollment.objects.filter(school=request.school, academic_year=year, section=section)
+        .select_related("student")
+        .prefetch_related("chosen_subjects")
+        .order_by("roll_number")
+        if paper_role(e, subject, plan)
+    ]
+    here = (
+        reverse("examinations:forecasts")
+        + "?"
+        + urlencode({"section": section.pk, "subject": subject.pk, "kind": kind})
+    )
+    typed = {}
+    as_of_raw = request.POST.get("as_of", "") if request.method == "POST" else ""
+    if request.method == "POST":
+        try:
+            if request.POST.get("action") == "approve":
+                count = approve_forecasts(
+                    user=request.user, section=section, subject=subject, academic_year=year, kind=kind
+                )
+                messages.success(request, f"Approved {count} record(s).")
+                return redirect(here)
+            typed = {e.pk: request.POST.get(f"{e.pk}-grade", "") for e in enrollments}
+            try:
+                as_of = _date.fromisoformat(as_of_raw)
+            except ValueError:
+                as_of = None
+            count = record_forecasts(
+                user=request.user,
+                section=section,
+                subject=subject,
+                academic_year=year,
+                kind=kind,
+                as_of=as_of,
+                rows=[(e, typed[e.pk]) for e in enrollments],
+            )
+            messages.success(request, f"Recorded {count} grade(s)." if count else "No grades were entered.")
+            return redirect(here)
+        except ValidationError as exc:
+            messages.error(request, " ".join(exc.messages))
+    records = GradeForecast.objects.filter(enrollment__in=enrollments, subject=subject, kind=kind).select_related(
+        "recorded_by"
+    )
+    approved, pending = {}, {}
+    for record in records:  # newest first
+        bucket = approved if record.approved_at else pending
+        bucket.setdefault(record.enrollment_id, record)
+    context.update(
+        {
+            "section": section,
+            "subject": subject,
+            "kind_label": dict(GradeForecast.Kind.choices)[kind],
+            "as_of": as_of_raw or timezone.localdate().isoformat(),
+            "can_approve": is_manager(request.user) and request.user.has_perm("examinations.change_gradeforecast"),
+            "pending_count": sum(1 for e in enrollments if e.pk in pending),
+            "rows": [
+                {
+                    "enrollment": e,
+                    "approved": approved.get(e.pk),
+                    "pending": pending.get(e.pk),
+                    "typed": typed.get(e.pk, ""),
+                }
+                for e in enrollments
+            ],
+        }
+    )
+    return render(request, "examinations/forecasts.html", context)

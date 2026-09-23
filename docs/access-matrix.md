@@ -61,6 +61,8 @@ quietly join it.
 | /exams/<int:pk>/publish/ | examinations:publish | `examinations.change_exam` | - | Y | Y | . | . | . | . | . |
 | /exams/<int:pk>/routine/ | examinations:exam_routine | `examinations.view_exam` | - | Y | Y | . | Y | . | . | . |
 | /exams/admit-cards.pdf | examinations:admit_cards | `examinations.view_exam` | own sections only | Y | Y | . | Y | . | . | . |
+| /exams/comments/ | examinations:comments | `examinations.change_resultcomment` | assigned subjects and sections; class teachers overall | Y | Y | . | Y | . | . | . |
+| /exams/estimates/ | examinations:forecasts | `examinations.add_gradeforecast` | subjects taught in the section; managers approve | Y | Y | . | Y | . | . | . |
 | /exams/manage/ | examinations:exam_list | `examinations.view_exam` | - | Y | Y | . | Y | . | . | . |
 | /exams/manage/<int:pk>/edit/ | examinations:exam_update | `examinations.change_exam` | - | Y | Y | . | . | . | . | . |
 | /exams/manage/new/ | examinations:exam_create | `examinations.add_exam` | - | Y | Y | . | . | . | . | . |

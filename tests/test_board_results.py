@@ -529,7 +529,7 @@ def test_two_prints_of_one_published_version_are_identical(erp):
     assert card(first) == card(second)
     assert b"Renamed" not in second
     snapshot = ResultSnapshot.objects.get()
-    assert snapshot.payload["attendance"] == {"total": 1, "present": 1, "percent": 100}
+    assert snapshot.payload["attendance"] == {"total": 1, "present": 1, "percent": 100, "until": "2026-09-25"}
 
 
 def test_a_card_is_judged_by_the_year_it_belongs_to_like_bulk_printing(erp):

@@ -1,0 +1,60 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block content %}
+<div class="mb-4 rounded-md border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+  Predicted, forecast and target grades are the school's own judgement. Each entry is kept as a dated
+  record, a teacher's entry appears on report cards only after a manager approves it, and cards label
+  it as the school's estimate, never as a result from Cambridge, Pearson or the IB.
+</div>
+
+<form method="get" class="card card-body mb-4">
+  <div class="grid gap-4 sm:grid-cols-3">{% for field in selector %}{% render_field field %}{% endfor %}</div>
+  <div class="mt-4"><button class="btn-secondary">Load</button></div>
+</form>
+
+{% if section %}
+  {% if can_approve and pending_count %}
+    <form method="post" class="mb-4 flex items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+      {% csrf_token %}
+      <input type="hidden" name="section" value="{{ section.pk }}"><input type="hidden" name="subject" value="{{ subject.pk }}">
+      <input type="hidden" name="kind" value="{{ selector.cleaned_data.kind }}"><input type="hidden" name="action" value="approve">
+      <span>{{ pending_count }} {{ kind_label|lower }}{{ pending_count|pluralize }} waiting for approval.</span>
+      <button class="btn-primary btn-sm">Approve all shown</button>
+    </form>
+  {% endif %}
+
+  <form method="post" class="card">
+    {% csrf_token %}
+    <input type="hidden" name="section" value="{{ section.pk }}"><input type="hidden" name="subject" value="{{ subject.pk }}">
+    <input type="hidden" name="kind" value="{{ selector.cleaned_data.kind }}"><input type="hidden" name="action" value="record">
+    <div class="flex flex-wrap items-end justify-between gap-3 border-b border-slate-200 px-5 py-4">
+      <div><p class="font-semibold">{{ kind_label }}s · {{ subject }} · {{ section }}</p><p class="text-sm text-slate-500">Year {{ year }}</p></div>
+      <div><label class="label" for="as_of">Decided on</label><input id="as_of" type="date" name="as_of" value="{{ as_of }}" class="input w-44"></div>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="table">
+        <thead><tr><th class="w-14">Roll</th><th>Student</th><th>Approved</th><th>Waiting</th><th class="w-28">New grade</th></tr></thead>
+        <tbody>
+          {% for row in rows %}
+            <tr>
+              <td class="text-slate-500">{{ row.enrollment.roll_number }}</td>
+              <td class="font-medium">{{ row.enrollment.student.full_name }}</td>
+              <td>{% if row.approved %}<b>{{ row.approved.grade }}</b> <span class="text-xs text-slate-500">{{ row.approved.as_of|date:"d M Y" }}</span>{% else %}<span class="text-slate-400">—</span>{% endif %}</td>
+              <td>{% if row.pending %}<b>{{ row.pending.grade }}</b> <span class="text-xs text-slate-500">{{ row.pending.as_of|date:"d M Y" }}{% if row.pending.recorded_by %} · {{ row.pending.recorded_by }}{% endif %}</span>{% else %}<span class="text-slate-400">—</span>{% endif %}</td>
+              <td><input name="{{ row.enrollment.pk }}-grade" value="{{ row.typed }}" maxlength="5" class="input py-1 text-sm"></td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="5">{% include "components/empty.html" with message="No students in this section take this subject." %}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if rows %}
+      <div class="flex items-center justify-between border-t border-slate-200 px-5 py-4">
+        <p class="text-xs text-slate-500">Only rows with a new grade are recorded. Earlier records are kept.</p>
+        <button class="btn-primary">Record grades</button>
+      </div>
+    {% endif %}
+  </form>
+{% endif %}
+{% endblock %}

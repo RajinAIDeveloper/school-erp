@@ -1,0 +1,64 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block header_actions %}
+  {% if overall %}<a href="{% url 'examinations:comments' %}" class="btn-secondary btn-sm">Subject comments</a>
+  {% else %}<a href="{% url 'examinations:comments' %}?overall=1" class="btn-secondary btn-sm">Class teacher comments</a>{% endif %}
+  {% if schedule and section %}<a href="{% url 'examinations:marks' %}?schedule={{ schedule.pk }}&section={{ section.pk }}" class="btn-secondary btn-sm">Marks</a>{% endif %}
+{% endblock %}
+{% block content %}
+<form method="get" class="card card-body mb-4">
+  {% if overall %}<input type="hidden" name="overall" value="1">{% endif %}
+  <div class="grid gap-4 sm:grid-cols-2">{% for field in selector %}{% render_field field %}{% endfor %}</div>
+  <div class="mt-4"><button class="btn-secondary">Load class</button></div>
+</form>
+
+{% if section %}
+  <div class="mb-4 rounded-lg border border-slate-200 bg-white px-5 py-3">
+    <p class="font-semibold">{% if schedule %}{{ schedule.subject }}{% else %}Class teacher's comments{% endif %} &middot; {{ section }}</p>
+    <p class="text-sm text-slate-500">{{ exam }} &middot; printed on each student's report card and frozen when results are published.</p>
+  </div>
+
+  {% if locked %}
+    <div class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+      This exam's results are published, so its comments are fixed.
+    </div>
+  {% endif %}
+
+  <form method="post" class="card">
+    {% csrf_token %}
+    {% if overall %}<input type="hidden" name="overall" value="1"><input type="hidden" name="exam" value="{{ exam.pk }}">
+    {% else %}<input type="hidden" name="schedule" value="{{ schedule.pk }}">{% endif %}
+    <input type="hidden" name="section" value="{{ section.pk }}">
+    <div class="overflow-x-auto">
+      <table class="table">
+        <thead>
+          <tr><th class="w-14">Roll</th><th class="w-48">Student</th>{% if not overall %}<th class="w-28">{{ effort_label }}</th>{% endif %}<th>Comment</th></tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+            <tr class="{% if row.error %}bg-red-50{% endif %} align-top">
+              <td class="text-slate-500">{{ row.enrollment.roll_number }}</td>
+              <td class="font-medium">{{ row.enrollment.student.full_name }}</td>
+              {% if not overall %}
+                <td><input name="{{ row.enrollment.pk }}-effort" value="{{ row.effort }}" maxlength="20" class="input py-1 text-sm" {% if locked %}disabled{% endif %}></td>
+              {% endif %}
+              <td>
+                <textarea name="{{ row.enrollment.pk }}-comment" rows="2" maxlength="{{ limit }}" class="input text-sm" {% if locked %}disabled{% endif %}>{{ row.comment }}</textarea>
+                {% if row.error %}<p class="mt-1 text-xs text-red-700">{{ row.error }}</p>{% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="4">{% include "components/empty.html" with message="No students sit this paper in this section." %}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if rows and not locked %}
+      <div class="flex items-center justify-between border-t border-slate-200 px-5 py-4">
+        <p class="text-xs text-slate-500">Up to {{ limit }} characters each. Clearing a row removes its comment.</p>
+        <button class="btn-primary">Save comments</button>
+      </div>
+    {% endif %}
+  </form>
+{% endif %}
+{% endblock %}
