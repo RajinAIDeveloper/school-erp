@@ -17,7 +17,16 @@ from .models import Exam, ExamSchedule
 class ExamForm(SchoolModelForm):
     class Meta:
         model = Exam
-        fields = ["academic_year", "term", "name", "start_date", "end_date", "grade_scale"]
+        fields = [
+            "academic_year",
+            "term",
+            "name",
+            "start_date",
+            "end_date",
+            "grade_scale",
+            "assessment_system",
+            "show_rank",
+        ]
 
     def clean(self):
         cleaned = super().clean()
@@ -45,6 +54,7 @@ class ExamScheduleForm(SchoolModelForm):
             "full_marks",
             "pass_marks",
             "room",
+            "grade_scale",
         ]
 
     def clean(self):

@@ -19,6 +19,8 @@ from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, 
 
 from core.pdf import HEADER_FILL, RULE, data_table, document, letterhead, styles
 
+from .grading import headline, shows_rank
+
 
 def _facts(pairs, style, columns=3, width=178):
     cells = [
@@ -167,14 +169,20 @@ def report_card_flowables(school, exam, enrollment, row, snapshot, style, verify
     numeric = (2, 4, 6) if show_parts else (2, 3, 5)
     table = data_table(headers, body, style, align_right=numeric)
 
-    result_colour = "#047857" if row["result"] == "PASS" else "#b91c1c"
-    summary_cells = [
-        ("Total", f"{row['total']} / {row['full_total']}"),
-        ("GPA", f"{row['gpa'] or '—'}" + (f" ({row['gpa_letter']})" if row.get("gpa_letter") else "")),
-    ]
+    result_colour = "#047857" if row.get("result") == "PASS" else "#b91c1c"
+    summary_cells = [("Total", f"{row['total']} / {row['full_total']}")]
+    if row.get("has_gpa", True) and row.get("gpa") is not None:
+        summary_cells.append(("GPA", f"{row['gpa']}" + (f" ({row['gpa_letter']})" if row.get("gpa_letter") else "")))
+    elif row.get("points") is not None:
+        summary_cells.append(("Points", row["points"]))
+    else:
+        summary_cells.append(("Grades", headline(row)))
     if board and row.get("fourth_subject"):
         summary_cells.append(("GPA without 4th subject", row.get("gpa_without_fourth") or "—"))
-    summary_cells += [("Rank in section", row["rank"] or "—"), ("Result", row["result"])]
+    if shows_rank(row):
+        summary_cells.append(("Rank in section", row["rank"] or "—"))
+    if row.get("result"):
+        summary_cells.append(("Result", row["result"]))
     width = 178 / len(summary_cells)
     summary = Table(
         [
@@ -381,7 +389,8 @@ def progress_rows(exams, enrollments_by_year):
                 "percent": row["percent"],
                 "gpa": row["gpa"],
                 "result": row["result"],
-                "rank": row["rank"],
+                "headline": headline(row),
+                "rank": row["rank"] if shows_rank(row) else None,
             }
         )
     return rows

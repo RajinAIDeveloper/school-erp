@@ -40,7 +40,12 @@ for model, key, fields, columns in [
         ["academic_year", "name", "start_date", "end_date"],
         [("Term", "name"), ("Year", "academic_year"), ("Start", "start_date"), ("End", "end_date")],
     ),
-    (ClassLevel, "class", ["name", "order"], [("Class", "name"), ("Order", "order")]),
+    (
+        ClassLevel,
+        "class",
+        ["name", "order", "assessment_system"],
+        [("Class", "name"), ("Order", "order"), ("Rulebook", "get_assessment_system_display")],
+    ),
     (
         Section,
         "section",

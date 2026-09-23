@@ -72,6 +72,7 @@ quietly join it.
 | /exams/scale/<int:pk>/edit/ | examinations:scale_update | `examinations.change_gradescale` | - | Y | Y | . | . | . | . | . |
 | /exams/scale/new/ | examinations:scale_create | `examinations.add_gradescale` | - | Y | Y | . | . | . | . | . |
 | /exams/scales/<int:pk>/rules/ | examinations:rules | `examinations.change_gradescale` | - | Y | Y | . | . | . | . | . |
+| /exams/scales/presets/ | examinations:scale_presets | `examinations.add_gradescale` | - | Y | Y | . | . | . | . | . |
 | /exams/schedule/ | examinations:schedule_list | `examinations.view_examschedule` | - | Y | Y | . | Y | . | . | . |
 | /exams/schedule/<int:pk>/edit/ | examinations:schedule_update | `examinations.change_examschedule` | - | Y | Y | . | . | . | . | . |
 | /exams/schedule/<int:pk>/unlock/ | examinations:request_unlock | `examinations.change_mark` | - | Y | Y | . | Y | . | . | . |

@@ -24,15 +24,9 @@ from core.models import AssessmentSystem, AuditLog
 from messaging.notifications import notify_results_published
 from students.models import Enrollment
 
-from .grading import (
-    combine_units,
-    grade_paper,
-    merit_key,
-    national_outcome,
-    scale_rules,
-    standard_outcome,
-)
+from .grading import combine_units, grade_paper, scale_rules
 from .models import Exam, Mark, ResultSnapshot, UnlockRequest
+from .rulebooks import rulebook
 from .subjects import paper_role, papers_for, subject_plan, takes_paper
 
 # Fields of a result that describe the student's own performance. Two versions that agree
@@ -316,8 +310,8 @@ def live_class_sheet(exam, class_level):
     """Every student's result for one class, worked out from the marks as they stand now."""
     schedules = list(
         exam.schedules.filter(class_level=class_level)
-        .select_related("subject__combines_into")
-        .prefetch_related("components")
+        .select_related("subject__combines_into", "grade_scale")
+        .prefetch_related("components", "grade_scale__rules")
         .order_by("subject__code", "subject__name")
     )
     enrollments = list(
@@ -329,20 +323,27 @@ def live_class_sheet(exam, class_level):
     marks = {(m.enrollment_id, m.schedule_id): m for m in Mark.objects.filter(schedule__in=schedules)}
     rules = exam.grading_snapshot or scale_rules(exam.grade_scale)
     system = exam.rules_for(class_level)
-    board = system == AssessmentSystem.NATIONAL
+    book = rulebook(system)
+    # A paper on another board's scale (Edexcel 9-1 Maths in a Cambridge year) is graded on
+    # its own scale; everything else on the exam's.
+    paper_rules = {s.pk: (scale_rules(s.grade_scale) if s.grade_scale_id else rules) for s in schedules}
     plan = subject_plan(exam.academic_year, class_level)
     until = exam.end_date or timezone.localdate()
+    show_rank = book.show_rank(exam)
     rows = []
     for e in enrollments:
         taken = papers_for(e, schedules, plan)
         cells = [
             grade_paper(
-                _paper_spec(schedule, role if board else "main"), _mark_dict(marks.get((e.pk, schedule.pk))), rules
+                _paper_spec(schedule, role if book.fourth_subject else "main"),
+                _mark_dict(marks.get((e.pk, schedule.pk))),
+                paper_rules[schedule.pk],
+                pass_marks=book.pass_marks,
             )
             for schedule, role in taken
         ]
-        units = combine_units(cells, rules, combine=board)
-        outcome = (national_outcome if board else standard_outcome)(units, rules)
+        units = combine_units(cells, rules, combine=book.combine_papers)
+        outcome = book.outcome(units, rules)
         total = sum((Decimal(c["score"]) for c in cells if c["score"] is not None), Decimal(0))
         full = sum((Decimal(c["full_marks"]) for c in cells), Decimal(0))
         student = e.student
@@ -365,8 +366,12 @@ def live_class_sheet(exam, class_level):
                 "class_level": class_level.name,
                 "roll": e.roll_number,
                 "group": e.get_group_display() if e.group else "",
-                "fourth_subject": e.fourth_subject.name if (board and e.fourth_subject) else "",
+                "fourth_subject": e.fourth_subject.name if (book.fourth_subject and e.fourth_subject) else "",
                 "system": system,
+                "rulebook": book.label,
+                "has_gpa": book.has_gpa,
+                "has_result": book.has_result,
+                "show_rank": show_rank,
                 "cells": cells,
                 "subjects": units,
                 "total": str(total),
@@ -379,25 +384,29 @@ def live_class_sheet(exam, class_level):
                     str(outcome["gpa_without_fourth"]) if outcome["gpa_without_fourth"] is not None else None
                 ),
                 "gpa_letter": outcome["gpa_letter"],
+                "points": outcome["points"],
+                "headline": outcome["headline"],
+                "trace": outcome["trace"],
                 "result": outcome["result"],
                 "complete": outcome["complete"],
                 "attendance": _attendance(e, until),
             }
         )
     for section_id in {r["section_id"] for r in rows}:
-        assign_ranks([r for r in rows if r["section_id"] == section_id], board=board)
-    assign_ranks(rows, "grade_rank", board=board)
+        assign_ranks([r for r in rows if r["section_id"] == section_id], sort_key=book.rank_key)
+    assign_ranks(rows, "grade_rank", sort_key=book.rank_key)
     return rows
 
 
-def assign_ranks(rows, key="rank", board=False):
+def assign_ranks(rows, key="rank", sort_key=None):
     """
     Rank the complete results; ties share a place.
 
-    Under board rules the order is passes first, then GPA, then total marks, so a failing
-    student never outranks a passing one. Otherwise, as schools without GPA rank, by total.
+    The order comes from the rulebook: under board rules passes first, then GPA, then total,
+    so a failing student never outranks a passing one; IB by points; the school's own rules by
+    total. Positions are always worked out, and shown only where the rulebook or the exam says.
     """
-    sort_key = merit_key if board else (lambda r: Decimal(r["total"]))
+    sort_key = sort_key or (lambda r: (Decimal(r["total"]),))
     ranked = sorted((r for r in rows if r["complete"]), key=sort_key, reverse=True)
     last, rank = None, 0
     for index, row in enumerate(ranked, 1):
@@ -411,10 +420,10 @@ def assign_ranks(rows, key="rank", board=False):
 
 def rank_within(rows, field):
     """Merit positions within each value of `field` (group, shift, version), for merit lists."""
-    board = any(r.get("system") == AssessmentSystem.NATIONAL for r in rows)
+    sort_key = rulebook(rows[0]["system"]).rank_key if rows else None
     for value in {r.get(field, "") for r in rows}:
         subset = [dict(r) for r in rows if r.get(field, "") == value]
-        assign_ranks(subset, "merit", board=board)
+        assign_ranks(subset, "merit", sort_key=sort_key)
         positions = {r["enrollment_id"]: r["merit"] for r in subset}
         for row in rows:
             if row.get(field, "") == value:
@@ -505,6 +514,7 @@ def build_result_sheet(exam, class_level, section=None):
         "columns": sheet_columns(rows),
         "subject_names": subject_columns(rows),
         "board": exam.rules_for(class_level) == AssessmentSystem.NATIONAL,
+        "rulebook": rulebook(exam.rules_for(class_level)),
     }
 
 

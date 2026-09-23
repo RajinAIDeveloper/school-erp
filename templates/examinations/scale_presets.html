@@ -1,0 +1,22 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<div class="mx-auto max-w-3xl space-y-4">
+  <p class="text-sm text-slate-600">
+    Each scale gives the programme's grades in their proper order. Only the IB MYP conversion is the
+    awarding body's own; for the others, the percentage thresholds are typical internal ones, because
+    Cambridge and Edexcel set their official thresholds per exam series. Check them against your
+    school's before the first results.
+  </p>
+  {% for key, name, note in presets %}
+    <form method="post" class="card card-body flex flex-wrap items-center justify-between gap-3">
+      {% csrf_token %}
+      <input type="hidden" name="preset" value="{{ key }}">
+      <div class="min-w-0 flex-1">
+        <p class="font-semibold">{{ name }}</p>
+        <p class="mt-1 text-sm text-slate-600">{{ note }}</p>
+      </div>
+      <button class="btn-secondary btn-sm">Add</button>
+    </form>
+  {% endfor %}
+</div>
+{% endblock %}

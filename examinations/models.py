@@ -97,6 +97,15 @@ class Exam(SchoolScopedModel):
             "class test, that should not use the board's GPA rules."
         ),
     )
+    show_rank = models.BooleanField(
+        "Show positions",
+        null=True,
+        blank=True,
+        help_text=(
+            "Leave blank for the rulebook's usual practice: positions for national-curriculum and "
+            "the school's own rules, none for Cambridge, Edexcel and IB."
+        ),
+    )
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.DRAFT)
     published_at = models.DateTimeField(null=True, blank=True)
     published_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
@@ -127,6 +136,17 @@ class ExamSchedule(SchoolScopedModel):
     full_marks = models.DecimalField(max_digits=6, decimal_places=2, default=100)
     pass_marks = models.DecimalField(max_digits=6, decimal_places=2, default=33)
     room = models.CharField(max_length=50, blank=True)
+    grade_scale = models.ForeignKey(
+        GradeScale,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="papers",
+        help_text=(
+            "Leave blank to use the exam's scale. Set it for a subject graded on another board's "
+            "scale, for example Edexcel 9-1 Mathematics in a Cambridge year."
+        ),
+    )
 
     class Meta:
         ordering = ["date", "start_time", "subject__name"]
@@ -160,6 +180,17 @@ class PaperComponent(SchoolScopedModel):
     name = models.CharField(max_length=50)
     full_marks = models.DecimalField(max_digits=6, decimal_places=2)
     pass_marks = models.DecimalField(max_digits=6, decimal_places=2, default=0)
+    weight = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text=(
+            "Percent of the paper this part is worth, when parts are scaled rather than added: "
+            "Cambridge Paper 2 at 40% from 80 raw marks, for example. Leave every part blank to add "
+            "the raw marks."
+        ),
+    )
     order = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
@@ -214,7 +245,12 @@ class Mark(SchoolScopedModel):
             raise ValidationError("Enter a score within full marks or mark the student absent.")
 
     def _total_from_components(self, components):
-        """Check every part is present and in range, and return their sum."""
+        """
+        Check every part is present and in range, and return the paper's total.
+
+        Parts with weights are scaled: each part's share of its own raw maximum, times its
+        weight, as a share of the paper's full marks. Parts without weights are added.
+        """
         from decimal import InvalidOperation
 
         known = {component.code: component for component in components}
@@ -236,6 +272,15 @@ class Mark(SchoolScopedModel):
             cleaned[code] = str(score.quantize(Decimal("0.01")))
             total += score
         self.component_marks = cleaned
+        weights = [component.weight for component in components]
+        if any(weight is not None for weight in weights):
+            if any(weight is None for weight in weights) or sum(weights) != 100:
+                raise ValidationError("A weighted paper needs a weight on every part, adding up to 100%.")
+            share = sum(
+                (Decimal(cleaned[c.code]) / c.full_marks * c.weight for c in components),
+                Decimal("0"),
+            )
+            return (share * self.schedule.full_marks / 100).quantize(Decimal("0.01"))
         return total.quantize(Decimal("0.01"))
 
     class Meta:

@@ -24,6 +24,7 @@ urlpatterns = [
     path("schedule/<int:pk>/unlock/", views.request_unlock, name="request_unlock"),
     path("unlocks/<int:pk>/review/", views.unlock_review, name="unlock_review"),
     path("scales/<int:pk>/rules/", views.grade_rules, name="rules"),
+    path("scales/presets/", views.scale_presets, name="scale_presets"),
 ]
 urlpatterns += crud(
     Exam,
@@ -51,6 +52,11 @@ urlpatterns += crud(
     form=ExamScheduleForm,
 )
 urlpatterns += crud(
-    GradeScale, "examinations", "scale", ["name", "is_default"], [("Scale", "name"), ("Default", "is_default", "bool")]
+    GradeScale,
+    "examinations",
+    "scale",
+    ["name", "is_default"],
+    [("Scale", "name"), ("Default", "is_default", "bool")],
+    actions=(("Add a programme's scale", "examinations:scale_presets", "examinations.add_gradescale"),),
 )
 # Each scale's rule editor is linked from this custom list.

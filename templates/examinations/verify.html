@@ -27,12 +27,12 @@
       <div><dt class="text-xs text-slate-500">Student (initials)</dt><dd class="font-semibold tracking-wide">{{ initials }}</dd></div>
       <div><dt class="text-xs text-slate-500">Class / section</dt><dd class="font-semibold">{{ class_name }}</dd></div>
       <div><dt class="text-xs text-slate-500">Roll</dt><dd class="font-semibold">{{ roll }}</dd></div>
-      <div><dt class="text-xs text-slate-500">GPA and result</dt><dd class="font-semibold">{{ gpa|default:"—" }} · {{ result }}</dd></div>
+      <div><dt class="text-xs text-slate-500">Overall result</dt><dd class="font-semibold">{{ headline|default:"—" }}</dd></div>
       {% if fingerprint %}<div class="col-span-2"><dt class="text-xs text-slate-500">Card fingerprint</dt><dd class="font-mono font-semibold">{{ fingerprint }}</dd></div>{% endif %}
     </dl>
 
     <p class="mt-6 text-sm text-slate-500">
-      Compare these with the card in hand. If the GPA, result, roll or fingerprint differ, the card
+      Compare these with the card in hand. If the result, roll or fingerprint differ, the card
       has been altered. Subject marks and the full name are not shown here, to protect the student;
       to query a result, contact the school office.
     </p>

@@ -9,7 +9,7 @@
   <div class="card-header"><h2 class="font-semibold">Published results, oldest first</h2></div>
   <table class="table">
     <thead><tr><th>Examination</th><th>Class</th><th class="text-right">Total</th><th class="text-right">Percent</th>
-      <th class="text-right">GPA</th><th class="text-right">Rank</th><th>Result</th><th></th></tr></thead>
+      <th>Result</th><th class="text-right">Rank</th><th></th></tr></thead>
     <tbody>
       {% for row in rows %}
         <tr>
@@ -17,14 +17,12 @@
           <td>{{ row.section }}</td>
           <td class="text-right">{{ row.total }}</td>
           <td class="text-right">{{ row.percent|default:"—" }}</td>
-          <td class="text-right font-medium">{{ row.gpa|default:"—" }}</td>
+          <td class="font-medium {% if row.result == 'FAIL' %}text-red-600{% elif row.result == 'PASS' %}text-emerald-700{% endif %}">{{ row.headline }}</td>
           <td class="text-right">{{ row.rank|default:"—" }}</td>
-          <td>{% if row.result == "PASS" %}<span class="text-emerald-700 font-medium">PASS</span>
-              {% else %}<span class="text-red-600 font-medium">{{ row.result }}</span>{% endif %}</td>
           <td><a href="{% url 'examinations:report_card' row.exam.pk student.pk %}" class="link text-xs">Card</a></td>
         </tr>
       {% empty %}
-        <tr><td colspan="8">{% include "components/empty.html" with message="No results have been published for this student yet." %}</td></tr>
+        <tr><td colspan="7">{% include "components/empty.html" with message="No results have been published for this student yet." %}</td></tr>
       {% endfor %}
     </tbody>
   </table>

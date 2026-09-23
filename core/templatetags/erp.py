@@ -37,6 +37,21 @@ def has_role(user, names):
 
 
 @register.filter
+def result_headline(row):
+    """A student's overall result in one line, for any rulebook."""
+    from examinations.grading import headline
+
+    return headline(row)
+
+
+@register.filter
+def shows_rank(row):
+    from examinations.grading import shows_rank as _shows_rank
+
+    return _shows_rank(row)
+
+
+@register.filter
 def get_item(d, key):
     if d is None:
         return None

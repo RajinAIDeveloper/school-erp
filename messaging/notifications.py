@@ -204,7 +204,9 @@ def notify_results_published(exam, snapshots):
             body_template,
             student=student.full_name,
             exam=exam.name,
-            gpa=payload.get("gpa", "-"),
+            # Older templates say "GPA {gpa}"; a result without a GPA reads as its grades.
+            gpa=payload.get("gpa") or payload.get("headline") or "-",
+            result=payload.get("headline") or payload.get("result") or "",
             school=school.short_name or school.name,
             **{"class": payload.get("section", "")},
         )

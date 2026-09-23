@@ -40,6 +40,14 @@ def grade_for(percent, rules):
     return {"letter": "F", "grade_point": "0"}
 
 
+def failing_letter(rules):
+    """The scale's lowest grade: F on the national scale, U on Cambridge and Edexcel scales."""
+    if not rules:
+        return "F"
+    lowest = min(rules, key=lambda r: Decimal(str(r["min_percent"])))
+    return lowest["letter"]
+
+
 def gpa_letter(gpa, rules):
     """The letter a GPA corresponds to: the highest grade whose point the GPA reaches."""
     if gpa is None:
@@ -70,23 +78,28 @@ def scale_rules(scale):
 # ------------------------------------------------------------------------------ papers
 
 
-def grade_paper(paper, mark, rules):
+def grade_paper(paper, mark, rules, pass_marks=True):
     """
     One paper's cell on a result.
 
     `paper` is a dict: schedule_id, subject, subject_id, subject_code, unit_id, unit_name,
     full_marks, pass_marks, components [(code, name, full, pass)], role ("main"/"fourth").
     `mark` is None (not entered) or a dict: absent, score, parts {code: score}.
+
+    With `pass_marks`, a paper below its pass mark, or with a part below the part's pass mark,
+    fails and takes the scale's failing grade. Without it (Cambridge, Edexcel, IB) there is no
+    pass mark at all: the grade is simply the band the percentage falls in, so 45% is an E, not
+    a fail. An absence there has no grade.
     """
     missing = mark is None or (not mark["absent"] and mark["score"] is None)
     absent = bool(mark and mark["absent"])
     score = ZERO if missing or absent else Decimal(str(mark["score"]))
     parts = []
     parts_ok = True
-    for code, name, full, pass_marks in paper["components"]:
+    for code, name, full, part_pass in paper["components"]:
         raw = None if (missing or absent) else (mark.get("parts") or {}).get(code)
         got = None if raw in (None, "") else Decimal(str(raw))
-        ok = got is not None and got >= Decimal(str(pass_marks))
+        ok = got is not None and got >= Decimal(str(part_pass))
         if not (missing or absent) and not ok:
             parts_ok = False
         parts.append(
@@ -94,14 +107,21 @@ def grade_paper(paper, mark, rules):
                 "code": code,
                 "name": name,
                 "full_marks": str(full),
-                "pass_marks": str(pass_marks),
+                "pass_marks": str(part_pass),
                 "score": str(got) if got is not None else None,
                 "passed": ok,
             }
         )
-    passed = not missing and not absent and score >= Decimal(str(paper["pass_marks"])) and parts_ok
     percent = pct_of(score, paper["full_marks"])
     band = grade_for(percent, rules)
+    if pass_marks:
+        passed = not missing and not absent and score >= Decimal(str(paper["pass_marks"])) and parts_ok
+        letter = band["letter"] if passed else failing_letter(rules)
+        grade_point = Decimal(str(band["grade_point"])) if passed else ZERO
+    else:
+        passed = not missing and not absent
+        letter = "ABS" if absent else band["letter"]
+        grade_point = ZERO if (absent or missing) else Decimal(str(band["grade_point"]))
     return {
         "schedule_id": paper["schedule_id"],
         "subject": paper["subject"],
@@ -115,10 +135,10 @@ def grade_paper(paper, mark, rules):
         "missing": missing,
         "absent": absent,
         "percent": str(percent),
-        "letter": band["letter"] if passed else "F",
-        "grade_point": str(Decimal(str(band["grade_point"])) if passed else ZERO),
+        "letter": letter,
+        "grade_point": str(grade_point),
         "passed": passed,
-        "failed_part": not parts_ok,
+        "failed_part": bool(pass_marks and not parts_ok),
         "components": parts,
         "is_fourth": paper["role"] == "fourth",
     }
@@ -185,6 +205,7 @@ def combine_units(cells, rules, combine=True):
         passed = not missing and not absent and score >= pass_total and parts_ok
         percent = pct_of(score, full)
         band = grade_for(percent, rules)
+        failing = failing_letter(rules)
         units.append(
             {
                 "name": papers[0]["unit_name"],
@@ -195,7 +216,7 @@ def combine_units(cells, rules, combine=True):
                 "missing": missing,
                 "absent": absent,
                 "percent": str(percent),
-                "letter": band["letter"] if passed else "F",
+                "letter": band["letter"] if passed else failing,
                 "grade_point": str(Decimal(str(band["grade_point"])) if passed else ZERO),
                 "passed": passed,
                 "is_fourth": any(c["is_fourth"] for c in papers),
@@ -217,45 +238,132 @@ def national_outcome(units, rules):
     fourth = [u for u in units if u["is_fourth"]]
     complete = bool(main) and not any(u["missing"] for u in units)
     if not complete:
-        return {"complete": False, "result": "INCOMPLETE", "gpa": None, "gpa_without_fourth": None, "gpa_letter": None}
-    if any(not u["passed"] for u in main):
-        return {
-            "complete": True,
-            "result": "FAIL",
-            "gpa": Decimal("0.00"),
-            "gpa_without_fourth": Decimal("0.00"),
-            "gpa_letter": "F",
-        }
+        return _incomplete(units)
+    failed = [u["name"] for u in main if not u["passed"]]
+    if failed:
+        return _outcome(
+            result="FAIL",
+            gpa=Decimal("0.00"),
+            gpa_without_fourth=Decimal("0.00"),
+            gpa_letter="F",
+            headline="GPA 0.00 · FAIL",
+            trace=[f"Failed main subject(s): {', '.join(failed)}. Any failed main subject makes the GPA 0.00."],
+        )
     base = sum((Decimal(u["grade_point"]) for u in main), ZERO)
     # Only the part of the 4th subject's grade point above 2.00 counts, and a failed or absent
     # 4th subject simply adds nothing.
     bonus = sum((max(ZERO, Decimal(u["grade_point"]) - TWO) for u in fourth), ZERO)
     gpa = min(FIVE, (base + bonus) / len(main)).quantize(CENT, rounding=ROUND_HALF_UP)
     without = min(FIVE, base / len(main)).quantize(CENT, rounding=ROUND_HALF_UP)
-    return {
+    trace = [f"Main subjects: {' + '.join(u['grade_point'] for u in main)} = {base} over {len(main)} subjects."]
+    for u in fourth:
+        added = max(ZERO, Decimal(u["grade_point"]) - TWO)
+        trace.append(
+            f"4th subject {u['name']}: grade point {u['grade_point']}; the part above 2.00, {added}, is added."
+        )
+    trace.append(f"GPA = ({base} + {bonus}) / {len(main)} = {gpa}, capped at 5.00.")
+    return _outcome(
+        result="PASS",
+        gpa=gpa,
+        gpa_without_fourth=without,
+        gpa_letter=gpa_letter(gpa, rules),
+        headline=f"GPA {gpa} · PASS",
+        trace=trace,
+    )
+
+
+def _outcome(**values):
+    base = {
         "complete": True,
-        "result": "PASS",
-        "gpa": gpa,
-        "gpa_without_fourth": without,
-        "gpa_letter": gpa_letter(gpa, rules),
+        "result": None,
+        "gpa": None,
+        "gpa_without_fourth": None,
+        "gpa_letter": None,
+        "points": None,
+        "headline": "",
+        "trace": [],
     }
+    base.update(values)
+    return base
+
+
+def _incomplete(units):
+    missing = [u["name"] for u in units if u["missing"]]
+    return _outcome(
+        complete=False,
+        result="INCOMPLETE",
+        headline="Incomplete",
+        trace=[f"Not yet entered: {', '.join(missing)}." if missing else "No papers to grade."],
+    )
 
 
 def standard_outcome(units, rules):
-    """Every paper counts the same, and any failed paper fails the result."""
+    """The school's own rules: every paper counts the same, and any failed paper fails the result."""
     complete = bool(units) and not any(u["missing"] for u in units)
     if not complete:
-        return {"complete": False, "result": "INCOMPLETE", "gpa": None, "gpa_without_fourth": None, "gpa_letter": None}
+        return _incomplete(units)
     points = [Decimal(u["grade_point"]) for u in units]
-    failed = any(not u["passed"] for u in units)
+    failed = [u["name"] for u in units if not u["passed"]]
     gpa = Decimal("0.00") if failed else (sum(points) / len(points)).quantize(CENT)
-    return {
-        "complete": True,
-        "result": "FAIL" if failed else "PASS",
-        "gpa": gpa,
-        "gpa_without_fourth": gpa,
-        "gpa_letter": "F" if failed else gpa_letter(gpa, rules),
-    }
+    trace = [f"Grade points {' + '.join(str(p) for p in points)} over {len(points)} paper(s)."]
+    if failed:
+        trace.append(f"Failed: {', '.join(failed)}.")
+    return _outcome(
+        result="FAIL" if failed else "PASS",
+        gpa=gpa,
+        gpa_without_fourth=gpa,
+        gpa_letter="F" if failed else gpa_letter(gpa, rules),
+        headline=f"GPA {gpa} · {'FAIL' if failed else 'PASS'}",
+        trace=trace,
+    )
+
+
+def grade_tally(units):
+    """'3 A*, 2 A, 1 B': how many of each grade, best grade first."""
+    order, counts = [], {}
+    for u in sorted(units, key=lambda u: Decimal(u["percent"] or 0), reverse=True):
+        letter = u["letter"]
+        if letter not in counts:
+            order.append(letter)
+            counts[letter] = 0
+        counts[letter] += 1
+    return ", ".join(f"{counts[letter]} {letter}" for letter in order)
+
+
+def grades_outcome(units, rules):
+    """
+    Cambridge and Pearson Edexcel: a grade per subject from the board's scale, and nothing more.
+
+    These programmes have no GPA and no overall pass or fail, so none is invented. The headline
+    is the tally of grades, the way these schools describe results ("five A*s"). Internal exams
+    use the school's own thresholds; the awarding bodies set official thresholds per exam
+    series, and an official result is recorded as imported, never calculated here.
+    """
+    complete = bool(units) and not any(u["missing"] for u in units)
+    if not complete:
+        return _incomplete(units)
+    graded = [u for u in units if not u["absent"]]
+    absent = [u["name"] for u in units if u["absent"]]
+    trace = [f"{u['name']}: {u['percent']}% gives {u['letter']}." for u in graded]
+    if absent:
+        trace.append(f"Absent: {', '.join(absent)}; no grade awarded.")
+    return _outcome(headline=grade_tally(graded) or "No grades", trace=trace)
+
+
+def myp_outcome(units, rules):
+    """
+    IB Middle Years: a subject's four criteria (0-8 each) sum to 0-32, and the total becomes a
+    grade from 1 to 7 by the published boundaries. The headline is the sum of subject grades,
+    which is how the MYP certificate is judged.
+    """
+    complete = bool(units) and not any(u["missing"] for u in units)
+    if not complete:
+        return _incomplete(units)
+    graded = [u for u in units if not u["absent"]]
+    total = sum((int(Decimal(u["grade_point"])) for u in graded), 0)
+    trace = [f"{u['name']}: {u['score']} of {u['full_marks']} gives grade {u['letter']}." for u in graded]
+    trace.append(f"Sum of subject grades: {total}.")
+    return _outcome(points=total, headline=f"{total} points across {len(graded)} subject(s)", trace=trace)
 
 
 def merit_key(row):
@@ -270,3 +378,35 @@ def merit_key(row):
         Decimal(row["gpa"] or 0),
         Decimal(row["total"]),
     )
+
+
+def headline(row):
+    """
+    One line for a student's overall result, whatever the rulebook.
+
+    Newer results carry it; results published before rulebooks existed are described from
+    their GPA and pass or fail, exactly as they were shown then.
+    """
+    if not row:
+        return ""
+    if row.get("headline"):
+        return row["headline"]
+    gpa, result = row.get("gpa"), row.get("result")
+    if result == "INCOMPLETE":
+        return "Incomplete"
+    return " · ".join(part for part in (f"GPA {gpa}" if gpa is not None else "", result or "") if part)
+
+
+def shows_rank(row):
+    """Whether positions are printed for this result. Older results always showed them."""
+    return bool(row) and row.get("show_rank", True)
+
+
+def points_key(row):
+    """IB order: total points, then total marks."""
+    return (Decimal(row.get("points") or 0), Decimal(row["total"]))
+
+
+def percent_key(row):
+    """For grade-only programmes, where a position is wanted at all: the average percentage."""
+    return (Decimal(row.get("percent") or 0),)

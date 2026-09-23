@@ -16,6 +16,7 @@ from core.generic import ERPListView
 from core.pdf import table_document
 from students.models import Enrollment
 
+from .grading import headline
 from .models import Exam, ExamSchedule, GradeRule, GradeScale, Mark, ResultSnapshot, UnlockRequest
 from .services import (
     MarkEntryError,
@@ -372,34 +373,25 @@ def results(request):
         chosen = {key: value for key, value in form.cleaned_data.items() if key != "term"}
         sheet = build_result_sheet(**chosen)
         fmt = request.GET.get("format")
+        book = sheet["rulebook"]
+        show_rank = book.show_rank(sheet["exam"])
         if fmt in ("csv", "xlsx", "pdf"):
             columns = sheet["columns"]
             subjects = [name for _pk, name, _code in columns]
-            headers = [
-                "Class rank",
-                "Section rank",
-                "Section",
-                "Roll",
-                "Student",
-                *subjects,
-                "Total",
-                "Percent",
-                "GPA",
-                "Result",
-            ]
+            # Only the columns the rulebook defines: no GPA or positions invented for a
+            # programme that has neither.
+            headers = (
+                (["Class rank", "Section rank"] if show_rank else [])
+                + ["Section", "Roll", "Student", *subjects, "Total", "Percent"]
+                + (["GPA"] if book.has_gpa else [])
+                + ["Overall"]
+            )
             rows = [
-                [
-                    r["grade_rank"],
-                    r["rank"],
-                    r["section"],
-                    r["roll"],
-                    r["student"],
-                    *[_cell_text(r, pk) for pk, _name, _code in columns],
-                    r["total"],
-                    r["percent"],
-                    r["gpa"],
-                    r["result"],
-                ]
+                ([r["grade_rank"], r["rank"]] if show_rank else [])
+                + [r["section"], r["roll"], r["student"], *[_cell_text(r, pk) for pk, _name, _code in columns]]
+                + [r["total"], r["percent"]]
+                + ([r["gpa"]] if book.has_gpa else [])
+                + [headline(r)]
                 for r in sheet["rows"]
             ]
             if fmt == "pdf":
@@ -457,7 +449,12 @@ def results(request):
     return render(
         request,
         "examinations/results.html",
-        {"form": form, "sheet": sheet, "page_title": "Results and subject analysis"},
+        {
+            "form": form,
+            "sheet": sheet,
+            "show_rank": sheet["rulebook"].show_rank(sheet["exam"]) if sheet else False,
+            "page_title": "Results and subject analysis",
+        },
     )
 
 
@@ -524,6 +521,8 @@ def report_card(request, exam_pk, student_pk):
             "show_parts": any(line["parts"] for line in lines),
             "attendance": row["attendance"] if "attendance" in row else attendance_for(enr, exam.end_date),
             "board": row.get("system") == "national",
+            # The working is for staff checking a result, never for a family's view of it.
+            "trace": row.get("trace") if request.user.has_perm("examinations.view_mark") else None,
             "verify_url": link,
             "qr": qr_svg(link) if link else "",
             "page_title": "Report card",
@@ -567,6 +566,7 @@ def verify(request, code):
             "roll": payload.get("roll", ""),
             "gpa": payload.get("gpa"),
             "result": payload.get("result", ""),
+            "headline": headline(payload),
             "fingerprint": payload.get("fingerprint", ""),
             "page_title": "Report verification",
         },
@@ -611,6 +611,33 @@ def unlock_review(request, pk):
     except ValidationError as e:
         messages.error(request, " ".join(e.messages))
     return redirect("examinations:unlocks")
+
+
+@require_permission("examinations.add_gradescale")
+def scale_presets(request):
+    """Start from a programme's scale instead of typing thresholds in by hand."""
+    from .presets import install_preset, preset_choices, preset_notes
+
+    if request.method == "POST":
+        key = request.POST.get("preset", "")
+        if key not in dict(preset_choices()):
+            messages.error(request, "Choose one of the listed scales.")
+        else:
+            scale, created = install_preset(request.school, key)
+            if created:
+                messages.success(request, f"Added {scale.name}. Check the thresholds match your school's before use.")
+            else:
+                messages.info(request, f"{scale.name} is already set up; it was left as it is.")
+            return redirect("examinations:rules", pk=scale.pk)
+    notes = preset_notes()
+    return render(
+        request,
+        "examinations/scale_presets.html",
+        {
+            "presets": [(key, name, notes[key]) for key, name in preset_choices()],
+            "page_title": "Add a grade scale",
+        },
+    )
 
 
 @require_permission("examinations.change_gradescale")
@@ -764,8 +791,8 @@ def progress(request, student_pk):
         "academic_year__start_date", "start_date", "name"
     )
     rows = progress_rows(exams, enrollments)
-    headers = ["Examination", "Class", "Total", "Percent", "GPA", "Rank", "Result"]
-    table = [[r["exam"].name, r["section"], r["total"], r["percent"], r["gpa"], r["rank"], r["result"]] for r in rows]
+    headers = ["Examination", "Class", "Total", "Percent", "Result", "Rank"]
+    table = [[r["exam"].name, r["section"], r["total"], r["percent"], r["headline"], r["rank"]] for r in rows]
     if request.GET.get("format") == "pdf":
         return table_document(
             request.school,
