@@ -28,6 +28,7 @@ urlpatterns = [
     path("password/reset/complete/", auth_views.PasswordResetCompleteView.as_view(), name="password_reset_complete"),
     path("healthz/", views.healthz, name="healthz"),
     path("", views.dashboard, name="dashboard"),
+    path("language/", views.set_language, name="set_language"),
     path("academics/", include("academics.urls")),
     path("students/", include("students.urls")),
     path("employees/", include("employees.urls")),

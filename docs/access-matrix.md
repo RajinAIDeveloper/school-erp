@@ -145,6 +145,7 @@ quietly join it.
 | /holidays/calendar/ | holidays:month | `holidays.view_holiday` | - | Y | Y | Y | Y | Y | Y | Y |
 | /holidays/import-national/ | holidays:import_national | `holidays.add_holiday` | - | Y | Y | . | . | . | . | . |
 | /holidays/new/ | holidays:create | `holidays.add_holiday` | - | Y | Y | . | . | . | . | . |
+| /language/ | set_language | `(sign-in only)` | - | o | o | o | o | o | o | o |
 | /portal/ | portal:index | `(sign-in only)` | - | o | o | o | o | o | o | o |
 | /portal/attendance/ | portal:attendance | `(sign-in only)` | - | o | o | o | o | o | o | o |
 | /portal/fees/ | portal:fees | `(sign-in only)` | - | o | o | o | o | o | o | o |

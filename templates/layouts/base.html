@@ -1,15 +1,15 @@
-{% load static erp %}<!DOCTYPE html>
-<html lang="en" class="h-full">
+{% load static erp i18n %}<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE|default:'en' }}" class="h-full">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}{{ page_title|default:"Dashboard" }}{% endblock %} · {{ current_school.short_name|default:"School ERP" }}</title>
+  <title>{% block title %}{% if page_title %}{{ page_title }}{% else %}{% translate "Dashboard" %}{% endif %}{% endblock %} · {{ current_school.short_name|default:"School ERP" }}</title>
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
   <style>@font-face { font-family: "Noto Sans Bengali"; src: url("{% static 'fonts/NotoSansBengali-Regular.ttf' %}") format("truetype"); font-display: swap; }</style>
   <script src="{% static 'js/app.js' %}" defer></script>
   {% block head %}{% endblock %}
 </head>
-<body class="h-full bg-slate-100 text-slate-800 antialiased">
+<body class="h-full bg-slate-100 text-slate-800 antialiased"{% if LANGUAGE_CODE == "bn" %} style="font-family: 'Noto Sans Bengali', ui-sans-serif, system-ui, sans-serif;"{% endif %}>
 <div class="flex min-h-screen">
   {# ---------------- Sidebar ---------------- #}
   <aside id="sidebar" class="fixed inset-y-0 left-0 z-30 w-64 -translate-x-full transform bg-slate-900 text-slate-200 transition-transform duration-200 lg:static lg:translate-x-0 print:hidden">
@@ -37,9 +37,19 @@
         <button id="sidebar-toggle" class="rounded p-2 text-slate-600 hover:bg-slate-100 lg:hidden" aria-label="Menu">
           <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
         </button>
-        <h1 class="text-lg font-semibold text-slate-900">{% block header %}{{ page_title|default:"Dashboard" }}{% endblock %}</h1>
+        <h1 class="text-lg font-semibold text-slate-900">{% block header %}{% if page_title %}{{ page_title }}{% else %}{% translate "Dashboard" %}{% endif %}{% endblock %}</h1>
       </div>
       <div class="flex items-center gap-4">
+        {% if current_school.bangla_enabled %}
+          <form method="post" action="{% url 'set_language' %}">
+            {% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+            {% if LANGUAGE_CODE == "bn" %}
+              <button name="language" value="en" class="rounded-md border border-slate-200 px-2.5 py-1 text-sm hover:bg-slate-50" lang="en">English</button>
+            {% else %}
+              <button name="language" value="bn" class="rounded-md border border-slate-200 px-2.5 py-1 text-sm hover:bg-slate-50" lang="bn" style="font-family: 'Noto Sans Bengali', ui-sans-serif, system-ui, sans-serif;">বাংলা</button>
+            {% endif %}
+          </form>
+        {% endif %}
         <div class="relative" data-dropdown>
           <button class="flex items-center gap-2 rounded-full px-2 py-1 text-sm hover:bg-slate-100" data-dropdown-toggle>
             <span class="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 font-semibold text-indigo-700">{{ user.first_name|default:user.username|slice:":1"|upper }}</span>
@@ -47,10 +57,10 @@
           </button>
           <div class="absolute right-0 mt-2 hidden w-56 rounded-md border border-slate-200 bg-white py-1 shadow-lg" data-dropdown-menu>
             <p class="px-4 py-2 text-xs text-slate-500">{{ user.role_names|default:"Superuser" }}</p>
-            <a href="{% url 'users:profile' %}" class="block px-4 py-2 text-sm hover:bg-slate-50">My profile</a>
-            <a href="{% url 'password_change' %}" class="block px-4 py-2 text-sm hover:bg-slate-50">Change password</a>
+            <a href="{% url 'users:profile' %}" class="block px-4 py-2 text-sm hover:bg-slate-50">{% translate "My profile" %}</a>
+            <a href="{% url 'password_change' %}" class="block px-4 py-2 text-sm hover:bg-slate-50">{% translate "Change password" %}</a>
             <form method="post" action="{% url 'logout' %}">{% csrf_token %}
-              <button class="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-slate-50">Sign out</button>
+              <button class="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-slate-50">{% translate "Sign out" %}</button>
             </form>
           </div>
         </div>

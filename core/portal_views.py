@@ -3,6 +3,7 @@ from datetime import date
 from django.db.models import Count, F
 from django.http import Http404
 from django.shortcuts import render
+from django.utils.translation import gettext
 
 from attendance.models import StudentAttendance
 from core.access import require_permission, students_for
@@ -60,7 +61,7 @@ def index(request):
             "cards": cards,
             "family_total": family_total,
             "family_invoices": sum(card["invoices"] for card in cards),
-            "page_title": "My school records",
+            "page_title": gettext("My school records"),
         },
     )
 
@@ -98,7 +99,7 @@ def attendance(request):
             "selected": student,
             "records": records,
             "month": f"{year:04d}-{month:02d}",
-            "page_title": "My attendance",
+            "page_title": gettext("My attendance"),
         },
     )
 
@@ -112,7 +113,7 @@ def fees(request):
     return render(
         request,
         "portal/fees.html",
-        {"students": students, "selected": student, "invoices": invoices, "page_title": "My fees"},
+        {"students": students, "selected": student, "invoices": invoices, "page_title": gettext("My fees")},
     )
 
 
@@ -141,7 +142,7 @@ def results(request):
             # Only results a second person has checked against the body's statement.
             "official_results": official_results_for(student, confirmed_only=True) if student else [],
             "combined": _published_combined(student),
-            "page_title": "My results",
+            "page_title": gettext("My results"),
         },
     )
 

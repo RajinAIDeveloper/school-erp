@@ -6,6 +6,12 @@ class User(AbstractUser):
     school = models.ForeignKey("core.School", null=True, blank=True, on_delete=models.PROTECT, related_name="users")
     phone = models.CharField(max_length=25, blank=True)
     avatar = models.ImageField(upload_to="users/avatars/", blank=True)
+    language = models.CharField(
+        max_length=5,
+        blank=True,
+        choices=[("en", "English"), ("bn", "বাংলা")],
+        help_text="Blank follows the school's default language.",
+    )
     must_change_password = models.BooleanField(
         default=False,
         help_text="Set when an office issues a temporary password. Cleared once the person picks their own.",

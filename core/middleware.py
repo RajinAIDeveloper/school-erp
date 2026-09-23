@@ -46,3 +46,32 @@ class ForcePasswordChangeMiddleware(MiddlewareMixin):
 
         messages.warning(request, "Choose your own password before going any further.")
         return redirect("password_change")
+
+
+class LanguageMiddleware(MiddlewareMixin):
+    """
+    Switch the screens to the person's language.
+
+    English whenever the school has not switched Bangla on; otherwise the language the
+    person chose with the header toggle, or the school's default until they choose. Pages
+    seen without signing in (verification, sign-in) stay in English.
+    """
+
+    def process_request(self, request):
+        from django.utils import translation
+
+        language = "en"
+        school = getattr(request, "school", None)
+        if school is not None and school.bangla_enabled:
+            user = getattr(request, "user", None)
+            chosen = getattr(user, "language", "") if user is not None and user.is_authenticated else ""
+            language = chosen or school.default_language or "en"
+        translation.activate(language)
+        request.LANGUAGE_CODE = language
+
+    def process_response(self, request, response):
+        from django.utils import translation
+
+        response.headers.setdefault("Content-Language", getattr(request, "LANGUAGE_CODE", "en"))
+        translation.deactivate()
+        return response

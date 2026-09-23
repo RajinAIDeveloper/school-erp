@@ -53,6 +53,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
     "core.middleware.CurrentSchoolMiddleware",
+    "core.middleware.LanguageMiddleware",
     "core.middleware.ForcePasswordChangeMiddleware",
 ]
 
@@ -73,6 +74,7 @@ TEMPLATES = [
             "context_processors": [
                 "django.template.context_processors.debug",
                 "django.template.context_processors.request",
+                "django.template.context_processors.i18n",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "core.context_processors.erp_context",
@@ -127,6 +129,9 @@ LOGOUT_REDIRECT_URL = "login"
 # Localisation – Bangladesh defaults
 # ---------------------------------------------------------------------------
 LANGUAGE_CODE = "en"
+# Each school chooses whether to offer Bangla; each person then picks with the header toggle.
+LANGUAGES = [("en", "English"), ("bn", "বাংলা")]
+LOCALE_PATHS = [BASE_DIR / "locale"]
 TIME_ZONE = "Asia/Dhaka"
 USE_I18N = True
 USE_TZ = True

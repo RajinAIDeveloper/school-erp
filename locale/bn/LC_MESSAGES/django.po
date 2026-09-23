@@ -1,0 +1,407 @@
+# Bangla translations for the screens families and students use: navigation, the header,
+# the family portal and the report card. Staff screens stay in English for now.
+# After editing, run: python manage.py compile_translations
+msgid ""
+msgstr ""
+"Project-Id-Version: school-erp\n"
+"Language: bn\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+# ---------------------------------------------------------------- navigation and header
+
+msgid "Dashboard"
+msgstr "ড্যাশবোর্ড"
+
+msgid "My records"
+msgstr "আমার তথ্য"
+
+msgid "My school records"
+msgstr "আমার বিদ্যালয়ের তথ্য"
+
+msgid "My attendance"
+msgstr "আমার উপস্থিতি"
+
+msgid "My fees"
+msgstr "আমার বেতন-ফি"
+
+msgid "My results"
+msgstr "আমার ফলাফল"
+
+msgid "People"
+msgstr "ব্যক্তি"
+
+msgid "Students"
+msgstr "শিক্ষার্থী"
+
+msgid "Teachers & Staff"
+msgstr "শিক্ষক ও কর্মচারী"
+
+msgid "My staff file"
+msgstr "আমার কর্মী-তথ্য"
+
+msgid "Attendance"
+msgstr "উপস্থিতি"
+
+msgid "Student Attendance"
+msgstr "শিক্ষার্থী উপস্থিতি"
+
+msgid "Staff Attendance"
+msgstr "কর্মচারী উপস্থিতি"
+
+msgid "Leave"
+msgstr "ছুটি"
+
+msgid "Finance"
+msgstr "অর্থ"
+
+msgid "Fees"
+msgstr "বেতন-ফি"
+
+msgid "Accounts"
+msgstr "হিসাব"
+
+msgid "Academics"
+msgstr "শিক্ষা কার্যক্রম"
+
+msgid "Results"
+msgstr "ফলাফল"
+
+msgid "Routine"
+msgstr "রুটিন"
+
+msgid "Communication"
+msgstr "যোগাযোগ"
+
+msgid "Notices"
+msgstr "নোটিশ"
+
+msgid "Downloads"
+msgstr "ডাউনলোড"
+
+msgid "SMS"
+msgstr "এসএমএস"
+
+msgid "Calendar"
+msgstr "ক্যালেন্ডার"
+
+msgid "Reports"
+msgstr "প্রতিবেদন"
+
+msgid "Administration"
+msgstr "প্রশাসন"
+
+msgid "Basic Settings"
+msgstr "মৌলিক সেটিংস"
+
+msgid "User Management"
+msgstr "ব্যবহারকারী ব্যবস্থাপনা"
+
+msgid "Django Admin"
+msgstr "Django অ্যাডমিন"
+
+msgid "My profile"
+msgstr "আমার প্রোফাইল"
+
+msgid "Change password"
+msgstr "পাসওয়ার্ড পরিবর্তন"
+
+msgid "Sign out"
+msgstr "সাইন আউট"
+
+# ---------------------------------------------------------------- family portal
+
+msgid "Children at this school"
+msgstr "এই বিদ্যালয়ে সন্তান"
+
+msgid "Fees due across the family"
+msgstr "পরিবারের মোট বকেয়া ফি"
+
+msgid "Unpaid invoices"
+msgstr "অপরিশোধিত ইনভয়েস"
+
+msgid "Roll"
+msgstr "রোল"
+
+msgid "No current enrollment"
+msgstr "বর্তমানে ভর্তি নেই"
+
+msgid "Fees due"
+msgstr "বকেয়া ফি"
+
+msgid "Record"
+msgstr "তথ্য"
+
+msgid "No student is linked to this account. Ask the school office to link the student or guardian record."
+msgstr "এই অ্যাকাউন্টের সাথে কোনো শিক্ষার্থী যুক্ত নেই। শিক্ষার্থী বা অভিভাবকের তথ্য যুক্ত করতে বিদ্যালয়ের অফিসে যোগাযোগ করুন।"
+
+msgid "Student"
+msgstr "শিক্ষার্থী"
+
+msgid "Month"
+msgstr "মাস"
+
+msgid "View"
+msgstr "দেখুন"
+
+msgid "Date"
+msgstr "তারিখ"
+
+msgid "Status"
+msgstr "অবস্থা"
+
+msgid "Remarks"
+msgstr "মন্তব্য"
+
+msgid "No attendance recorded for this month."
+msgstr "এই মাসে কোনো উপস্থিতি লিপিবদ্ধ নেই।"
+
+msgid "View fees"
+msgstr "ফি দেখুন"
+
+msgid "Invoice"
+msgstr "ইনভয়েস"
+
+msgid "Due date"
+msgstr "শেষ তারিখ"
+
+msgid "Total"
+msgstr "মোট"
+
+msgid "Paid"
+msgstr "পরিশোধিত"
+
+msgid "Balance"
+msgstr "বাকি"
+
+msgid "No fee invoices for this student."
+msgstr "এই শিক্ষার্থীর কোনো ফি ইনভয়েস নেই।"
+
+msgid "View results"
+msgstr "ফলাফল দেখুন"
+
+msgid "Exam"
+msgstr "পরীক্ষা"
+
+msgid "Class"
+msgstr "শ্রেণি"
+
+msgid "Score"
+msgstr "প্রাপ্ত নম্বর"
+
+msgid "Result"
+msgstr "ফলাফল"
+
+msgid "Report card"
+msgstr "রিপোর্ট কার্ড"
+
+msgid "View or download"
+msgstr "দেখুন বা ডাউনলোড করুন"
+
+msgid "No published results for this student."
+msgstr "এই শিক্ষার্থীর কোনো প্রকাশিত ফলাফল নেই।"
+
+msgid "Combined result"
+msgstr "সমন্বিত ফলাফল"
+
+msgid "These are the school's own assessments."
+msgstr "এগুলো বিদ্যালয়ের নিজস্ব মূল্যায়ন।"
+
+msgid "Official results"
+msgstr "দাপ্তরিক ফলাফল"
+
+msgid "As issued by the awarding body"
+msgstr "পরীক্ষা বোর্ড যেভাবে প্রকাশ করেছে"
+
+msgid "Series"
+msgstr "পরীক্ষা সিরিজ"
+
+msgid "Code"
+msgstr "কোড"
+
+msgid "Subject"
+msgstr "বিষয়"
+
+msgid "Grade"
+msgstr "গ্রেড"
+
+msgid "Source"
+msgstr "উৎস"
+
+msgid "Amended from"
+msgstr "সংশোধনের আগে ছিল"
+
+msgid "received"
+msgstr "প্রাপ্তি"
+
+msgid "No official results recorded."
+msgstr "কোনো দাপ্তরিক ফলাফল লিপিবদ্ধ নেই।"
+
+# ---------------------------------------------------------------- statuses
+
+msgid "Present"
+msgstr "উপস্থিত"
+
+msgid "Absent"
+msgstr "অনুপস্থিত"
+
+msgid "Late"
+msgstr "দেরিতে"
+
+msgid "Half day"
+msgstr "অর্ধদিবস"
+
+msgid "Unpaid"
+msgstr "অপরিশোধিত"
+
+msgid "Partially paid"
+msgstr "আংশিক পরিশোধিত"
+
+msgid "Cancelled"
+msgstr "বাতিল"
+
+# ---------------------------------------------------------------- report card
+
+msgid "Print"
+msgstr "প্রিন্ট"
+
+msgid "Download PDF"
+msgstr "পিডিএফ ডাউনলোড"
+
+msgid "Session"
+msgstr "শিক্ষাবর্ষ"
+
+msgid "DRAFT — these results are not published."
+msgstr "খসড়া — এই ফলাফল এখনো প্রকাশিত হয়নি।"
+
+msgid "Student ID"
+msgstr "শিক্ষার্থী আইডি"
+
+msgid "Class / section"
+msgstr "শ্রেণি / শাখা"
+
+msgid "Group"
+msgstr "বিভাগ"
+
+msgid "Father"
+msgstr "পিতা"
+
+msgid "Mother"
+msgstr "মাতা"
+
+#, python-format
+msgid "to %(day)s"
+msgstr "%(day)s পর্যন্ত"
+
+msgid "Full marks"
+msgstr "পূর্ণ নম্বর"
+
+msgid "Parts"
+msgstr "অংশ"
+
+msgid "Obtained"
+msgstr "প্রাপ্ত"
+
+msgid "Points"
+msgstr "পয়েন্ট"
+
+msgid "Grades"
+msgstr "গ্রেডসমূহ"
+
+msgid "GPA without 4th subject"
+msgstr "চতুর্থ বিষয় ছাড়া জিপিএ"
+
+msgid "Rank in section"
+msgstr "শাখায় অবস্থান"
+
+msgid "Worked out by"
+msgstr "হিসাবের নিয়ম"
+
+msgid "Combined from"
+msgstr "যেসব পরীক্ষা থেকে সমন্বিত"
+
+msgid "Corrected since this was published"
+msgstr "প্রকাশের পর সংশোধিত"
+
+msgid "Publish the combined result again to include the correction."
+msgstr "সংশোধন অন্তর্ভুক্ত করতে সমন্বিত ফলাফল আবার প্রকাশ করুন।"
+
+msgid "How this result was worked out (staff only)"
+msgstr "ফলাফল যেভাবে হিসাব করা হয়েছে (শুধু কর্মীদের জন্য)"
+
+msgid "Published version"
+msgstr "প্রকাশিত সংস্করণ"
+
+msgid "card fingerprint"
+msgstr "কার্ড ফিঙ্গারপ্রিন্ট"
+
+msgid "Scan the code to confirm this card is genuine and current."
+msgstr "কার্ডটি আসল ও হালনাগাদ কিনা নিশ্চিত হতে কোডটি স্ক্যান করুন।"
+
+msgid "Class teacher"
+msgstr "শ্রেণি শিক্ষক"
+
+msgid "Guardian"
+msgstr "অভিভাবক"
+
+msgid "Head of institution"
+msgstr "প্রতিষ্ঠান প্রধান"
+
+msgid "Class teacher's comment"
+msgstr "শ্রেণি শিক্ষকের মন্তব্য"
+
+msgid "The school's grade estimates"
+msgstr "বিদ্যালয়ের গ্রেড প্রাক্কলন"
+
+msgid "The school's own judgement, not a result awarded by an examination board."
+msgstr "এটি বিদ্যালয়ের নিজস্ব মূল্যায়ন, কোনো পরীক্ষা বোর্ডের দেওয়া ফলাফল নয়।"
+
+msgid "Kind"
+msgstr "ধরন"
+
+msgid "Decided"
+msgstr "নির্ধারণের তারিখ"
+
+msgid "Effort"
+msgstr "প্রচেষ্টা"
+
+msgid "Science"
+msgstr "বিজ্ঞান"
+
+msgid "Business Studies"
+msgstr "ব্যবসায় শিক্ষা"
+
+msgid "Humanities"
+msgstr "মানবিক"
+
+msgid "PASS"
+msgstr "উত্তীর্ণ"
+
+msgid "FAIL"
+msgstr "অনুত্তীর্ণ"
+
+msgid "INCOMPLETE"
+msgstr "অসম্পূর্ণ"
+
+msgid "Predicted grade"
+msgstr "সম্ভাব্য গ্রেড"
+
+msgid "Forecast grade"
+msgstr "প্রত্যাশিত গ্রেড"
+
+msgid "Target grade"
+msgstr "লক্ষ্য গ্রেড"
+
+msgid "A school assessment, not an official result. Official results are issued only by the education board."
+msgstr "এটি বিদ্যালয়ের মূল্যায়ন, দাপ্তরিক ফলাফল নয়। দাপ্তরিক ফলাফল শুধু শিক্ষা বোর্ড প্রকাশ করে।"
+
+msgid "A school assessment, not an official result. Official results are issued only by Cambridge International Education."
+msgstr "এটি বিদ্যালয়ের মূল্যায়ন, দাপ্তরিক ফলাফল নয়। দাপ্তরিক ফলাফল শুধু Cambridge International Education প্রকাশ করে।"
+
+msgid "A school assessment, not an official result. Official results are issued only by Pearson."
+msgstr "এটি বিদ্যালয়ের মূল্যায়ন, দাপ্তরিক ফলাফল নয়। দাপ্তরিক ফলাফল শুধু Pearson প্রকাশ করে।"
+
+msgid "A school assessment, not an official result. Official results are issued only by the International Baccalaureate."
+msgstr "এটি বিদ্যালয়ের মূল্যায়ন, দাপ্তরিক ফলাফল নয়। দাপ্তরিক ফলাফল শুধু International Baccalaureate প্রকাশ করে।"
