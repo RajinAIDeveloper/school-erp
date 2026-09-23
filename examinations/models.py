@@ -1,10 +1,11 @@
 from decimal import Decimal
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 
 from academics.models import AcademicYear, ClassLevel, Subject, Term
-from core.models import SchoolScopedModel
+from core.models import AssessmentSystem, SchoolScopedModel
 from students.models import Enrollment
 
 
@@ -87,6 +88,15 @@ class Exam(SchoolScopedModel):
     start_date = models.DateField(null=True, blank=True)
     end_date = models.DateField(null=True, blank=True)
     grade_scale = models.ForeignKey(GradeScale, on_delete=models.PROTECT, related_name="exams")
+    assessment_system = models.CharField(
+        max_length=10,
+        blank=True,
+        choices=AssessmentSystem.choices,
+        help_text=(
+            "Leave blank to follow each class's setting. Set it for an internal test, such as a "
+            "class test, that should not use the board's GPA rules."
+        ),
+    )
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.DRAFT)
     published_at = models.DateTimeField(null=True, blank=True)
     published_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
@@ -99,6 +109,10 @@ class Exam(SchoolScopedModel):
 
     def __str__(self):
         return f"{self.name} {self.academic_year}"
+
+    def rules_for(self, class_level):
+        """Which rulebook this exam's results follow in one class."""
+        return self.assessment_system or class_level.rules
 
 
 class ExamSchedule(SchoolScopedModel):
@@ -132,10 +146,43 @@ class ExamSchedule(SchoolScopedModel):
                 raise ValidationError("Full marks must be positive and pass marks between zero and full marks.")
 
 
+class PaperComponent(SchoolScopedModel):
+    """
+    One part of a paper, with its own pass mark.
+
+    Under the national curriculum a paper is split into creative questions, multiple choice
+    and sometimes a practical, and a student must reach 33% in each part as well as overall.
+    A paper with no components is marked as a single score, as before.
+    """
+
+    schedule = models.ForeignKey(ExamSchedule, on_delete=models.CASCADE, related_name="components")
+    code = models.SlugField(max_length=20, help_text="Short key, e.g. cq, mcq, practical.")
+    name = models.CharField(max_length=50)
+    full_marks = models.DecimalField(max_digits=6, decimal_places=2)
+    pass_marks = models.DecimalField(max_digits=6, decimal_places=2, default=0)
+    order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order", "id"]
+        constraints = [models.UniqueConstraint(fields=["schedule", "code"], name="unique_component_per_paper")]
+
+    def __str__(self):
+        return f"{self.schedule} - {self.name}"
+
+    def clean(self):
+        super().clean()
+        if self.full_marks is not None and self.pass_marks is not None:
+            if self.full_marks <= 0 or not 0 <= self.pass_marks <= self.full_marks:
+                raise ValidationError("A part needs positive full marks and a pass mark between zero and full marks.")
+
+
 class Mark(SchoolScopedModel):
     schedule = models.ForeignKey(ExamSchedule, on_delete=models.CASCADE, related_name="marks")
     enrollment = models.ForeignKey(Enrollment, on_delete=models.CASCADE, related_name="marks")
     marks_obtained = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    # Scores per part, keyed by component code, when the paper has parts. The total above is
+    # always their sum. Kept on the mark row so the published-marks lock covers them too.
+    component_marks = models.JSONField(default=dict, blank=True)
     is_absent = models.BooleanField(default=False)
     remarks = models.CharField(max_length=100, blank=True)
     entered_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
@@ -154,12 +201,42 @@ class Mark(SchoolScopedModel):
             raise ValidationError("The enrollment must match the exam year and class.")
         if self.is_absent:
             self.marks_obtained = None
-        elif (
+            self.component_marks = {}
+            return
+        components = list(self.schedule.components.all()) if self.schedule.pk else []
+        if components:
+            self.marks_obtained = self._total_from_components(components)
+        if (
             self.marks_obtained is None
             or not self.marks_obtained.is_finite()
             or not 0 <= self.marks_obtained <= self.schedule.full_marks
         ):
             raise ValidationError("Enter a score within full marks or mark the student absent.")
+
+    def _total_from_components(self, components):
+        """Check every part is present and in range, and return their sum."""
+        from decimal import InvalidOperation
+
+        known = {component.code: component for component in components}
+        unknown = set(self.component_marks) - set(known)
+        if unknown:
+            raise ValidationError(f"Unknown part(s) for this paper: {', '.join(sorted(unknown))}.")
+        total = Decimal("0")
+        cleaned = {}
+        for code, component in known.items():
+            raw = self.component_marks.get(code)
+            if raw in (None, ""):
+                raise ValidationError(f"Enter the {component.name} score, or mark the student absent.")
+            try:
+                score = Decimal(str(raw))
+            except (InvalidOperation, ValueError) as exc:
+                raise ValidationError(f"{component.name}: '{raw}' is not a number.") from exc
+            if not score.is_finite() or not 0 <= score <= component.full_marks:
+                raise ValidationError(f"{component.name} must be between 0 and {component.full_marks}.")
+            cleaned[code] = str(score.quantize(Decimal("0.01")))
+            total += score
+        self.component_marks = cleaned
+        return total.quantize(Decimal("0.01"))
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["schedule", "enrollment"], name="one_mark_per_student_paper")]

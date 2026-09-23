@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.db import models
 
-from academics.models import AcademicYear, ClassLevel, Section
+from academics.models import RELIGIONS, AcademicYear, ClassLevel, Group, Section
 from core.models import SchoolScopedModel
 
 
@@ -36,14 +36,6 @@ class Gender(models.TextChoices):
 
 BLOOD_GROUPS = [(bg, bg) for bg in ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]]
 
-RELIGIONS = [
-    ("islam", "Islam"),
-    ("hinduism", "Hinduism"),
-    ("buddhism", "Buddhism"),
-    ("christianity", "Christianity"),
-    ("other", "Other"),
-]
-
 
 class Student(SchoolScopedModel):
     class Status(models.TextChoices):
@@ -70,6 +62,20 @@ class Student(SchoolScopedModel):
     present_address = models.TextField(blank=True)
     permanent_address = models.TextField(blank=True)
     previous_school = models.CharField(max_length=200, blank=True)
+    # What the education boards and the national student ID ask for. Names must match the
+    # online birth registration exactly, so they are recorded here once, at admission.
+    father_name = models.CharField("Father's name", max_length=150, blank=True)
+    father_name_bn = models.CharField("Father's name (Bangla)", max_length=150, blank=True)
+    father_nid = models.CharField("Father's NID", max_length=17, blank=True)
+    mother_name = models.CharField("Mother's name", max_length=150, blank=True)
+    mother_name_bn = models.CharField("Mother's name (Bangla)", max_length=150, blank=True)
+    mother_nid = models.CharField("Mother's NID", max_length=17, blank=True)
+    birth_place = models.CharField("Place of birth", max_length=100, blank=True)
+    nationality = models.CharField(max_length=50, default="Bangladeshi", blank=True)
+    previous_roll = models.CharField("Previous class roll", max_length=20, blank=True)
+    previous_registration_no = models.CharField("Previous registration no.", max_length=30, blank=True)
+    board_registration_no = models.CharField("Board registration no.", max_length=30, blank=True)
+    unique_id = models.CharField("Student unique ID", max_length=30, blank=True, help_text="The government student ID.")
     admission_date = models.DateField()
     status = models.CharField(max_length=15, choices=Status.choices, default=Status.ACTIVE)
     notes = models.TextField(blank=True)
@@ -203,6 +209,20 @@ class Enrollment(SchoolScopedModel):
     section = models.ForeignKey(Section, on_delete=models.PROTECT, related_name="enrollments")
     roll_number = models.PositiveIntegerField()
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.ENROLLED)
+    # Classes 9 and 10: the group, the choice subjects taken as main subjects, and the 4th
+    # subject. Blank for classes where everyone takes the same papers.
+    group = models.CharField(max_length=12, blank=True, choices=Group.choices)
+    chosen_subjects = models.ManyToManyField(
+        "academics.Subject", blank=True, related_name="chosen_by", help_text="Choice subjects taken as main subjects."
+    )
+    fourth_subject = models.ForeignKey(
+        "academics.Subject",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="fourth_subject_of",
+        help_text="The optional 4th subject. It can raise the GPA but never fail the student.",
+    )
 
     class Meta:
         ordering = ["-academic_year__start_date", "class_level__order", "roll_number"]

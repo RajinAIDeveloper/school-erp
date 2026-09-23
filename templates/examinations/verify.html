@@ -23,10 +23,18 @@
       </p>
     </div>
 
+    <dl class="mt-6 grid grid-cols-2 gap-3 text-sm">
+      <div><dt class="text-xs text-slate-500">Student (initials)</dt><dd class="font-semibold tracking-wide">{{ initials }}</dd></div>
+      <div><dt class="text-xs text-slate-500">Class / section</dt><dd class="font-semibold">{{ class_name }}</dd></div>
+      <div><dt class="text-xs text-slate-500">Roll</dt><dd class="font-semibold">{{ roll }}</dd></div>
+      <div><dt class="text-xs text-slate-500">GPA and result</dt><dd class="font-semibold">{{ gpa|default:"—" }} · {{ result }}</dd></div>
+      {% if fingerprint %}<div class="col-span-2"><dt class="text-xs text-slate-500">Card fingerprint</dt><dd class="font-mono font-semibold">{{ fingerprint }}</dd></div>{% endif %}
+    </dl>
+
     <p class="mt-6 text-sm text-slate-500">
-      Verification confirms which examination a card is for, and whether the card in hand is the
-      current version. It names no student and shows no marks, because anyone may be holding the
-      code. To query a result, contact the school office.
+      Compare these with the card in hand. If the GPA, result, roll or fingerprint differ, the card
+      has been altered. Subject marks and the full name are not shown here, to protect the student;
+      to query a result, contact the school office.
     </p>
   </main>
 </body>

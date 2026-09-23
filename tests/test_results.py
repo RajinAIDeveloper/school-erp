@@ -210,18 +210,25 @@ def test_progress_report_is_scoped_to_visible_students(erp):
     assert client.get(f"/exams/progress/{other.pk}/").status_code == 404
 
 
-def test_verification_page_names_no_student_or_mark(erp):
+def test_verification_page_proves_the_card_without_exposing_the_child(erp):
+    """
+    What verification proves: this school published this result, in this version.
+
+    It shows what a holder needs to compare against the paper (initials, class, roll, GPA,
+    result, fingerprint) and never the full name or any subject mark.
+    """
     save_mark(user=erp.teacher, schedule=erp.schedule, enrollment=erp.enrollment, score=Decimal(80))
     publish_exam(erp.exam, erp.admin)
     snapshot = ResultSnapshot.objects.get()
     response = Client().get(f"/exams/verify/{snapshot.verification_code}/")
     assert response.status_code == 200
-    body = response.content
-    assert b"Test School" in body
-    assert b"current, published" in body
-    # The privacy property: no child is named and no mark is shown.
-    assert b"Ayesha" not in body
-    assert b"GPA" not in body and b"5.00" not in body
+    body = response.content.decode()
+    assert "Test School" in body and "current, published" in body
+    assert "A•••••" in body
+    assert "Ayesha" not in body
+    assert snapshot.payload["gpa"] in body and "PASS" in body
+    assert snapshot.payload["fingerprint"] in body
+    assert "80.00" not in body  # no subject mark
 
 
 def test_verification_flags_a_superseded_version(erp):

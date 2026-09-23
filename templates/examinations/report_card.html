@@ -1,8 +1,95 @@
-{% extends "layouts/base.html" %}{% block content %}
-<div class="card card-body"><h2 class="text-xl font-semibold">{{ row.student }} · {{ exam }}</h2><p>{{ row.section }} · Roll {{ row.roll }} · {{ row.student_code }}</p>
-{% if exam.status != "published" %}<p class="text-red-600 font-semibold">DRAFT · unpublished results</p>{% endif %}
-<table class="table my-4"><thead><tr><th>Subject</th><th>Full marks</th><th>Obtained</th><th>Grade</th></tr></thead><tbody>
-{% for c in row.cells %}<tr><td>{{ c.subject }}</td><td>{{ c.full_marks }}</td><td>{% if c.absent %}ABS{% else %}{{ c.score|default_if_none:"Pending" }}{% endif %}</td><td>{% if not c.missing %}{{ c.letter }}{% else %}?{% endif %}</td></tr>{% endfor %}</tbody></table>
-<p>Total {{ row.total }}/{{ row.full_total }} · GPA {{ row.gpa|default_if_none:"—" }} · {{ row.result }} · Section rank {{ row.rank|default_if_none:"—" }} · Class rank {{ row.grade_rank|default_if_none:"—" }}</p>
-<a class="btn-primary mt-4" href="?format=pdf">Download PDF</a>
-{% if snapshot %}<p class="mt-4">Published version {{ snapshot.version }} · <a class="link" href="{% url 'examinations:verify' snapshot.verification_code %}">Verify report</a></p>{% endif %}</div>{% endblock %}
+{% extends "layouts/base.html" %}
+{% load i18n %}
+{% block head %}
+<style>
+  @media print {
+    @page { size: A4; margin: 12mm; }
+    body { background: #fff; }
+    .card-print { box-shadow: none !important; border: 0 !important; }
+  }
+</style>
+{% endblock %}
+{% block header_actions %}
+  <button type="button" onclick="window.print()" class="btn-primary btn-sm">{% translate "Print" %}</button>
+  <a class="btn-secondary btn-sm" href="?format=pdf">{% translate "Download PDF" %}</a>
+{% endblock %}
+{% block content %}
+<article class="card card-body card-print mx-auto max-w-4xl" style="font-family: 'Noto Sans Bengali', ui-sans-serif, system-ui, sans-serif;">
+  <header class="mb-4 border-b border-slate-200 pb-3 text-center">
+    <p class="text-lg font-bold text-slate-900">{{ current_school.name }}</p>
+    {% if current_school.address %}<p class="text-xs text-slate-500">{{ current_school.address|linebreaksbr }}</p>{% endif %}
+    {% if current_school.eiin %}<p class="text-xs text-slate-500">EIIN {{ current_school.eiin }}</p>{% endif %}
+    <p class="mt-2 text-base font-semibold">{% translate "Report card" %} · {{ exam.name }}</p>
+    <p class="text-xs text-slate-500">{% translate "Session" %} {{ exam.academic_year }}</p>
+  </header>
+
+  {% if exam.status != "published" %}
+    <p class="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
+      {% translate "DRAFT — these results are not published." %}
+    </p>
+  {% endif %}
+
+  <dl class="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-3">
+    <div><dt class="text-xs text-slate-500">{% translate "Student" %}</dt><dd class="font-semibold">{{ row.student }}</dd></div>
+    {% if row.student_bn %}<div><dt class="text-xs text-slate-500">নাম</dt><dd class="font-semibold">{{ row.student_bn }}</dd></div>{% endif %}
+    <div><dt class="text-xs text-slate-500">{% translate "Student ID" %}</dt><dd class="font-semibold">{{ row.student_code }}</dd></div>
+    <div><dt class="text-xs text-slate-500">{% translate "Class / section" %}</dt><dd class="font-semibold">{{ row.section }}</dd></div>
+    <div><dt class="text-xs text-slate-500">{% translate "Roll" %}</dt><dd class="font-semibold">{{ row.roll }}</dd></div>
+    {% if row.group %}<div><dt class="text-xs text-slate-500">{% translate "Group" %}</dt><dd class="font-semibold">{% translate row.group %}</dd></div>{% endif %}
+    {% if row.father_name %}<div><dt class="text-xs text-slate-500">{% translate "Father" %}</dt><dd class="font-semibold">{{ row.father_name }}</dd></div>{% endif %}
+    {% if row.mother_name %}<div><dt class="text-xs text-slate-500">{% translate "Mother" %}</dt><dd class="font-semibold">{{ row.mother_name }}</dd></div>{% endif %}
+    {% if attendance %}<div><dt class="text-xs text-slate-500">{% translate "Attendance" %}</dt><dd class="font-semibold">{{ attendance.percent }}% ({{ attendance.present }}/{{ attendance.total }})</dd></div>{% endif %}
+  </dl>
+
+  <div class="mt-5 overflow-x-auto">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>{% translate "Code" %}</th><th>{% translate "Subject" %}</th><th class="text-right">{% translate "Full marks" %}</th>
+          {% if show_parts %}<th>{% translate "Parts" %}</th>{% endif %}
+          <th class="text-right">{% translate "Obtained" %}</th><th>{% translate "Grade" %}</th><th class="text-right">{% translate "Points" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for line in lines %}
+          <tr class="{% if line.combined %}bg-slate-50 font-semibold{% endif %}">
+            <td class="text-slate-500">{{ line.code }}</td>
+            <td>{{ line.subject }}</td>
+            <td class="text-right">{{ line.full_marks }}</td>
+            {% if show_parts %}<td class="text-xs text-slate-600">{{ line.parts }}</td>{% endif %}
+            <td class="text-right">{{ line.obtained }}</td>
+            <td>{{ line.letter }}</td>
+            <td class="text-right">{{ line.grade_point }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="mt-4 grid gap-3 rounded-lg bg-slate-50 p-4 text-sm sm:grid-cols-5">
+    <div><p class="text-xs text-slate-500">{% translate "Total" %}</p><p class="font-bold">{{ row.total }} / {{ row.full_total }}</p></div>
+    <div><p class="text-xs text-slate-500">GPA</p><p class="font-bold">{{ row.gpa|default_if_none:"—" }}{% if row.gpa_letter %} ({{ row.gpa_letter }}){% endif %}</p></div>
+    {% if board and row.fourth_subject %}<div><p class="text-xs text-slate-500">{% translate "GPA without 4th subject" %}</p><p class="font-bold">{{ row.gpa_without_fourth|default_if_none:"—" }}</p></div>{% endif %}
+    <div><p class="text-xs text-slate-500">{% translate "Rank in section" %}</p><p class="font-bold">{{ row.rank|default_if_none:"—" }}</p></div>
+    <div><p class="text-xs text-slate-500">{% translate "Result" %}</p>
+      <p class="font-bold {% if row.result == 'PASS' %}text-emerald-700{% else %}text-red-600{% endif %}">{% translate row.result %}</p></div>
+  </div>
+
+  {% if snapshot %}
+    <div class="mt-5 flex items-center justify-between gap-4 border-t border-slate-200 pt-4">
+      <div class="text-xs text-slate-600">
+        <p>{% translate "Published version" %} {{ snapshot.version }}{% if row.fingerprint %} · {% translate "card fingerprint" %} <b class="font-mono">{{ row.fingerprint }}</b>{% endif %}</p>
+        <p class="mt-1">{% translate "Scan the code to confirm this card is genuine and current." %}</p>
+        <p class="mt-1 break-all"><a class="link" href="{{ verify_url }}">{{ verify_url }}</a></p>
+      </div>
+      <div class="shrink-0">{{ qr|safe }}</div>
+    </div>
+  {% endif %}
+
+  <div class="mt-10 grid grid-cols-3 gap-6 text-center text-xs text-slate-500">
+    <p class="border-t border-slate-400 pt-1">{% translate "Class teacher" %}</p>
+    <p class="border-t border-slate-400 pt-1">{% translate "Guardian" %}</p>
+    <p class="border-t border-slate-400 pt-1">{{ current_school.principal_name|default:_("Head of institution") }}</p>
+  </div>
+</article>
+{% endblock %}

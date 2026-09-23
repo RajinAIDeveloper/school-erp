@@ -64,22 +64,41 @@
     <div class="overflow-x-auto">
       <table class="table">
         <thead>
-          <tr><th class="w-16">Roll</th><th>Student</th><th class="w-40">Marks</th><th class="w-28">Absent</th><th>Problem</th></tr>
+          <tr><th class="w-16">Roll</th><th>Student</th>
+            {% if components %}
+              {% for c in components %}<th class="w-28">{{ c.name }}<span class="block text-[11px] font-normal text-slate-500">out of {{ c.full_marks|floatformat:"-2" }} &middot; pass {{ c.pass_marks|floatformat:"-2" }}</span></th>{% endfor %}
+              <th class="w-20 text-right">Total</th>
+            {% else %}
+              <th class="w-40">Marks</th>
+            {% endif %}
+            <th class="w-28">Absent</th><th>Problem</th></tr>
         </thead>
         <tbody>
           {% for row in rows %}
             <tr class="{% if row.error %}bg-red-50{% endif %}">
               <td class="text-slate-500">{{ row.enrollment.roll_number }}</td>
               <td class="font-medium">{{ row.enrollment.student.full_name }}</td>
-              <td>
-                <input type="number" step="0.01" min="0" max="{{ schedule.full_marks }}"
-                       name="{{ row.enrollment.pk }}-score" value="{{ row.score|default_if_none:'' }}"
-                       class="input" {% if locked %}disabled{% endif %}>
-                <input type="hidden" name="{{ row.enrollment.pk }}-version" value="{{ row.version }}">
-              </td>
+              {% if components %}
+                {% for component, value in row.parts %}
+                  <td>
+                    <input type="number" step="0.01" min="0" max="{{ component.full_marks }}"
+                           name="{{ row.enrollment.pk }}-{{ component.code }}" value="{{ value }}"
+                           class="input" {% if locked %}disabled{% endif %}>
+                  </td>
+                {% endfor %}
+                <td class="text-right font-medium">{{ row.score|default_if_none:"—" }}
+                  <input type="hidden" name="{{ row.enrollment.pk }}-version" value="{{ row.version }}"></td>
+              {% else %}
+                <td>
+                  <input type="number" step="0.01" min="0" max="{{ schedule.full_marks }}"
+                         name="{{ row.enrollment.pk }}-score" value="{{ row.input_score }}"
+                         class="input" {% if locked %}disabled{% endif %}>
+                  <input type="hidden" name="{{ row.enrollment.pk }}-version" value="{{ row.version }}">
+                </td>
+              {% endif %}
               <td>
                 <label class="inline-flex items-center gap-2 text-sm">
-                  <input type="checkbox" name="{{ row.enrollment.pk }}-absent" {% if row.absent %}checked{% endif %}
+                  <input type="checkbox" name="{{ row.enrollment.pk }}-absent" {% if row.input_absent %}checked{% endif %}
                          class="h-4 w-4 rounded border-slate-300" data-absent {% if locked %}disabled{% endif %}>
                   Absent
                 </label>
@@ -87,7 +106,7 @@
               <td class="text-sm text-red-700">{{ row.error|default:"" }}</td>
             </tr>
           {% empty %}
-            <tr><td colspan="5">{% include "components/empty.html" with message="No students are enrolled in this section for the exam's year." %}</td></tr>
+            <tr><td colspan="{% if components %}{{ components|length|add:5 }}{% else %}5{% endif %}">{% include "components/empty.html" with message="No student in this section sits this paper in the exam's year." %}</td></tr>
           {% endfor %}
         </tbody>
       </table>
@@ -96,6 +115,7 @@
       <div class="flex items-center justify-between border-t border-slate-200 px-5 py-4">
         <p class="text-xs text-slate-500">
           Everything is checked before anything is saved, so a single bad entry never leaves the class half marked.
+          Clearing a row takes that mark back to "not entered"; only rows you changed are saved.
         </p>
         <button class="btn-primary">Save all marks</button>
       </div>

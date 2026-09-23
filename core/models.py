@@ -25,6 +25,23 @@ class TimeStampedModel(models.Model):
         abstract = True
 
 
+class AssessmentSystem(models.TextChoices):
+    """
+    Which rulebook a class's results follow.
+
+    The default is the school's own rules: a percentage and a grade from the school's scale for
+    every paper, which is how the system has always worked. Each programme a school teaches is
+    then chosen explicitly, per class or per exam, so one school can run a national-curriculum
+    stream and a Cambridge stream side by side without either's rules touching the other.
+    """
+
+    OWN = "own", "School's own rules (percentage and grade)"
+    NATIONAL = "national", "Bangladesh national curriculum (SSC board rules)"
+
+
+LANGUAGES = [("en", "English"), ("bn", "বাংলা")]
+
+
 class School(TimeStampedModel):
     """
     The tenant. One row today; many rows when the platform becomes SaaS.
@@ -84,6 +101,49 @@ class School(TimeStampedModel):
     notify_admission_sms = models.BooleanField("Welcome newly admitted students", default=False)
     staff_self_checkin = models.BooleanField(
         default=False, help_text="Let teachers and staff record their own arrival and departure."
+    )
+    assessment_system = models.CharField(
+        max_length=10,
+        choices=AssessmentSystem.choices,
+        default=AssessmentSystem.OWN,
+        help_text=(
+            "The rules results are calculated by. A class can override this, for a school that runs "
+            "both a national-curriculum and an English-medium stream."
+        ),
+    )
+    # Language. A school can offer Bangla or keep the interface in English; each person then
+    # switches between them with the toggle in the header.
+    bangla_enabled = models.BooleanField(
+        "Offer the Bangla interface", default=True, help_text="Lets each person switch the screens to Bangla."
+    )
+    default_language = models.CharField(
+        max_length=5,
+        choices=LANGUAGES,
+        default="en",
+        help_text="What people see until they choose for themselves.",
+    )
+    public_results_enabled = models.BooleanField(
+        "Publish results online",
+        default=False,
+        help_text=(
+            "Families can look up a published result with the student ID and date of birth, without signing in."
+        ),
+    )
+    # Online fees. Money settles straight into the school's own merchant account; the software
+    # never holds it, which the Payment and Settlement Systems Act 2024 requires.
+    payment_gateway = models.CharField(
+        max_length=12,
+        choices=[
+            ("none", "Off"),
+            ("sslcommerz", "SSLCommerz (bKash, Nagad, Rocket, cards, banks)"),
+            ("demo", "Demonstration (no money moves)"),
+        ],
+        default="none",
+    )
+    sslcommerz_store_id = models.CharField("SSLCommerz store ID", max_length=100, blank=True)
+    sslcommerz_store_password = models.CharField("SSLCommerz store password", max_length=200, blank=True)
+    sslcommerz_sandbox = models.BooleanField(
+        "Use the SSLCommerz sandbox", default=True, help_text="Clear this only with live credentials."
     )
     # SMS gateway (generic HTTP)
     sms_sender_id = models.CharField(max_length=20, blank=True)

@@ -22,11 +22,13 @@ from .services import (
     active_unlock,
     assert_can_mark,
     build_result_sheet,
+    expected_marks,
     publish_exam,
     review_unlock,
     save_mark,
     save_marks,
 )
+from .subjects import enrollments_taking, subject_plan
 
 
 def verification_url(request, snapshot):
@@ -39,6 +41,16 @@ def verification_url(request, snapshot):
     if snapshot is None:
         return ""
     return request.build_absolute_uri(reverse("examinations:verify", args=[snapshot.verification_code]))
+
+
+def _cell_text(row, schedule_id):
+    """One paper's mark for a spreadsheet cell: the score, ABS, blank if not sat."""
+    cell = next((c for c in row["cells"] if c["schedule_id"] == schedule_id), None)
+    if cell is None:
+        return ""
+    if cell["absent"]:
+        return "ABS"
+    return cell["score"] if not cell["missing"] else ""
 
 
 class ExamListView(ERPListView):
@@ -66,12 +78,9 @@ def exam_detail(request, pk):
     schedules = exam.schedules.select_related("subject", "class_level").order_by("date", "class_level__order")
     sections = sections_for(request.user, request.school).select_related("class_level")
     marks_entered = Mark.objects.filter(schedule__exam=exam).count()
-    expected = sum(
-        Enrollment.objects.filter(
-            school=request.school, academic_year=exam.academic_year, class_level=s.class_level
-        ).count()
-        for s in schedules
-    )
+    # Each paper expects only the students who sit it: a Humanities student is not "missing"
+    # a Physics mark.
+    expected = sum(expected_marks(s) for s in schedules)
     return render(
         request,
         "examinations/exam.html",
@@ -134,16 +143,30 @@ def marks(request):
     selector = MarkFilter(request.GET or request.POST or None, user=request.user, school=request.school)
     rows, schedule, section, locked = [], None, None, False
     row_errors = {}
+    # What the teacher typed, kept so a rejected submission is shown back as entered rather
+    # than silently replaced by the stored marks.
+    typed = {}
 
+    components = []
     if selector.is_bound and selector.is_valid():
         schedule = selector.cleaned_data["schedule"]
         section = selector.cleaned_data["section"]
-        assert_can_mark(request.user, schedule)
+        # Authorised for this subject in this section, not merely somewhere in the class:
+        # teaching Math in A and Science in B gives no sight of B's Math marks.
+        assert_can_mark(request.user, schedule, section=section)
         locked = schedule.exam.status == "published" and not active_unlock(request.user, schedule)
-        enrollments = list(
-            Enrollment.objects.filter(school=request.school, academic_year=schedule.exam.academic_year, section=section)
-            .select_related("student")
-            .order_by("roll_number")
+        components = list(schedule.components.all())
+        enrollments = enrollments_taking(
+            schedule,
+            list(
+                Enrollment.objects.filter(
+                    school=request.school, academic_year=schedule.exam.academic_year, section=section
+                )
+                .select_related("student")
+                .prefetch_related("chosen_subjects")
+                .order_by("roll_number")
+            ),
+            subject_plan(schedule.exam.academic_year, schedule.class_level),
         )
         existing = {
             mark.enrollment_id: mark for mark in Mark.objects.filter(schedule=schedule, enrollment__in=enrollments)
@@ -157,26 +180,45 @@ def marks(request):
             submitted, invalid = [], {}
             for enrollment in enrollments:
                 prefix = str(enrollment.pk)
-                raw = request.POST.get(f"{prefix}-score", "").strip()
                 absent = request.POST.get(f"{prefix}-absent") == "on"
+                typed[enrollment.pk] = {
+                    "absent": absent,
+                    "score": request.POST.get(f"{prefix}-score", "").strip(),
+                    "parts": {c.code: request.POST.get(f"{prefix}-{c.code}", "").strip() for c in components},
+                }
                 try:
                     version = int(request.POST.get(f"{prefix}-version", "0"))
                 except ValueError:
                     version = 0
-                score = None
-                if raw and not absent:
-                    try:
-                        score = Decimal(raw)
-                    except InvalidOperation:
-                        invalid[enrollment.pk] = f"'{raw}' is not a number."
+                score, parts = None, {}
+                if components:
+                    for component in components:
+                        raw_part = request.POST.get(f"{prefix}-{component.code}", "").strip()
+                        if raw_part and not absent:
+                            try:
+                                parts[component.code] = Decimal(raw_part)
+                            except InvalidOperation:
+                                invalid[enrollment.pk] = f"{component.name}: '{raw_part}' is not a number."
+                    if enrollment.pk in invalid:
                         continue
-                submitted.append((enrollment, score, absent, version))
+                else:
+                    raw = request.POST.get(f"{prefix}-score", "").strip()
+                    if raw and not absent:
+                        try:
+                            score = Decimal(raw)
+                        except InvalidOperation:
+                            invalid[enrollment.pk] = f"'{raw}' is not a number."
+                            continue
+                submitted.append((enrollment, score, absent, version, parts))
             if invalid:
                 row_errors = invalid
             else:
                 try:
                     saved = save_marks(user=request.user, schedule=schedule, section=section, rows=submitted)
-                    messages.success(request, f"Saved {len(saved)} mark(s).")
+                    if saved:
+                        messages.success(request, f"Saved {len(saved)} change(s).")
+                    else:
+                        messages.info(request, "Nothing had changed, so nothing was saved.")
                     return redirect(
                         reverse("examinations:marks")
                         + "?"
@@ -190,13 +232,23 @@ def marks(request):
 
         for enrollment in enrollments:
             mark = existing.get(enrollment.pk)
+            stored_parts = (mark.component_marks or {}) if mark and not mark.is_absent else {}
+            stored_score = mark.marks_obtained if mark and not mark.is_absent else None
+            entry = typed.get(enrollment.pk)
             rows.append(
                 {
                     "enrollment": enrollment,
                     "mark": mark,
-                    "score": mark.marks_obtained if mark and not mark.is_absent else None,
+                    # Stored values drive the progress summary; the inputs show what was typed.
+                    "score": stored_score,
                     "absent": bool(mark and mark.is_absent),
+                    "input_score": entry["score"] if entry else ("" if stored_score is None else stored_score),
+                    "input_absent": entry["absent"] if entry else bool(mark and mark.is_absent),
                     "version": mark.version if mark else 0,
+                    "parts": [
+                        (component, entry["parts"][component.code] if entry else stored_parts.get(component.code, ""))
+                        for component in components
+                    ],
                     "error": row_errors.get(enrollment.pk),
                 }
             )
@@ -219,6 +271,7 @@ def marks(request):
             "entered": entered,
             "missing": len(rows) - entered,
             "average": average,
+            "components": components,
             "average_percent": (
                 (average * 100 / schedule.full_marks).quantize(Decimal("0.1"))
                 if average is not None and schedule and schedule.full_marks
@@ -320,7 +373,8 @@ def results(request):
         sheet = build_result_sheet(**chosen)
         fmt = request.GET.get("format")
         if fmt in ("csv", "xlsx", "pdf"):
-            subjects = [c["subject"] for c in sheet["rows"][0]["cells"]] if sheet["rows"] else []
+            columns = sheet["columns"]
+            subjects = [name for _pk, name, _code in columns]
             headers = [
                 "Class rank",
                 "Section rank",
@@ -340,7 +394,7 @@ def results(request):
                     r["section"],
                     r["roll"],
                     r["student"],
-                    *["ABS" if c["absent"] else (c["score"] if not c["missing"] else "") for c in r["cells"]],
+                    *[_cell_text(r, pk) for pk, _name, _code in columns],
                     r["total"],
                     r["percent"],
                     r["gpa"],
@@ -407,13 +461,41 @@ def results(request):
     )
 
 
-@require_permission(None)
+def card_enrollment(request, exam, student_pk):
+    """
+    The enrollment a report card is for, if this person may see it.
+
+    One rule for every historical card, the same one bulk printing uses: staff are judged by
+    what they taught in the exam's own year, families by whether the child is theirs. A
+    teacher can reprint last year's card for the section they taught last year, and cannot
+    print this year's card for a pupil they merely teach now in another subject.
+    """
+    from students.models import Student
+
+    student = get_object_or_404(Student, school=request.school, pk=student_pk)
+    enr = get_object_or_404(Enrollment, student=student, academic_year=exam.academic_year)
+    user = request.user
+    if is_manager(user):
+        allowed = True
+    elif hasattr(user, "student_profile") or hasattr(user, "guardian_profile"):
+        allowed = students_for(user, request.school).filter(pk=student.pk).exists()
+    elif user.has_perm("examinations.view_mark"):
+        allowed = may_use_section(user, request.school, enr.section, exam.academic_year)
+    else:
+        allowed = students_for(user, request.school).filter(pk=student.pk).exists()
+    if not allowed:
+        from django.http import Http404
+
+        raise Http404
+    return student, enr
+
+
+@require_permission(None, also="own children, or sections taught in the exam's year")
 def report_card(request, exam_pk, student_pk):
     exam = get_object_or_404(Exam, pk=exam_pk, school=request.school)
-    student = get_object_or_404(students_for(request.user, request.school), pk=student_pk)
+    student, enr = card_enrollment(request, exam, student_pk)
     if not request.user.has_perm("examinations.view_mark") and exam.status != "published":
         raise PermissionDenied
-    enr = get_object_or_404(Enrollment, student=student, academic_year=exam.academic_year)
     sheet = build_result_sheet(exam, enr.class_level, enr.section)
     row = next((r for r in sheet["rows"] if r["enrollment_id"] == enr.pk), None)
     if row is None:
@@ -425,24 +507,53 @@ def report_card(request, exam_pk, student_pk):
         from .documents import report_card_pdf
 
         return report_card_pdf(request.school, exam, enr, row, snap, verify_url=verification_url(request, snap))
+    from core.qr import qr_svg
+
+    from .documents import attendance_for, card_rows
+
+    lines = card_rows(row)
+    link = verification_url(request, snap)
     return render(
         request,
         "examinations/report_card.html",
-        {"row": row, "exam": exam, "snapshot": snap, "page_title": "Report card"},
+        {
+            "row": row,
+            "exam": exam,
+            "snapshot": snap,
+            "lines": lines,
+            "show_parts": any(line["parts"] for line in lines),
+            "attendance": row["attendance"] if "attendance" in row else attendance_for(enr, exam.end_date),
+            "board": row.get("system") == "national",
+            "verify_url": link,
+            "qr": qr_svg(link) if link else "",
+            "page_title": "Report card",
+        },
     )
+
+
+def mask_name(name):
+    """Initials and the length of each word: enough to match a card, not enough to read it off."""
+    return " ".join(word[0] + "•" * (len(word) - 1) for word in str(name).split() if word)
 
 
 def verify(request, code):
     """
     Public check that a report card is genuine.
 
-    It confirms the school, the version and whether that version is still current, and
-    deliberately names no child and no mark: anyone may be holding the code.
+    What it proves, and no more: that this school published this result for this student,
+    in this version, and whether a newer version has replaced it. It shows what someone
+    holding the card needs to compare against the paper — the student's initials, class,
+    roll, GPA and result, and the card fingerprint — so an altered grade or name no longer
+    matches. It does not show subject marks, the full name or anything else about the child.
+
+    The code is a random 122-bit identifier printed only on the card itself, so reaching this
+    page means holding the card: nobody can walk through it by guessing.
     """
     snapshot = get_object_or_404(
         ResultSnapshot.objects.select_related("exam__academic_year", "school"), verification_code=code
     )
     current = snapshot.exam.status == "published" and snapshot.version == snapshot.exam.publication_version
+    payload = snapshot.payload or {}
     return render(
         request,
         "examinations/verify.html",
@@ -451,6 +562,12 @@ def verify(request, code):
             "school": snapshot.school,
             "exam": snapshot.exam,
             "current": current,
+            "initials": mask_name(payload.get("student", "")),
+            "class_name": payload.get("section", ""),
+            "roll": payload.get("roll", ""),
+            "gpa": payload.get("gpa"),
+            "result": payload.get("result", ""),
+            "fingerprint": payload.get("fingerprint", ""),
             "page_title": "Report verification",
         },
     )

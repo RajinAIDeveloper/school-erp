@@ -1276,7 +1276,7 @@ def test_a_teacher_cannot_bulk_print_draft_report_cards(erp):
     assert client.get(f"/exams/report-cards.pdf?exam={erp.exam.pk}&section={erp.section.pk}").status_code == 200
 
 
-def test_the_verification_page_names_the_exam_but_still_no_child_or_mark(erp):
+def test_the_verification_page_names_the_exam_and_still_not_the_child(erp):
     from examinations.models import ResultSnapshot
     from examinations.services import publish_exam, save_mark
 
@@ -1286,7 +1286,7 @@ def test_the_verification_page_names_the_exam_but_still_no_child_or_mark(erp):
     body = Client().get(f"/exams/verify/{snapshot.verification_code}/").content
     assert b"Term 1" in body
     assert b"Ayesha" not in body
-    assert b"GPA" not in body and b"5.00" not in body
+    assert b"80.00" not in body
 
 
 def test_a_report_card_prints_a_link_someone_can_type(erp):

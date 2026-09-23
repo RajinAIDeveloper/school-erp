@@ -45,13 +45,19 @@ def _facts(pairs, style, columns=3, width=178):
     return table
 
 
-def attendance_for(enrollment):
-    """Attendance across the exam's academic year, for the card's summary line."""
+def attendance_for(enrollment, until=None):
+    """
+    Attendance in the exam's year up to the exam, for cards made from an older snapshot.
+
+    Newer snapshots carry this figure themselves, frozen at publication, so a card printed
+    next year shows what the card printed today showed.
+    """
     from attendance.models import StudentAttendance
 
-    counts = StudentAttendance.objects.filter(enrollment=enrollment).aggregate(
-        total=Count("id"), present=Count("id", filter=Q(status__in=["present", "late"]))
-    )
+    records = StudentAttendance.objects.filter(enrollment=enrollment)
+    if until is not None:
+        records = records.filter(date__lte=until)
+    counts = records.aggregate(total=Count("id"), present=Count("id", filter=Q(status__in=["present", "late"])))
     if not counts["total"]:
         return None
     return {
@@ -61,67 +67,131 @@ def attendance_for(enrollment):
     }
 
 
+def card_rows(row):
+    """
+    The subject table of a card: one line per paper, and for a subject examined in two
+    papers a combined line carrying its grade. Works for older snapshots, which have papers
+    but no combined subjects, by treating each paper as a subject.
+    """
+    cells = {cell["schedule_id"]: cell for cell in row["cells"]}
+    units = row.get("subjects") or [
+        {
+            "name": cell["subject"],
+            "codes": [],
+            "papers": [cell["schedule_id"]],
+            "full_marks": cell["full_marks"],
+            "score": cell["score"],
+            "missing": cell["missing"],
+            "absent": cell["absent"],
+            "letter": cell["letter"],
+            "grade_point": cell["grade_point"],
+            "is_fourth": cell.get("is_fourth", False),
+        }
+        for cell in row["cells"]
+    ]
+    lines = []
+    for unit in units:
+        papers = [cells[pk] for pk in unit["papers"] if pk in cells]
+        combined = len(papers) > 1
+        for paper in papers:
+            parts = " · ".join(
+                f"{part['name']} {part['score'] if part['score'] is not None else '—'}"
+                for part in paper.get("components") or []
+            )
+            obtained = "ABS" if paper["absent"] else ("—" if paper["missing"] else paper["score"])
+            lines.append(
+                {
+                    "code": paper.get("subject_code", ""),
+                    "subject": paper["subject"] + (" (4th subject)" if paper.get("is_fourth") and not combined else ""),
+                    "full_marks": paper["full_marks"],
+                    "parts": parts,
+                    "obtained": obtained,
+                    "letter": "" if combined else ("—" if paper["missing"] else paper["letter"]),
+                    "grade_point": "" if combined else ("—" if paper["missing"] else paper["grade_point"]),
+                    "combined": False,
+                }
+            )
+        if combined:
+            obtained = "ABS" if unit["absent"] else ("—" if unit["missing"] else unit["score"])
+            lines.append(
+                {
+                    "code": "",
+                    "subject": f"{unit['name']} (both papers)" + (" (4th subject)" if unit.get("is_fourth") else ""),
+                    "full_marks": unit["full_marks"],
+                    "parts": "",
+                    "obtained": obtained,
+                    "letter": "—" if unit["missing"] else unit["letter"],
+                    "grade_point": "—" if unit["missing"] else unit["grade_point"],
+                    "combined": True,
+                }
+            )
+    return lines
+
+
 def report_card_flowables(school, exam, enrollment, row, snapshot, style, verify_url=""):
-    student = enrollment.student
-    attendance = attendance_for(enrollment)
+    """
+    One card. Every figure comes from `row`, which for a published exam is the snapshot: the
+    name, class, roll, attendance and marks as they stood at publication.
+    """
+    from core.qr import qr_drawing
+
+    attendance = row["attendance"] if "attendance" in row else attendance_for(enrollment, exam.end_date)
+    board = row.get("system") == "national"
     facts = [
-        ("Student", student.full_name),
-        ("Student ID", student.student_id),
-        ("Class / section", str(enrollment.section)),
-        ("Roll", enrollment.roll_number),
+        ("Student", row["student"]),
+        ("Student ID", row["student_code"]),
+        ("Class / section", row["section"]),
+        ("Roll", row["roll"]),
         ("Session", str(exam.academic_year)),
         ("Examination", exam.name),
     ]
-    if student.name_bn:
-        facts.insert(1, ("নাম", student.name_bn))
+    name_bn = row.get("student_bn", enrollment.student.name_bn)
+    if name_bn:
+        facts.insert(1, ("নাম", name_bn))
+    if row.get("group"):
+        facts.append(("Group", row["group"]))
+    if row.get("father_name"):
+        facts.append(("Father", row["father_name"]))
     if attendance:
         facts.append(("Attendance", f"{attendance['percent']}% ({attendance['present']}/{attendance['total']})"))
 
-    subject_rows = []
-    for cell in row["cells"]:
-        obtained = "ABS" if cell["absent"] else ("—" if cell["missing"] else cell["score"])
-        subject_rows.append(
-            [
-                cell["subject"],
-                cell["full_marks"],
-                cell["pass_marks"],
-                obtained,
-                cell["letter"] if not cell["missing"] else "—",
-                cell["grade_point"] if not cell["missing"] else "—",
-            ]
-        )
-    table = data_table(
-        ["Subject", "Full marks", "Pass marks", "Obtained", "Grade", "Points"],
-        subject_rows,
-        style,
-        align_right=(1, 2, 3),
-    )
+    lines = card_rows(row)
+    show_parts = any(line["parts"] for line in lines)
+    headers = ["Code", "Subject", "Full marks"] + (["Parts"] if show_parts else []) + ["Obtained", "Grade", "Points"]
+    body = [
+        [line["code"], line["subject"], line["full_marks"]]
+        + ([line["parts"]] if show_parts else [])
+        + [line["obtained"], line["letter"], line["grade_point"]]
+        for line in lines
+    ]
+    numeric = (2, 4, 6) if show_parts else (2, 3, 5)
+    table = data_table(headers, body, style, align_right=numeric)
 
-    result_style = "#047857" if row["result"] == "PASS" else "#b91c1c"
+    result_colour = "#047857" if row["result"] == "PASS" else "#b91c1c"
+    summary_cells = [
+        ("Total", f"{row['total']} / {row['full_total']}"),
+        ("GPA", f"{row['gpa'] or '—'}" + (f" ({row['gpa_letter']})" if row.get("gpa_letter") else "")),
+    ]
+    if board and row.get("fourth_subject"):
+        summary_cells.append(("GPA without 4th subject", row.get("gpa_without_fourth") or "—"))
+    summary_cells += [("Rank in section", row["rank"] or "—"), ("Result", row["result"])]
+    width = 178 / len(summary_cells)
     summary = Table(
         [
             [
                 Paragraph(
-                    f"<font color='#475569' size='7.5'>Total</font><br/><b>{row['total']} / {row['full_total']}</b>",
+                    f"<font color='#475569' size='7.5'>{escape(label)}</font><br/>"
+                    + (
+                        f"<b><font color='{result_colour}'>{escape(str(value))}</font></b>"
+                        if label == "Result"
+                        else f"<b>{escape(str(value))}</b>"
+                    ),
                     style["cell"],
-                ),
-                Paragraph(
-                    f"<font color='#475569' size='7.5'>Percentage</font><br/><b>{row['percent'] or '—'}%</b>",
-                    style["cell"],
-                ),
-                Paragraph(f"<font color='#475569' size='7.5'>GPA</font><br/><b>{row['gpa'] or '—'}</b>", style["cell"]),
-                Paragraph(
-                    f"<font color='#475569' size='7.5'>Rank in section</font><br/><b>{row['rank'] or '—'}</b>",
-                    style["cell"],
-                ),
-                Paragraph(
-                    f"<font color='#475569' size='7.5'>Result</font><br/>"
-                    f"<b><font color='{result_style}'>{row['result']}</font></b>",
-                    style["cell"],
-                ),
+                )
+                for label, value in summary_cells
             ]
         ],
-        colWidths=[35.6 * mm] * 5,
+        colWidths=[width * mm] * len(summary_cells),
     )
     summary.setStyle(
         TableStyle(
@@ -164,14 +234,18 @@ def report_card_flowables(school, exam, enrollment, row, snapshot, style, verify
         )
     if snapshot:
         where = escape(verify_url) if verify_url else "the school's report verification page"
-        flow.append(
-            Paragraph(
-                f"<font color='#475569' size='7.5'>Version {exam.publication_version} · "
-                f"verify this card at {where}</font>",
-                style["cell"],
-            )
+        code = escape(row.get("fingerprint") or "")
+        note = Paragraph(
+            f"<font color='#475569' size='7.5'>Version {snapshot.version}"
+            + (f" · card fingerprint <b>{code}</b>" if code else "")
+            + f"<br/>Scan the code, or open {where}, to confirm this card is genuine and current.</font>",
+            style["cell"],
         )
-    flow.append(Spacer(1, 18))
+        block = [[note, qr_drawing(verify_url, 22)]] if verify_url else [[note, ""]]
+        verification = Table(block, colWidths=[150 * mm, 28 * mm])
+        verification.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "MIDDLE")]))
+        flow.append(verification)
+    flow.append(Spacer(1, 14))
     flow.append(signatures)
     return flow
 

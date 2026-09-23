@@ -55,7 +55,7 @@ quietly join it.
 | /employees/me/ | employees:me | `(sign-in only)` | - | o | o | o | o | o | o | o |
 | /employees/new/ | employees:create | `employees.add_employee` | - | Y | Y | . | . | . | . | . |
 | /exams/ | examinations:exam_list | `examinations.view_exam` | - | Y | Y | . | Y | . | . | . |
-| /exams/<int:exam_pk>/report/<int:student_pk>/ | examinations:report_card | `(sign-in only)` | - | o | o | o | o | o | o | o |
+| /exams/<int:exam_pk>/report/<int:student_pk>/ | examinations:report_card | `(sign-in only)` | own children, or sections taught in the exam's year | o | o | o | o | o | o | o |
 | /exams/<int:pk>/ | examinations:exam_detail | `examinations.view_exam` | - | Y | Y | . | Y | . | . | . |
 | /exams/<int:pk>/publish/ | examinations:publish | `examinations.change_exam` | - | Y | Y | . | . | . | . | . |
 | /exams/<int:pk>/routine/ | examinations:exam_routine | `examinations.view_exam` | - | Y | Y | . | Y | . | . | . |
