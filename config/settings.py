@@ -56,6 +56,12 @@ MIDDLEWARE = [
     "core.middleware.ForcePasswordChangeMiddleware",
 ]
 
+if not DEBUG:
+    # Serves the built stylesheet and scripts in production without a separate web server.
+    # In development Django's staticfiles app already does it, and WhiteNoise would only
+    # warn about the collectstatic output folder not existing yet.
+    MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")
+
 ROOT_URLCONF = "config.urls"
 
 TEMPLATES = [
@@ -166,6 +172,45 @@ EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "1") == "1"
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "school@example.com")
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 DATA_UPLOAD_MAX_MEMORY_SIZE = 12 * 1024 * 1024
+# A mark grid or a timetable week posts one field per cell, so the default 1000 is low.
+DATA_UPLOAD_MAX_NUMBER_FIELDS = int(os.environ.get("DJANGO_MAX_FORM_FIELDS", "5000"))
+
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"
+        if not DEBUG
+        else "django.contrib.staticfiles.storage.StaticFilesStorage"
+    },
+}
+
+# Login rate limiting counts attempts in the cache. In production that must be shared
+# across processes, or restarting a worker would reset someone's attempt count.
+_cache_url = os.environ.get("CACHE_URL", "")
+if _cache_url.startswith("redis"):
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.redis.RedisCache", "LOCATION": _cache_url}}
+elif not DEBUG:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+            "LOCATION": "erp_cache",
+        }
+    }
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "plain": {"format": "{asctime} {levelname} {name} {message}", "style": "{"},
+    },
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "formatter": "plain"},
+    },
+    "root": {"handlers": ["console"], "level": os.environ.get("DJANGO_LOG_LEVEL", "INFO")},
+    "loggers": {
+        "django.db.backends": {"level": "WARNING", "handlers": ["console"], "propagate": False},
+    },
+}
 
 if not DEBUG:
     if SECRET_KEY == "dev-only-insecure-key-change-me-in-production":

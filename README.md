@@ -1,6 +1,34 @@
 # School ERP
 
-Django 5.2 and Tailwind CSS school management application. The implemented workflows and known gaps are documented in [the DigiCampus comparison](docs/digicampus-comparison.md). This repository is a single school deployment today; records include a school foreign key so a future hosted version can isolate schools.
+A school management system for Bangladeshi schools, built with Django 5.2 and Tailwind CSS.
+It covers students, staff, both attendance registers, fees, double-entry accounts, exams and
+results, the class routine, notices and downloads, SMS, the school calendar, settings and user
+accounts — with a portal for students and guardians.
+
+Every record carries a school foreign key, so a single-school deployment today can become a
+hosted multi-school one without reshaping the database.
+
+## What it does
+
+| Module | What you can do |
+|---|---|
+| Students | One-screen admission (student, guardian and class together), roster with class/section/status filters, enrollment history, promotion, leaving records, CSV import with a preview step, ID cards, fee statements |
+| Teachers & staff | Personal file with assignments, attendance, leave balance, documents and payslips; roster filters; salary hidden from roles that do not run payroll |
+| Student attendance | Section register with mark-all, per-student history, daily "which registers are missing" summary, monthly grids and exports, optional absence SMS |
+| Fees | Fee heads and class structures, concessions, monthly or whole-school invoice runs, one-off invoices, partial payments, receipts with the amount in words, reversals, outstanding-fee chasing, late fees |
+| Accounts | Multi-line journals, quick expense and income entry, account ledgers, trial balance, income and expenditure, balance sheet, cash book, opening balances, payroll, period lock |
+| Staff attendance | Register with check-in and out, optional self check-in, leave requests that mark the register when approved, entitlement and overlap checks |
+| Results | Grade scales, exams and papers, grid mark entry for a whole class, publication with versioned snapshots and a database-level lock, scoped corrections, ranks, subject analysis, report cards, admit cards, progress reports, public verification |
+| Routine | The week as a grid per class or teacher, a bulk week editor with clash detection, free-teacher lookup, room and teacher-load reports |
+| Notices & downloads | A noticeboard with audiences and expiry, and files behind the same audience rules |
+| SMS | Templates rendered per recipient, preview with recipient count and SMS-part cost, batches with delivery counts, retries, a gateway test, and five optional event notifications |
+| Calendar | Holidays and events, a month grid, working-day counts, national-holiday import, iCalendar export |
+| Settings | A hub with a readiness check, one-press defaults, school profile, academic setup, notifications, policy and the audit log |
+| Users | Create a login straight from a student, guardian or staff record, or for a whole class; temporary passwords that must be changed; role and activity filters |
+
+Seven roles: Administrator, Principal, Accountant, Teacher, Staff, Student, Guardian. Run
+`python manage.py role_matrix` to print exactly who can open what — it is generated from the
+URLs and the groups, so it cannot drift from the code.
 
 ## Local setup (Windows PowerShell)
 
@@ -15,29 +43,95 @@ py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe manage.py runserver
 ```
 
-Log in at `/login/`. The demo command is repeatable, attaches the named existing superuser to the demo school, and does not send SMS or email. To use a real school instead, create it in Django admin, attach the account there, then configure academic years and classes under **Basic Settings**.
+Sign in at `/login/`. `seed_demo` is repeatable, attaches the named superuser to the demo
+school, and sends nothing.
+
+### Starting a real school instead
+
+```powershell
+.\.venv\Scripts\python.exe manage.py setup_school          # accounts, fee heads, grading, periods, templates
+```
+
+Then open **Basic Settings**. The readiness panel names anything still missing — current
+academic year, classes, sections, subjects, fee heads, accounts, periods — and "Create
+defaults" fills the rest in. Everything it creates is editable, and running it again changes
+nothing already entered.
 
 ## Quality checks
 
 ```powershell
 .\.venv\Scripts\python.exe manage.py check
 .\.venv\Scripts\python.exe manage.py makemigrations --check --dry-run
+.\.venv\Scripts\python.exe -m ruff check . ; .\.venv\Scripts\python.exe -m ruff format --check .
 .\.venv\Scripts\python.exe -m pytest -q
-.\.venv\Scripts\python.exe -m pytest -q --cov=core --cov=users --cov=academics --cov=students --cov=employees --cov=attendance --cov=fees --cov=finance --cov=examinations --cov=timetable --cov=downloads --cov=messaging --cov=holidays --cov=reports --cov-report=term:skip-covered
+.\.venv\Scripts\python.exe -m pytest -q --cov=. --cov-report=term:skip-covered
 ```
 
-Browser tests use Playwright and a locally installed Chromium. Install with `.\.venv\Scripts\python.exe -m playwright install chromium` if needed. Other tests need no browser.
+Browser tests need Chromium (`python -m playwright install chromium`) and are excluded from
+the default run; add `-m browser` to include them. CI runs lint, the Django checks, migration
+drift, the tests with a coverage floor, a check that the committed stylesheet matches a fresh
+Tailwind build, and the deployment checklist.
 
-## Scheduled SMS
+## SMS
 
-Sending queues messages in the database. The worker command processes up to 100 queued messages and can be scheduled by the operating system:
+Nothing is sent inside a web request. Composing and every automatic notification only queue
+messages; a worker delivers them:
 
 ```powershell
-.\.venv\Scripts\python.exe manage.py process_sms --limit 100
+.\.venv\Scripts\python.exe manage.py process_sms --limit 100        # one pass, for a scheduler
+.\.venv\Scripts\python.exe manage.py process_sms --loop --interval 30   # a standing worker
 ```
 
-The default backend logs messages to the console. To use an HTTP gateway, set `SMS_BACKEND=messaging.backends.HttpSMSBackend` and configure the school's SMS URL, sender ID and key in Basic Settings. Delivery status currently means the gateway request succeeded; provider delivery receipts are not integrated.
+A message that keeps failing is retried three times and then left alone rather than texting a
+family in a loop. The default backend prints to the log. For a real gateway set
+`SMS_BACKEND=messaging.backends.HttpSMSBackend`, fill in the credentials under **Basic
+Settings → SMS gateway**, and use **Gateway test** to send one real message before a batch
+depends on it. Delivery means the gateway accepted the request; provider delivery receipts
+are not integrated.
 
-## Deployment notes
+Automatic messages (absence, payment received, fee reminder, results published, admission)
+are each off until switched on under **Notifications**, and a family can be opted out on
+their guardian record.
 
-Set `DJANGO_SECRET_KEY`, `DJANGO_DEBUG=0`, `DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS`, and a PostgreSQL `DATABASE_URL`. Install a PostgreSQL driver separately if using PostgreSQL. Serve `staticfiles/` after `collectstatic` and keep `media/` private; uploaded files are served through permission checked views. Configure an email backend for password resets. Run `manage.py check --deploy` before deployment. Online payments and biometric devices need provider contracts and credentials and are tracked as open work in the comparison report.
+## Deployment
+
+```bash
+cp .env.example .env     # then set DJANGO_SECRET_KEY, DJANGO_ALLOWED_HOSTS, POSTGRES_PASSWORD
+docker compose up -d --build
+docker compose exec web python manage.py setup_roles
+docker compose exec web python manage.py createsuperuser
+```
+
+The image builds the stylesheet with the standalone Tailwind CLI (no Node), collects static
+files at build time and serves them through WhiteNoise. Compose runs PostgreSQL, the web app
+and the SMS worker. `/healthz/` reports the database and cache for a load balancer.
+
+Set at minimum: `DJANGO_SECRET_KEY`, `DJANGO_DEBUG=0`, `DJANGO_ALLOWED_HOSTS`,
+`DJANGO_CSRF_TRUSTED_ORIGINS`, `DATABASE_URL`. With `DEBUG=0` the login rate limit uses a
+shared cache (`createcachetable`, or `CACHE_URL` for Redis) so restarting a worker cannot
+reset someone's failed-attempt count. Run `manage.py check --deploy` before release; it is
+also asserted by the test suite.
+
+Uploaded files stay private: photos, student and staff documents and downloads are all served
+through permission-checked views, never from a public media URL.
+
+### Backups
+
+```powershell
+.\.venv\Scripts\python.exe manage.py backup              # database + media, keeps 14 runs
+.\.venv\Scripts\python.exe manage.py backup --skip-media
+```
+
+Each run writes a timestamped folder containing a database dump, a media archive and a
+`RESTORE.txt` with the steps. Rehearse a restore on a spare machine before you need one.
+
+## Not built
+
+Online fee gateways (bKash, Nagad, SSLCommerz) and biometric attendance devices are not
+implemented. Both need provider contracts and credentials, and guessing their contracts in
+advance would produce code nobody can trust. The seams are ready: a gateway becomes a payment
+intent plus a signed callback that calls the existing `collect_payment`, and a device becomes
+a log import that feeds the existing attendance service. A mobile app is likewise absent; the
+web UI is responsive and works on a phone.
+
+See [the module-by-module audit](docs/AUDIT_AND_UPDATE_PLAN.md) for the full picture.

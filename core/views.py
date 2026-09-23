@@ -295,3 +295,32 @@ class ERPPasswordChangeView(PasswordChangeView):
             self.request.user.save(update_fields=["must_change_password"])
             audit(self.request, "user.password_changed", self.request.user)
         return response
+
+
+def healthz(request):
+    """
+    A liveness probe for whatever runs this in production.
+
+    It checks the two things whose absence makes the site useless — the database and the
+    cache — and answers plainly, without needing a session.
+    """
+    from django.core.cache import cache
+    from django.db import connection
+    from django.http import JsonResponse
+
+    checks = {}
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            cursor.fetchone()
+        checks["database"] = "ok"
+    except Exception as exc:  # noqa: BLE001 - the probe must report, not raise
+        checks["database"] = f"failed: {exc}"
+    try:
+        cache.set("healthz", "ok", 5)
+        checks["cache"] = "ok" if cache.get("healthz") == "ok" else "failed: value not returned"
+    except Exception as exc:  # noqa: BLE001
+        checks["cache"] = f"failed: {exc}"
+
+    healthy = all(value == "ok" for value in checks.values())
+    return JsonResponse({"status": "ok" if healthy else "unhealthy", "checks": checks}, status=200 if healthy else 503)

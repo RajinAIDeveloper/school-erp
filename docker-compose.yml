@@ -1,0 +1,54 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: school_erp
+      POSTGRES_USER: erp
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U erp -d school_erp"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment: &erp_env
+      DJANGO_DEBUG: "0"
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?set DJANGO_SECRET_KEY}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost}
+      DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-}
+      DJANGO_SSL_REDIRECT: ${DJANGO_SSL_REDIRECT:-0}
+      DATABASE_URL: postgres://erp:${POSTGRES_PASSWORD:-change-me}@db:5432/school_erp
+      SMS_BACKEND: ${SMS_BACKEND:-messaging.backends.ConsoleSMSBackend}
+    volumes:
+      - media:/app/media
+      - backups:/app/backups
+    ports:
+      - "8000:8000"
+    # createcachetable is idempotent and needed for the shared login rate limit.
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py createcachetable &&
+             gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3
+             --access-logfile - --error-logfile -"
+
+  worker:
+    build: .
+    depends_on:
+      - web
+    environment: *erp_env
+    volumes:
+      - media:/app/media
+    # Sends whatever the web app has queued. Nothing sends inside a request.
+    command: python manage.py process_sms --loop --interval 30
+
+volumes:
+  db-data:
+  media:
+  backups:
