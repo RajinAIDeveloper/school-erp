@@ -5,10 +5,11 @@
 </a>
 
 {% if user.student_profile or user.guardian_profile %}
-<a href="{% url 'portal:index' %}" class="{{ base }} {% active request 'portal' %}">My school records</a>
-<a href="{% url 'portal:attendance' %}" class="{{ base }}">My attendance</a>
-<a href="{% url 'portal:fees' %}" class="{{ base }}">My fees</a>
-<a href="{% url 'portal:results' %}" class="{{ base }}">My results</a>
+<p class="mt-4 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">My records</p>
+<a href="{% url 'portal:index' %}" class="{{ base }} {% active request 'index' %}"><span class="w-5 text-center">🧑‍🎓</span> My school records</a>
+<a href="{% url 'portal:attendance' %}" class="{{ base }} {% active request 'attendance' %}"><span class="w-5 text-center">📋</span> My attendance</a>
+<a href="{% url 'portal:fees' %}" class="{{ base }} {% active request 'fees' %}"><span class="w-5 text-center">💳</span> My fees</a>
+<a href="{% url 'portal:results' %}" class="{{ base }} {% active request 'results' %}"><span class="w-5 text-center">📝</span> My results</a>
 {% endif %}
 
 {% if perms.students.view_student %}
@@ -67,7 +68,7 @@
 {% endif %}
 <a href="{% url 'holidays:month' %}" class="{{ base }} {% active request 'holidays' %}"><span class="w-5 text-center">🎉</span> Calendar</a>
 
-<a href="{% url 'reports:hub' %}" class="{{ base }} {% active request 'reports' %}">Reports</a>
+<a href="{% url 'reports:hub' %}" class="{{ base }} {% active request 'reports' %}"><span class="w-5 text-center">📊</span> Reports</a>
 
 {% if perms.core.change_school or perms.users.view_user or perms.academics.view_academicyear %}
 <p class="mt-4 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Administration</p>

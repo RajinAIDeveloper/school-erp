@@ -7,12 +7,13 @@ Last updated: 23 September 2026. This records what was built against
 
 | Measure | Before | Now |
 |---|---:|---:|
-| Tests passing | 148 | 423 |
+| Tests passing | 148 | 435 (+1 browser) |
 | Python line coverage | 87 % | 92 % |
-| Lint / format | none configured | ruff clean, 180 files formatted |
+| Lint / format | none configured | ruff clean, 181 files formatted |
 | `check --deploy` | 2 warnings | clean at `--fail-level WARNING` |
 | Dead templates | ~30 | 0 (a test now fails if one appears) |
 | Screens rendering on a fresh seeded database | — | 37 / 37 |
+| End-to-end browser run | hard-coded path, never run | passes; screenshots committed |
 
 Verified by: `manage.py check`, `makemigrations --check --dry-run`, `check --deploy`,
 `ruff check`, `ruff format --check`, the full suite with coverage, a fresh-build comparison
@@ -77,11 +78,15 @@ API and an app belong after the web flows have been used by a real school for a 
 
 - **SMS delivery means the gateway accepted the request.** Provider delivery receipts are not
   integrated, so "sent" is not proof a handset received it. The gateway test screen says so.
-- **Bangla PDF typography is untested in print.** `core/pdf` registers a Unicode Bengali face
-  when one is bundled in `static/fonts/` and falls back to Helvetica otherwise. No font ships
-  with the repository, and the output has not been checked on paper.
+- **Bangla PDF typography is wired and verified in code, not on paper.** Noto Sans Bengali
+  (OFL) ships in `static/fonts/`; tests assert it registers, that every assigned Bengali
+  letter maps to a real glyph, that a report card with a Bangla name embeds the face, and
+  that printing still works if the font is removed. What has *not* happened is a human
+  looking at a printed card to judge conjuncts and line spacing.
 - **The browser test needs Chromium** and is excluded from the default run; CI has a separate
-  job for it.
+  job for it. It has been run locally: sign-in, the student roster, admitting a student
+  through the real form, the mobile sidebar and the results screen all render correctly
+  (screenshots in `docs/screenshots/`).
 - **Single school in practice.** Every record carries a school foreign key and the queries are
   scoped, but host-based tenant resolution is not implemented; `request.school` comes from the
   signed-in user.

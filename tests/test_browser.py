@@ -29,7 +29,10 @@ def test_desktop_mobile_navigation_and_real_forms(live_server, erp, settings):
             lambda route: route.fulfill(path=str(root / "static" / route.request.url.split("/static/", 1)[1])),
         )
         page.reload()
-        assert page.locator("h1").inner_text() == "Dashboard"
+        heading = page.locator("h1").inner_text()
+        assert heading.startswith("Dashboard")
+        # The header carries the date and session; the separator must not be mojibake.
+        assert "·" in heading and "�" not in heading
         page.goto(live_server.url + "/students/")
         page.wait_for_load_state("networkidle")
         assert page.get_by_text("Ayesha", exact=True).count() == 1

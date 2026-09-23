@@ -68,7 +68,9 @@ nothing already entered.
 ```
 
 Browser tests need Chromium (`python -m playwright install chromium`) and are excluded from
-the default run; add `-m browser` to include them. CI runs lint, the Django checks, migration
+the default run; add `-m browser` to include them. They sign in, walk the roster, admit a
+student through the real form and check the mobile sidebar, writing screenshots to
+`docs/screenshots/`. CI runs lint, the Django checks, migration
 drift, the tests with a coverage floor, a check that the committed stylesheet matches a fresh
 Tailwind build, and the deployment checklist.
 
@@ -111,6 +113,11 @@ Set at minimum: `DJANGO_SECRET_KEY`, `DJANGO_DEBUG=0`, `DJANGO_ALLOWED_HOSTS`,
 shared cache (`createcachetable`, or `CACHE_URL` for Redis) so restarting a worker cannot
 reset someone's failed-attempt count. Run `manage.py check --deploy` before release; it is
 also asserted by the test suite.
+
+Printed documents (report cards, admit cards, ID cards, receipts) go out on the school's
+letterhead and can carry a student's Bangla name: Noto Sans Bengali is bundled under the
+OFL in `static/fonts/`. Remove it and documents still print, in Helvetica, with Latin text
+only.
 
 Uploaded files stay private: photos, student and staff documents and downloads are all served
 through permission-checked views, never from a public media URL.
