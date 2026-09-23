@@ -159,3 +159,57 @@ def test_sections_json_is_school_scoped(erp):
     foreign = ClassLevel.objects.create(school=erp.other, name="Other class", order=1)
     assert client.get(f"/academics/sections.json?class_level={foreign.pk}").json() == []
     assert client.get("/academics/sections.json?class_level=not-a-number").json() == []
+
+
+def test_the_public_surface_is_exactly_what_we_intend(erp):
+    """
+    Anything reachable without signing in is a decision, not an accident.
+
+    A new view that forgets its permission decorator would silently join this list, so the
+    list is asserted rather than described.
+    """
+    from django.urls import get_resolver
+
+    from core.management.commands.role_matrix import SKIP_PREFIXES, view_permission, walk
+
+    public = {
+        f"/{url}"
+        for url, _name, permission in walk(get_resolver().url_patterns)
+        if permission == "(public)" and not url.startswith(SKIP_PREFIXES)
+    }
+    assert public == {
+        # Serves a file only when its audience is Public; anything else demands a sign-in.
+        "/downloads/<int:pk>/file/",
+        # Confirms a report card is genuine without naming a child or showing a mark.
+        "/exams/verify/<uuid:code>/",
+        # A liveness probe; a load balancer has no session.
+        "/healthz/",
+    }, f"unexpected public endpoints: {public}"
+
+
+def test_a_public_download_is_still_refused_when_the_audience_is_not_public(erp, settings, tmp_path):
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    from downloads.models import DownloadCategory, DownloadItem
+
+    settings.MEDIA_ROOT = tmp_path
+    category = DownloadCategory.objects.create(school=erp.school, name="Internal")
+    private = DownloadItem.objects.create(
+        school=erp.school,
+        category=category,
+        title="Staff circular",
+        audience="staff",
+        file=SimpleUploadedFile("circular.txt", b"private"),
+    )
+    public = DownloadItem.objects.create(
+        school=erp.school,
+        category=category,
+        title="Prospectus",
+        audience="public",
+        file=SimpleUploadedFile("prospectus.txt", b"anyone may read this"),
+    )
+    anonymous = Client()
+    assert anonymous.get(f"/downloads/{private.pk}/file/").status_code == 403
+    response = anonymous.get(f"/downloads/{public.pk}/file/")
+    assert response.status_code == 200
+    assert b"".join(response.streaming_content) == b"anyone may read this"

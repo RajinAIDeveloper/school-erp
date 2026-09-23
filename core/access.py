@@ -20,6 +20,9 @@ def require_permission(permission):
                 raise PermissionDenied
             return view(request, *args, **kwargs)
 
+        # Declared rather than inferred, so tooling can report what a view requires
+        # without having to guess from decorator closures.
+        wrapped.erp_permission = permission or "(sign-in only)"
         return wrapped
 
     return decorate

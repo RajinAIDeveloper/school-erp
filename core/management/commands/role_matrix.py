@@ -15,24 +15,26 @@ SKIP_PREFIXES = ("admin/", "password/", "login/", "logout/", "static/", "media/"
 
 
 def view_permission(callback):
-    """The permission a view declares, whether it is a class or a decorated function."""
+    """
+    What a view requires, as the view itself declares it.
+
+    Class views carry `permission_required`; function views decorated with
+    `require_permission` carry `erp_permission`. Anything with neither is genuinely open,
+    which is a fact worth printing rather than hiding behind a guess.
+    """
     view_class = getattr(callback, "view_class", None)
     if view_class is not None:
-        return getattr(view_class, "permission_required", None) or "(sign-in only)"
-    function = callback
-    for _ in range(5):
-        closure = getattr(function, "__closure__", None) or ()
-        for cell in closure:
-            try:
-                value = cell.cell_contents
-            except ValueError:
-                continue
-            if isinstance(value, str) and "." in value and "_" in value:
-                return value
-        function = getattr(function, "__wrapped__", None)
-        if function is None:
-            break
-    return "(sign-in only)"
+        declared = getattr(view_class, "permission_required", None)
+        if declared:
+            return declared
+        from django.contrib.auth.mixins import LoginRequiredMixin
+
+        return "(sign-in only)" if issubclass(view_class, LoginRequiredMixin) else "(public)"
+    declared = getattr(callback, "erp_permission", None)
+    if declared:
+        return declared
+    # login_required and friends wrap with functools.wraps, so a wrapper means a sign-in.
+    return "(sign-in only)" if hasattr(callback, "__wrapped__") else "(public)"
 
 
 def walk(patterns, prefix="", namespace=""):
@@ -71,7 +73,9 @@ class Command(BaseCommand):
         for url, name, permission in sorted(rows):
             marks = []
             for role in roles:
-                if permission == "(sign-in only)":
+                if permission == "(public)":
+                    marks.append("*")
+                elif permission == "(sign-in only)":
                     marks.append("o")
                 else:
                     marks.append("Y" if permission in groups[role] else ".")
@@ -81,4 +85,8 @@ class Command(BaseCommand):
                 self.stdout.write(f"/{url:55} {permission:40} " + " ".join(marks))
 
         self.stdout.write("")
-        self.stdout.write("Y = allowed · . = 403 · o = any signed-in user, scoped inside the view.")
+        # Deliberately ASCII: this output is routinely redirected to a file on
+        # Windows, where the console encoding would mangle anything else.
+        self.stdout.write(
+            "Y = allowed | . = 403 | o = any signed-in user, scoped inside the view | * = no sign-in needed."
+        )
