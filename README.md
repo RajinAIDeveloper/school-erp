@@ -134,4 +134,5 @@ intent plus a signed callback that calls the existing `collect_payment`, and a d
 a log import that feeds the existing attendance service. A mobile app is likewise absent; the
 web UI is responsive and works on a phone.
 
-See [the module-by-module audit](docs/AUDIT_AND_UPDATE_PLAN.md) for the full picture.
+[STATUS.md](docs/STATUS.md) records what was built and the decisions behind it;
+[the original audit](docs/AUDIT_AND_UPDATE_PLAN.md) is the state the work started from.

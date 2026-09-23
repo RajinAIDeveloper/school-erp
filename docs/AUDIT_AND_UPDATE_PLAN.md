@@ -1,5 +1,10 @@
 # School ERP — Validation Audit and Update Plan
 
+> **This plan has been carried out.** All sixteen work packages are implemented and
+> committed; see [STATUS.md](STATUS.md) for what was built, what was decided along the way
+> and what was deliberately left out. The audit below is kept as the record of the state
+> the work started from.
+
 Audit date: 22 September 2026 · Working tree at commit `904ad96` ("astra update and fix 1") plus uncommitted changes (14 modified, 12 untracked files — `reports/`, `core/portal_*`, `templates/portal/`, `tests/test_roles_reports.py`, `tests/test_edge_regressions.py`, `README.md`, `.env.example`, `messaging/migrations/0003`).
 
 This document is written for a coding agent (Codex) that will finish the system. Part A is the validation of what exists. Part B is the work plan: ordered work packages, each with exact files, behaviour, acceptance criteria and the tests to write. Part C is the operating contract the agent must follow.
