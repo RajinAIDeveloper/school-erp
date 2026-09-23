@@ -1,0 +1,34 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block header_actions %}
+  {% if perms.downloads.add_notice %}<a href="{% url 'downloads:notice_create' %}" class="btn-primary btn-sm">Publish a notice</a>{% endif %}
+  {% if perms.downloads.change_notice %}<a href="{% url 'downloads:notice_list' %}" class="btn-secondary btn-sm">Manage notices</a>{% endif %}
+  <a href="{% url 'downloads:list' %}" class="btn-secondary btn-sm">Downloads</a>
+{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-3xl space-y-4">
+  {% for notice in notices %}
+    <article class="card">
+      <div class="card-body">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <h2 class="text-lg font-semibold">
+            {% if notice.is_pinned %}<span class="mr-1 text-amber-500" title="Pinned">&#9733;</span>{% endif %}
+            {{ notice.title }}
+          </h2>
+          <span class="text-xs text-slate-500">{{ notice.publish_at|date:"d M Y" }}</span>
+        </div>
+        <p class="mt-3 whitespace-pre-wrap text-sm text-slate-700">{{ notice.body }}</p>
+        <p class="mt-4 text-xs text-slate-500">
+          For {{ notice.get_audience_display|lower }}
+          {% if notice.class_levels.exists %}
+            ({% for level in notice.class_levels.all %}{{ level.name }}{% if not forloop.last %}, {% endif %}{% endfor %})
+          {% endif %}
+          {% if notice.expires_at %} · until {{ notice.expires_at|date:"d M Y" }}{% endif %}
+        </p>
+      </div>
+    </article>
+  {% empty %}
+    {% include "components/empty.html" with message="Nothing on the noticeboard right now." %}
+  {% endfor %}
+</div>
+{% endblock %}

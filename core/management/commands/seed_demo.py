@@ -9,7 +9,7 @@ from django.db import transaction
 from academics.models import AcademicYear, ClassLevel, Section, Subject, SubjectTeacher
 from attendance.models import AttendanceStatus, LeaveRequest, LeaveType, StaffAttendance, StudentAttendance
 from core.models import School
-from downloads.models import DownloadCategory, DownloadItem
+from downloads.models import Audience, DownloadCategory, DownloadItem
 from employees.models import Department, Designation, Employee
 from examinations.models import Exam, ExamSchedule, Mark, ensure_default_grade_scale
 from fees.models import FeeCategory, FeeStructure
@@ -284,7 +284,7 @@ class Command(BaseCommand):
                 "category": download_category,
                 "description": "A small file for testing the protected download workflow.",
                 "file": SimpleUploadedFile("demo-mathematics.txt", b"School ERP demo study note\n"),
-                "audience": DownloadItem.Audience.STUDENTS,
+                "audience": Audience.STUDENTS,
                 "uploaded_by": demo_admin,
             },
         )

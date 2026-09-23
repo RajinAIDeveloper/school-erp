@@ -297,10 +297,10 @@ def test_reports_hub_shows_only_authorized_reports(erp):
     c.force_login(erp.teacher)
     text = c.get("/reports/").content
     assert b"Student attendance" in text and b"Results and subject analysis" in text
-    assert b"Account balances" not in text and b"Fee collections" not in text
+    assert b"Trial balance" not in text and b"Fee collections" not in text
     c.force_login(erp.accountant)
     text = c.get("/reports/").content
-    assert b"Fee collections" in text and b"Account balances" in text
+    assert b"Fee collections" in text and b"Trial balance" in text
     assert b"Student attendance" not in text
 
 
@@ -338,7 +338,7 @@ def test_report_overview_counts_exports_and_permissions(erp):
 
     ws = load_workbook(BytesIO(response.content)).active
     data = {r[0]: r[1] for r in list(ws.values)[1:]}
-    assert data["Fee collected in range"] == 300 and data["Outstanding fees (as of now)"] == 700
+    assert data["Fee collected in range"] == 300 and data["Outstanding amount now"] == 700
     assert data["Ledger income in range"] == 300
     assert c.get("/reports/overview/?start=2026-09-30&end=2026-09-01").status_code == 200
 

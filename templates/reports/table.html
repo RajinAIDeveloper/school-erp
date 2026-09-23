@@ -1,0 +1,38 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block header_actions %}
+  <a href="?{{ request.GET.urlencode }}&amp;format=csv" class="btn-secondary btn-sm">CSV</a>
+  <a href="?{{ request.GET.urlencode }}&amp;format=xlsx" class="btn-secondary btn-sm">Excel</a>
+  <a href="?{{ request.GET.urlencode }}&amp;format=pdf" class="btn-secondary btn-sm">PDF</a>
+  <a href="{% url 'reports:hub' %}" class="btn-secondary btn-sm">All reports</a>
+{% endblock %}
+{% block content %}
+{% if form %}
+  <form method="get" class="card card-body mb-4 flex flex-wrap items-end gap-4">
+    {% for field in form %}{% render_field field %}{% endfor %}
+    <button class="btn-secondary">Show</button>
+  </form>
+{% endif %}
+
+{% if summary %}
+  <div class="mb-4 grid gap-4 sm:grid-cols-{{ summary|length }}">
+    {% for label, value, is_money in summary %}
+      <div class="stat"><p class="text-sm text-slate-500">{{ label }}</p>
+        <p class="mt-1 text-2xl font-bold">{% if is_money %}{% money value %}{% else %}{{ value }}{% endif %}</p></div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<div class="card overflow-x-auto">
+  <table class="table">
+    <thead><tr>{% for header in headers %}<th>{{ header }}</th>{% endfor %}</tr></thead>
+    <tbody>
+      {% for row in rows %}
+        <tr>{% for cell in row %}<td>{{ cell|default_if_none:"—" }}</td>{% endfor %}</tr>
+      {% empty %}
+        <tr><td colspan="{{ headers|length }}">{% include "components/empty.html" with message="Nothing to report for this range." %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

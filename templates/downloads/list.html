@@ -1,4 +1,43 @@
-{% extends "layouts/base.html" %}{% block content %}
-{% if perms.downloads.add_downloaditem %}<a class="btn-primary mb-4" href="{% url 'downloads:create' %}">Upload file</a>{% endif %}
-{% if perms.downloads.change_downloaditem %}<a class="btn-secondary mb-4" href="{% url 'downloads:item_list' %}">Manage files</a><a class="btn-secondary mb-4" href="{% url 'downloads:category_list' %}">Categories</a>{% endif %}
-<div class="grid gap-4 md:grid-cols-2">{% for item in items %}<article class="card card-body"><h2 class="font-semibold">{{ item.title }}</h2><p>{{ item.category }}</p><p>{{ item.description }}</p><a class="link" href="{% url 'downloads:file' item.pk %}">Download {{ item.filename }}</a></article>{% empty %}<p>No files available for your account.</p>{% endfor %}</div>{% endblock %}
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block header_actions %}
+  <a href="{% url 'downloads:notices' %}" class="btn-secondary btn-sm">Notices</a>
+  {% if perms.downloads.add_downloaditem %}<a href="{% url 'downloads:create' %}" class="btn-primary btn-sm">Upload a file</a>{% endif %}
+  {% if perms.downloads.change_downloaditem %}
+    <a href="{% url 'downloads:item_list' %}" class="btn-secondary btn-sm">Manage files</a>
+    <a href="{% url 'downloads:category_list' %}" class="btn-secondary btn-sm">Categories</a>
+  {% endif %}
+{% endblock %}
+{% block content %}
+{% if notices %}
+  <section class="card mb-6">
+    <div class="card-header"><h2 class="font-semibold">Latest notices</h2>
+      <a href="{% url 'downloads:notices' %}" class="link text-sm">Noticeboard</a></div>
+    <ul class="divide-y divide-slate-100 text-sm">
+      {% for notice in notices %}
+        <li class="px-5 py-3">
+          <p class="font-medium">{% if notice.is_pinned %}<span class="mr-1 text-amber-500">&#9733;</span>{% endif %}{{ notice.title }}</p>
+          <p class="mt-1 text-slate-600">{{ notice.body|truncatewords:30 }}</p>
+          <p class="mt-1 text-xs text-slate-400">{{ notice.publish_at|date:"d M Y" }}</p>
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+{% endif %}
+
+<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+  {% for item in items %}
+    <article class="card card-body">
+      <p class="text-xs uppercase tracking-wide text-slate-500">{{ item.category }}</p>
+      <h2 class="mt-1 font-semibold">{{ item.title }}</h2>
+      {% if item.description %}<p class="mt-2 text-sm text-slate-600">{{ item.description }}</p>{% endif %}
+      <a href="{% url 'downloads:file' item.pk %}" class="link mt-3 text-sm">Download {{ item.filename }}</a>
+      <p class="mt-2 text-xs text-slate-400">{{ item.download_count }} download{{ item.download_count|pluralize }}</p>
+    </article>
+  {% empty %}
+    <div class="md:col-span-2 lg:col-span-3">
+      {% include "components/empty.html" with message="No files are shared with your account yet." %}
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}

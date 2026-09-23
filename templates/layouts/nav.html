@@ -60,6 +60,7 @@
 {% endif %}
 
 <p class="mt-4 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Communication</p>
+<a href="{% url 'downloads:notices' %}" class="{{ base }} {% active request 'notices' 'notice_list' %}"><span class="w-5 text-center">📣</span> Notices</a>
 <a href="{% url 'downloads:list' %}" class="{{ base }} {% active request 'downloads' %}"><span class="w-5 text-center">📁</span> Downloads</a>
 {% if perms.messaging.view_smsmessage %}
 <a href="{% url 'messaging:batch_list' %}" class="{{ base }} {% active request 'messaging' %}"><span class="w-5 text-center">💬</span> SMS</a>

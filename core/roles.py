@@ -69,6 +69,7 @@ EXPLICIT_PERMS = {
         ("messaging", "view_smsmessage"),
         ("holidays", "view_holiday"),
         ("downloads", "view_downloaditem"),
+        ("downloads", "view_notice"),
     ],
     TEACHER: [
         ("students", "view_student"),
@@ -93,6 +94,7 @@ EXPLICIT_PERMS = {
         ("timetable", "view_period"),
         ("downloads", "view_downloaditem"),
         ("downloads", "add_downloaditem"),
+        ("downloads", "view_notice"),
         ("holidays", "view_holiday"),
         ("employees", "view_employee"),
         ("employees", "view_employeedocument"),
@@ -107,11 +109,13 @@ EXPLICIT_PERMS = {
     ],
     STUDENT: [
         ("downloads", "view_downloaditem"),
+        ("downloads", "view_notice"),
         ("holidays", "view_holiday"),
         ("timetable", "view_routineslot"),
     ],
     GUARDIAN: [
         ("downloads", "view_downloaditem"),
+        ("downloads", "view_notice"),
         ("holidays", "view_holiday"),
         ("timetable", "view_routineslot"),
     ],
