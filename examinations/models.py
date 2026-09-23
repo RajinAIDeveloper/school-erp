@@ -111,6 +111,9 @@ class Exam(SchoolScopedModel):
     published_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
     publication_version = models.PositiveIntegerField(default=0)
     grading_snapshot = models.JSONField(default=list, blank=True)
+    # The scale of any paper graded on its own scale, frozen with the exam's at first publication:
+    # {schedule id: rules}. A correction published later grades every paper as the first did.
+    paper_grading_snapshot = models.JSONField(default=dict, blank=True)
 
     class Meta:
         ordering = ["-academic_year__start_date", "start_date", "name"]

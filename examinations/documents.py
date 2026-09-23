@@ -327,8 +327,8 @@ def report_card_pdf(school, exam, enrollment, row, snapshot, verify_url=""):
         school,
         f"Report card · {exam.name}",
         report_card_flowables(school, exam, enrollment, row, snapshot, style, verify_url),
-        subtitle=f"{enrollment.student.full_name} · {enrollment.section}",
-        filename=f"report-card-{enrollment.student.student_id}.pdf",
+        subtitle=f"{row['student']} · {row['section']}",
+        filename=f"report-card-{row.get('student_code') or enrollment.student.student_id}.pdf",
     )
 
 
@@ -341,11 +341,7 @@ def bulk_report_cards_pdf(school, exam, cards):
         verify_url = card[3] if len(card) > 3 else ""
         if index:
             flow.append(PageBreak())
-        flow.extend(
-            letterhead(
-                school, f"Report card · {exam.name}", f"{enrollment.student.full_name} · {enrollment.section}", style
-            )
-        )
+        flow.extend(letterhead(school, f"Report card · {exam.name}", f"{row['student']} · {row['section']}", style))
         flow.extend(report_card_flowables(school, exam, enrollment, row, snapshot, style, verify_url))
     buffer = BytesIO()
     doc = SimpleDocTemplate(

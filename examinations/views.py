@@ -339,9 +339,10 @@ def _class_report(request, sheet, kind, filters, show_rank):
         letters, lines = grade_distribution(sheet, rows)
         headers = ["Subject", "Sat", "Absent", "No mark yet", *letters]
         body = [
-            [ln["subject"], ln["sat"], ln["absent"], ln["missing"], *[ln["counts"][x] for x in letters]] for ln in lines
+            [ln["subject"], ln["sat"], ln["absent"], ln["missing"], *[ln["counts"].get(x, "") for x in letters]]
+            for ln in lines
         ]
-        cumulative = [[ln["subject"], ln["sat"], *[ln["at_or_above"][x] for x in letters]] for ln in lines]
+        cumulative = [[ln["subject"], ln["sat"], *[ln["at_or_above"].get(x, "") for x in letters]] for ln in lines]
         return {
             "title": "Grade distribution",
             "headers": headers,

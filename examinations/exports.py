@@ -35,7 +35,7 @@ def about(sheet, filters=""):
         ("Exam", f"{exam.name} ({exam.academic_year})"),
         ("Class", scope),
         ("Version", version),
-        ("Rulebook", sheet["rulebook"].label),
+        ("Rulebook", f"{sheet['rulebook'].label}, rules version {sheet['rulebook'].version}"),
     ]
     if filters:
         lines.append(("Filter", filters))
@@ -58,21 +58,31 @@ def filter_rows(rows, *, group="", shift="", version=""):
 # ------------------------------------------------------------------ grade distribution
 
 
-def _letters_in_order(sheet, rows):
-    """The scale's letters highest first, then any others seen (a paper on another scale)."""
+def _ordered(rules):
+    return [r["letter"] for r in sorted(rules, key=lambda r: Decimal(str(r["min_percent"])), reverse=True)]
+
+
+def _exam_letters(sheet):
     exam = sheet["exam"]
     rules = exam.grading_snapshot or []
     if not rules and exam.grade_scale_id:
         from .grading import scale_rules
 
         rules = scale_rules(exam.grade_scale)
-    ordered = [r["letter"] for r in sorted(rules, key=lambda r: Decimal(str(r["min_percent"])), reverse=True)]
-    for row in rows:
-        for unit in row.get("subjects") or []:
-            letter = unit.get("letter")
-            if letter and not unit.get("missing") and not unit.get("absent") and letter not in ordered:
-                ordered.append(letter)
-    return ordered
+    return _ordered(rules)
+
+
+def _subject_letters(row, unit, exam_letters):
+    """
+    The grade order for one subject: its paper's own scale when it has one (Edexcel 9-1
+    Mathematics in a Cambridge exam), otherwise the exam's.
+    """
+    scales = (row.get("policy") or {}).get("paper_scales") or {}
+    for paper in unit.get("papers") or []:
+        rules = (scales.get(str(paper)) or {}).get("rules")
+        if rules:
+            return _ordered(rules)
+    return list(exam_letters)
 
 
 def grade_distribution(sheet, rows):
@@ -81,30 +91,46 @@ def grade_distribution(sheet, rows):
     each grade. Percentages are of those who sat the subject, never of the whole class, so a
     subject only some students take is not diluted by those who do not take it.
 
-    Returns (letters, lines) where each line has subject, sat, absent, missing, counts {letter:
-    n} and at_or_above {letter: percent}.
+    Each subject is ordered by its own scale, so "at or above" is always worked down that
+    scale's grades. A grade from another scale is left blank on that subject's line, not zero.
+
+    Returns (letters, lines): letters is every grade column (the exam's scale first, then any
+    other scale's in its own order); each line has subject, sat, absent, missing, order,
+    counts {letter: n} and at_or_above {letter: percent}.
     """
-    letters = _letters_in_order(sheet, rows)
+    exam_letters = _exam_letters(sheet)
     lines = {}
     for row in rows:
         for unit in row.get("subjects") or []:
             if unit.get("core") == "cas":
                 continue
-            line = lines.setdefault(
-                unit["name"],
-                {"subject": unit["name"], "sat": 0, "absent": 0, "missing": 0, "counts": dict.fromkeys(letters, 0)},
-            )
+            if unit["name"] not in lines:
+                order = _subject_letters(row, unit, exam_letters)
+                lines[unit["name"]] = {
+                    "subject": unit["name"],
+                    "sat": 0,
+                    "absent": 0,
+                    "missing": 0,
+                    "order": order,
+                    "counts": dict.fromkeys(order, 0),
+                }
+            line = lines[unit["name"]]
             if unit.get("missing"):
                 line["missing"] += 1
             elif unit.get("absent"):
                 line["absent"] += 1
             else:
                 line["sat"] += 1
-                line["counts"][unit["letter"]] = line["counts"].get(unit["letter"], 0) + 1
+                if unit["letter"] not in line["counts"]:
+                    line["order"].append(unit["letter"])
+                    line["counts"][unit["letter"]] = 0
+                line["counts"][unit["letter"]] += 1
+    letters = list(exam_letters)
     for line in lines.values():
+        letters += [x for x in line["order"] if x not in letters]
         running, line["at_or_above"] = 0, {}
-        for letter in letters:
-            running += line["counts"].get(letter, 0)
+        for letter in line["order"]:
+            running += line["counts"][letter]
             line["at_or_above"][letter] = round(running * 100 / line["sat"], 1) if line["sat"] else None
     return letters, list(lines.values())
 

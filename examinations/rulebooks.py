@@ -43,6 +43,9 @@ class Rulebook:
     # Who awards the official result this rulebook imitates. A school's own exam graded this
     # way is still the school's assessment, and every card says so.
     official_body: str = ""
+    # Bumped whenever this rulebook's arithmetic changes, and stored with every result it
+    # produces, so a published result always says which rules made it.
+    version: str = "2026.1"
 
     def show_rank(self, exam):
         return self.ranks_by_default if exam.show_rank is None else exam.show_rank

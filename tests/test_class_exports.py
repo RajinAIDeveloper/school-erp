@@ -208,7 +208,8 @@ def test_the_class_sheet_says_which_version_it_is(erp, board):
     publish_exam(board.exam, erp.admin)
     published = csv_rows(client.get(results_url(board.exam, board.level, format="csv")))
     assert ["Version", "Published version 1"] in published
-    assert ["Rulebook", RULEBOOKS["national"].label] in published
+    book = RULEBOOKS["national"]
+    assert ["Rulebook", f"{book.label}, rules version {book.version}"] in published
     workbook = load_workbook(io.BytesIO(client.get(results_url(board.exam, board.level, format="xlsx")).content))
     assert workbook.sheetnames[0] == "results" and "About" in workbook.sheetnames
 

@@ -331,7 +331,19 @@ def live_class_sheet(exam, class_level):
     book = rulebook(system)
     # A paper on another board's scale (Edexcel 9-1 Maths in a Cambridge year) is graded on
     # its own scale; everything else on the exam's.
-    paper_rules = {s.pk: (scale_rules(s.grade_scale) if s.grade_scale_id else rules) for s in schedules}
+    frozen = exam.paper_grading_snapshot or {}
+    paper_rules = {
+        s.pk: (frozen.get(str(s.pk)) or scale_rules(s.grade_scale)) if s.grade_scale_id else rules for s in schedules
+    }
+    policy = {
+        "rulebook": system,
+        "rulebook_version": book.version,
+        "scale": exam.grade_scale.name if exam.grade_scale_id else "",
+        "rules": rules,
+        "paper_scales": {
+            str(s.pk): {"name": s.grade_scale.name, "rules": paper_rules[s.pk]} for s in schedules if s.grade_scale_id
+        },
+    }
     plan = subject_plan(exam.academic_year, class_level)
     until = exam.end_date or timezone.localdate()
     show_rank = book.show_rank(exam)
@@ -377,6 +389,7 @@ def live_class_sheet(exam, class_level):
                 "fourth_subject": e.fourth_subject.name if (book.fourth_subject and e.fourth_subject) else "",
                 "system": system,
                 "rulebook": book.label,
+                "policy": policy,
                 "has_gpa": book.has_gpa,
                 "has_result": book.has_result,
                 "show_rank": show_rank,
@@ -574,6 +587,13 @@ def snapshot_exam(exam, user):
     exam = Exam.objects.select_for_update().get(pk=exam.pk)
     if not exam.grading_snapshot:
         exam.grading_snapshot = scale_rules(exam.grade_scale)
+    if not exam.paper_grading_snapshot:
+        # Papers on their own scale are frozen with the exam's, so a correction published
+        # later cannot regrade other students because someone edited that scale meanwhile.
+        exam.paper_grading_snapshot = {
+            str(s.pk): scale_rules(s.grade_scale)
+            for s in exam.schedules.filter(grade_scale__isnull=False).select_related("grade_scale")
+        }
     if not exam.grading_snapshot:
         raise ValidationError("Configure grading rules before publishing.")
     class_ids = list(exam.schedules.values_list("class_level_id", flat=True).distinct())

@@ -461,6 +461,18 @@ def dp_outcome(units, rules):
     total = subject_points + core_points
     trace.append(f"Total: {subject_points} + {core_points} = {total} of 45.")
 
+    # The programme itself: six subjects, three or four at Higher Level and the rest at
+    # Standard Level. Without this, five strong subjects could read as a diploma.
+    levels = [u.get("level") or "" for u in subjects]
+    hl_count, sl_count = levels.count("HL"), levels.count("SL")
+    if len(subjects) != 6:
+        unmet.append(f"{len(subjects)} subject(s) recorded; a Diploma needs exactly six.")
+    unlevelled = [u["name"] for u in subjects if (u.get("level") or "") not in ("HL", "SL")]
+    if unlevelled:
+        unmet.append(f"Not marked HL or SL: {', '.join(unlevelled)}.")
+    elif len(subjects) == 6 and hl_count not in (3, 4):
+        unmet.append(f"{hl_count} subject(s) at HL and {sl_count} at SL; a Diploma needs three or four at HL.")
+
     # Condition 1: CAS.
     cas = core.get("cas")
     if cas is None:
@@ -495,8 +507,6 @@ def dp_outcome(units, rules):
         trace.append(f"SL points: {sum(sl)} (at least {need} needed).")
         if sum(sl) < need:
             unmet.append(f"{sum(sl)} points on SL subjects; at least {need} are needed.")
-    if not hl and not sl:
-        unmet.append("No subject is marked HL or SL, so the level conditions cannot be checked.")
 
     trace.extend(unmet)
     status = "diploma conditions met" if not unmet else "diploma conditions not met"

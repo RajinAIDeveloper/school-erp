@@ -101,6 +101,20 @@ Programme, Edexcel modular UMS and cash-in, moderation workflows, and submitting
 awarding body. The system keeps the records; the exam officer submits through the board's own
 portal.
 
+## 1c. Codex's third review (23 September 2026)
+
+All four findings were confirmed in the code and fixed, each with a regression test that fails
+on the old code (`tests/test_review_fixes.py`).
+
+| Finding | Fix |
+|---|---|
+| PDF cards printed the student's live name and section in the header | Single and bulk PDFs take both from the published result |
+| An IB Diploma estimate did not check the programme's shape: five strong subjects, or no HL subjects, could read as "conditions met" | Exactly six subjects, each HL or SL, three or four at HL; otherwise the conditions are not met and the trace says why |
+| Results did not record which rules and scales made them | Every result stores its rulebook, rules version, the exam scale's rules and any paper's own scale. Papers on their own scale are now frozen at first publication like the exam's scale. Before this, editing such a scale and then publishing an unrelated correction silently regraded that paper for everyone |
+| A 9-1 subject inside a Cambridge exam was ordered by whichever grade appeared first | Each subject in the grade distribution is ordered by its own scale; a grade from another scale is left blank on that line |
+
+The official-results import Codex also points to is stage S6b, next in order.
+
 ## 2. Decisions record
 
 | Decision | Choice | Status |
