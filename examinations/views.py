@@ -16,6 +16,7 @@ from core.generic import ERPListView
 from core.pdf import table_document
 from students.models import Enrollment
 
+from .exports import about, filter_rows
 from .grading import headline
 from .models import Exam, ExamSchedule, GradeRule, GradeScale, Mark, ResultSnapshot, UnlockRequest
 from .services import (
@@ -324,6 +325,86 @@ def mark_save(request):
     )
 
 
+def _class_report(request, sheet, kind, filters, show_rank):
+    """
+    One of the class reports as a title, headers and rows, or None with a message saying why
+    it does not apply to this class.
+    """
+    from .exports import grade_distribution, merit_list, merit_table, tabulation
+
+    book, rows = sheet["rulebook"], sheet["rows"]
+    preamble = about(sheet, filters)
+    if kind == "distribution":
+        letters, lines = grade_distribution(sheet, rows)
+        headers = ["Subject", "Sat", "Absent", "No mark yet", *letters]
+        body = [
+            [ln["subject"], ln["sat"], ln["absent"], ln["missing"], *[ln["counts"][x] for x in letters]] for ln in lines
+        ]
+        cumulative = [[ln["subject"], ln["sat"], *[ln["at_or_above"][x] for x in letters]] for ln in lines]
+        return {
+            "title": "Grade distribution",
+            "headers": headers,
+            "rows": body,
+            "about": preamble,
+            "note": "Counts of students who sat each subject. Percentages in the download are of those who sat it.",
+            "extra": [("At or above (%)", ["Subject", "Sat", *[f"{x} or above" for x in letters]], cumulative)],
+        }
+    if kind == "tabulation":
+        if not sheet["board"]:
+            messages.info(request, "The tabulation sheet is for classes following the national curriculum.")
+            return None
+        headers, body = tabulation(rows)
+        return {
+            "title": "Tabulation sheet",
+            "headers": headers,
+            "rows": body,
+            "about": preamble,
+            "note": "",
+            "extra": [],
+        }
+    if kind == "merit":
+        if not show_rank:
+            messages.info(
+                request,
+                f"Positions are off for this exam under {book.label}. Turn them on in the exam's settings "
+                "to print a merit list.",
+            )
+            return None
+        ranked, unranked = merit_list(rows)
+        headers, body = merit_table(book, ranked, unranked)
+        note = f"{len(ranked)} student(s) ranked among those shown"
+        if unranked:
+            note += f"; {len(unranked)} without a complete result are listed after, not ranked"
+        return {
+            "title": "Merit list",
+            "headers": headers,
+            "rows": body,
+            "about": preamble,
+            "note": note + ".",
+            "extra": [],
+        }
+    return None
+
+
+def _report_download(request, sheet, report, fmt):
+    slug = report["title"].lower().replace(" ", "-")
+    if fmt == "pdf":
+        subtitle = " · ".join(value for _label, value in report["about"][1:4])
+        if report["note"]:
+            subtitle += " · " + report["note"]
+        return table_document(
+            request.school,
+            f"{report['title']} - {sheet['exam'].name}",
+            report["headers"],
+            report["rows"],
+            subtitle=subtitle,
+            filename=f"{slug}.pdf",
+        )
+    return spreadsheet(
+        slug, report["headers"], report["rows"], fmt, extra_sheets=report["extra"], preamble=report["about"]
+    )
+
+
 class ResultsFilter(TailwindFormMixin, forms.Form):
     term = forms.ModelChoiceField(
         queryset=None, required=False, help_text="Narrows the exam list to one term of the year."
@@ -331,11 +412,26 @@ class ResultsFilter(TailwindFormMixin, forms.Form):
     exam = forms.ModelChoiceField(queryset=None)
     class_level = forms.ModelChoiceField(queryset=None)
     section = forms.ModelChoiceField(queryset=None, required=False, help_text="Leave blank for a class-wide sheet.")
+    report = forms.ChoiceField(choices=(), required=False)
+    group = forms.ChoiceField(choices=(), required=False)
+    shift = forms.ChoiceField(choices=(), required=False)
+    version = forms.ChoiceField(choices=(), required=False)
 
     def __init__(self, *args, user, school, **kwargs):
         super().__init__(*args, **kwargs)
-        from academics.models import Term
+        from academics.models import Group, Section, Term
 
+        from .exports import REPORTS
+
+        self.fields["report"].choices = REPORTS
+        # Stored results carry the labels, so the labels are what is matched.
+        self.fields["group"].choices = [("", "All groups")] + [(label, label) for _v, label in Group.choices]
+        self.fields["shift"].choices = [("", "All shifts")] + [
+            (label, label) for _v, label in Section._meta.get_field("shift").choices
+        ]
+        self.fields["version"].choices = [("", "All versions")] + [
+            (label, label) for _v, label in Section._meta.get_field("version").choices
+        ]
         self.user, self.school = user, school
         self.fields["term"].queryset = Term.objects.filter(school=school).select_related("academic_year")
         self.fields["exam"].queryset = Exam.objects.filter(school=school)
@@ -368,14 +464,26 @@ class ResultsFilter(TailwindFormMixin, forms.Form):
 @require_permission("examinations.view_mark", also="own sections only")
 def results(request):
     form = ResultsFilter(request.GET or None, user=request.user, school=request.school)
-    sheet = None
+    sheet, report = None, None
     if form.is_bound and form.is_valid():
-        chosen = {key: value for key, value in form.cleaned_data.items() if key != "term"}
-        sheet = build_result_sheet(**chosen)
+        data = form.cleaned_data
+        sheet = build_result_sheet(data["exam"], data["class_level"], data["section"])
         fmt = request.GET.get("format")
         book = sheet["rulebook"]
         show_rank = book.show_rank(sheet["exam"])
-        if fmt in ("csv", "xlsx", "pdf"):
+        picked = {k: data[k] for k in ("group", "shift", "version") if data.get(k)}
+        if picked:
+            from .services import analyse, sheet_columns
+
+            sheet["rows"] = filter_rows(sheet["rows"], **picked)
+            sheet["summary"], sheet["subject_stats"] = analyse(sheet["rows"])
+            sheet["columns"] = sheet_columns(sheet["rows"])
+        kind = data.get("report") or "sheet"
+        if kind != "sheet":
+            report = _class_report(request, sheet, kind, ", ".join(picked.values()), show_rank)
+            if report and fmt in ("csv", "xlsx", "pdf"):
+                return _report_download(request, sheet, report, fmt)
+        elif fmt in ("csv", "xlsx", "pdf"):
             columns = sheet["columns"]
             subjects = [name for _pk, name, _code in columns]
             # Only the columns the rulebook defines: no GPA or positions invented for a
@@ -394,10 +502,9 @@ def results(request):
                 + [headline(r)]
                 for r in sheet["rows"]
             ]
+            preamble = about(sheet, ", ".join(picked.values()))
             if fmt == "pdf":
-                subtitle = f"{sheet['class_level']}"
-                if sheet["section"]:
-                    subtitle += f" - {sheet['section']}"
+                subtitle = " · ".join(value for _label, value in preamble[1:4])
                 return table_document(
                     request.school,
                     f"Result sheet - {sheet['exam'].name}",
@@ -445,6 +552,7 @@ def results(request):
                         ],
                     )
                 ],
+                preamble=preamble,
             )
     return render(
         request,
@@ -452,6 +560,8 @@ def results(request):
         {
             "form": form,
             "sheet": sheet,
+            "report": report,
+            "about": about(sheet) if sheet else [],
             "show_rank": sheet["rulebook"].show_rank(sheet["exam"]) if sheet else False,
             "page_title": "Results and subject analysis",
         },

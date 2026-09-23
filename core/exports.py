@@ -11,7 +11,14 @@ def safe_cell(value):
     return value
 
 
-def spreadsheet(title, headers, rows, fmt="csv", extra_sheets=()):
+def spreadsheet(title, headers, rows, fmt="csv", extra_sheets=(), preamble=()):
+    """
+    A CSV or Excel download. `preamble` is [(label, value)] describing what the table covers:
+    written above the table in a CSV, and as an "About" sheet in Excel so the table itself
+    keeps its headers on the first row for filtering.
+    """
+    if preamble and fmt == "xlsx":
+        extra_sheets = [*extra_sheets, ("About", ["", ""], [list(line) for line in preamble])]
     if fmt == "xlsx":
         from openpyxl import Workbook
         from openpyxl.styles import Font
@@ -40,6 +47,9 @@ def spreadsheet(title, headers, rows, fmt="csv", extra_sheets=()):
         response = HttpResponse(content_type="text/csv; charset=utf-8")
         response.write("\ufeff")
         writer = csv.writer(response)
+        if preamble:
+            writer.writerows([[safe_cell(v) for v in line] for line in preamble])
+            writer.writerow([])
         writer.writerow(headers)
         writer.writerows([[safe_cell(v) for v in row] for row in rows])
         fmt = "csv"

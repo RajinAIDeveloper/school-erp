@@ -345,7 +345,7 @@ def test_result_exports_pdf_and_excel(admin_client, erp):
     from openpyxl import load_workbook
 
     response = admin_client.get(f"/exams/results/?exam={exam.pk}&class_level={erp.level.pk}&format=xlsx")
-    assert load_workbook(BytesIO(response.content)).sheetnames == ["results", "Subject analysis"]
+    assert load_workbook(BytesIO(response.content)).sheetnames == ["results", "Subject analysis", "About"]
 
 
 def test_parent_cannot_read_other_student_or_draft_results(client, erp, invoice):
