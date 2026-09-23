@@ -46,13 +46,14 @@
       {% if perms.examinations.add_examschedule and exam.publication_version == 0 %}
         <a href="{% url 'examinations:schedule_create' %}" class="link text-sm">Add paper</a>{% endif %}</div>
     <table class="table">
-      <thead><tr><th>Class</th><th>Subject</th><th>Date</th><th class="text-right">Full</th><th class="text-right">Pass</th></tr></thead>
+      <thead><tr><th>Class</th><th>Subject</th><th>Date</th><th class="text-right">Full</th><th class="text-right">Pass</th><th></th></tr></thead>
       <tbody>
         {% for s in schedules %}
           <tr><td>{{ s.class_level }}</td><td>{{ s.subject }}</td>
             <td>{{ s.date|date:"d M Y"|default:"—" }}</td>
-            <td class="text-right">{{ s.full_marks }}</td><td class="text-right">{{ s.pass_marks }}</td></tr>
-        {% empty %}<tr><td colspan="5">{% include "components/empty.html" with message="No papers scheduled. Results cannot be published until at least one exists." %}</td></tr>{% endfor %}
+            <td class="text-right">{{ s.full_marks }}</td><td class="text-right">{{ s.pass_marks }}</td>
+            <td class="text-right">{% if perms.examinations.change_examschedule %}<a href="{% url 'examinations:paper_parts' s.pk %}" class="link text-xs">Parts</a>{% endif %}</td></tr>
+        {% empty %}<tr><td colspan="6">{% include "components/empty.html" with message="No papers scheduled. Results cannot be published until at least one exists." %}</td></tr>{% endfor %}
       </tbody>
     </table>
   </section>

@@ -299,6 +299,7 @@ def _paper_spec(schedule, role):
         "role": role,
         "level": subject.ib_level,
         "core": subject.ib_core,
+        "max_grade": schedule.max_grade,
     }
 
 
@@ -388,7 +389,12 @@ def live_class_sheet(exam, class_level):
                 "gpa_letter": outcome["gpa_letter"],
                 "points": outcome["points"],
                 "headline": outcome["headline"],
-                "trace": outcome["trace"],
+                "trace": [
+                    f"{c['subject']}: capped at {c['letter']}, the highest grade for this tier."
+                    for c in cells
+                    if c.get("capped")
+                ]
+                + outcome["trace"],
                 "result": outcome["result"],
                 "complete": outcome["complete"],
                 "attendance": _attendance(e, until),

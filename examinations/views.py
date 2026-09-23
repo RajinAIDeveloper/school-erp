@@ -819,3 +819,85 @@ def progress(request, student_pk):
         "examinations/progress.html",
         {"student": student, "rows": rows, "page_title": f"Progress: {student.full_name}"},
     )
+
+
+def _typed_parts(post):
+    """The parts rows as typed, skipping rows left entirely blank."""
+    try:
+        count = min(int(post.get("rows", "0")), 12)
+    except ValueError:
+        count = 0
+    rows = []
+    for index in range(count):
+        row = {
+            key: post.get(f"part-{index}-{key}", "").strip()
+            for key in ("code", "name", "full_marks", "pass_marks", "weight")
+        }
+        if any(row.values()):
+            rows.append(row)
+    return rows
+
+
+@require_permission("examinations.change_examschedule")
+def paper_parts(request, pk):
+    """
+    A paper's parts: creative and multiple choice, weighted components, or MYP criteria.
+
+    Presets fill the usual layouts in one step. Parts are fixed once marks are entered or
+    results published, because they decide how every mark on the paper is totalled.
+    """
+    from .parts import PRESETS, apply_preset, locked_reason, plain, save_parts, scale_letters
+
+    schedule = get_object_or_404(
+        ExamSchedule.objects.select_related("exam__grade_scale", "class_level", "subject", "grade_scale"),
+        school=request.school,
+        pk=pk,
+    )
+    here = reverse("examinations:paper_parts", args=[schedule.pk])
+    typed = None
+    if request.method == "POST":
+        try:
+            if request.POST.get("action") == "preset":
+                note = apply_preset(user=request.user, schedule=schedule, key=request.POST.get("preset", ""))
+                messages.success(request, note)
+            else:
+                typed = _typed_parts(request.POST)
+                saved = save_parts(user=request.user, schedule=schedule, parts=typed)
+                messages.success(
+                    request, f"Saved {len(saved)} part(s)." if saved else "Parts removed: the paper is a single score."
+                )
+            return redirect(here)
+        except ValidationError as exc:
+            messages.error(request, " ".join(exc.messages))
+
+    parts = list(schedule.components.all())
+    if typed is not None:
+        rows = typed
+    else:
+        rows = [
+            {
+                "code": p.code,
+                "name": p.name,
+                "full_marks": plain(p.full_marks),
+                "pass_marks": plain(p.pass_marks),
+                "weight": plain(p.weight) if p.weight is not None else "",
+            }
+            for p in parts
+        ]
+    blank = {"code": "", "name": "", "full_marks": "", "pass_marks": "", "weight": ""}
+    rows = rows + [dict(blank) for _ in range(max(2, 4 - len(rows)))]
+    return render(
+        request,
+        "examinations/parts.html",
+        {
+            "schedule": schedule,
+            "parts": parts,
+            "rows": rows,
+            "row_count": len(rows),
+            "weighted": any(p.weight is not None for p in parts),
+            "locked": locked_reason(schedule),
+            "presets": [(key, label, note) for key, (label, note, _rows, _cap) in PRESETS.items()],
+            "letters": scale_letters(schedule),
+            "page_title": f"Parts · {schedule.subject} · {schedule.class_level}",
+        },
+    )

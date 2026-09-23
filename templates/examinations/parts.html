@@ -1,0 +1,72 @@
+{% extends "layouts/base.html" %}
+{% block header_actions %}
+  <a href="{% url 'examinations:exam_detail' schedule.exam_id %}" class="btn-secondary btn-sm">Back to exam</a>
+  {% if perms.examinations.change_examschedule and not schedule.exam.publication_version %}<a href="{% url 'examinations:schedule_update' schedule.pk %}" class="btn-secondary btn-sm">Edit paper</a>{% endif %}
+{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-4xl space-y-4">
+  <div class="card card-body text-sm">
+    <p><b>{{ schedule.subject }}</b> · {{ schedule.class_level }} · {{ schedule.exam }}</p>
+    <p class="mt-1 text-slate-600">
+      Out of {{ schedule.full_marks|floatformat:"-2" }}, pass mark {{ schedule.pass_marks|floatformat:"-2" }}{% if schedule.max_grade %}, highest grade {{ schedule.max_grade }}{% endif %}.
+      {% if parts %}
+        {% if weighted %}Each part's score is taken as a share of its own marks, times its weight, and the total is given out of {{ schedule.full_marks|floatformat:"-2" }}.
+        {% else %}The part scores are added up to the paper's total.{% endif %}
+      {% else %}Marked as a single score.{% endif %}
+    </p>
+    {% if letters %}<p class="mt-1 text-xs text-slate-500">Grades on this paper's scale: {{ letters|join:", " }}</p>{% endif %}
+  </div>
+
+  {% if locked %}
+    <div class="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{{ locked }}</div>
+    <div class="card overflow-x-auto">
+      <table class="table">
+        <thead><tr><th>Code</th><th>Part</th><th class="text-right">Full</th><th class="text-right">Pass</th><th class="text-right">Weight</th></tr></thead>
+        <tbody>
+          {% for p in parts %}
+            <tr><td class="text-slate-500">{{ p.code }}</td><td>{{ p.name }}</td><td class="text-right">{{ p.full_marks|floatformat:"-2" }}</td>
+              <td class="text-right">{{ p.pass_marks|floatformat:"-2" }}</td><td class="text-right">{% if p.weight is not None %}{{ p.weight|floatformat:"-2" }}%{% else %}—{% endif %}</td></tr>
+          {% empty %}<tr><td colspan="5">{% include "components/empty.html" with message="No parts: this paper is a single score." %}</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <form method="post" class="card">
+      {% csrf_token %}
+      <input type="hidden" name="rows" value="{{ row_count }}">
+      <div class="overflow-x-auto">
+        <table class="table">
+          <thead><tr><th class="w-28">Code</th><th>Part</th><th class="w-24 text-right">Full</th><th class="w-24 text-right">Pass</th><th class="w-24 text-right">Weight %</th></tr></thead>
+          <tbody>
+            {% for row in rows %}
+              <tr>
+                <td><input name="part-{{ forloop.counter0 }}-code" value="{{ row.code }}" class="input py-1 text-sm" maxlength="20" placeholder="cq"></td>
+                <td><input name="part-{{ forloop.counter0 }}-name" value="{{ row.name }}" class="input py-1 text-sm" maxlength="50" placeholder="Creative"></td>
+                <td><input name="part-{{ forloop.counter0 }}-full_marks" value="{{ row.full_marks }}" class="input py-1 text-right text-sm" inputmode="decimal"></td>
+                <td><input name="part-{{ forloop.counter0 }}-pass_marks" value="{{ row.pass_marks }}" class="input py-1 text-right text-sm" inputmode="decimal" placeholder="0"></td>
+                <td><input name="part-{{ forloop.counter0 }}-weight" value="{{ row.weight }}" class="input py-1 text-right text-sm" inputmode="decimal"></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-5 py-4">
+        <p class="text-xs text-slate-500">Leave every weight blank to add the parts up; then they must total the paper's full marks.
+          Give every part a weight, adding up to 100, to scale them. Clear every row to mark the paper as a single score.</p>
+        <button class="btn-primary">Save parts</button>
+      </div>
+    </form>
+
+    <h3 class="pt-2 font-semibold">Start from a preset</h3>
+    <p class="text-sm text-slate-600">A preset replaces the parts above. Check it against the syllabus or board paper you teach.</p>
+    {% for key, label, note in presets %}
+      <form method="post" class="card card-body flex flex-wrap items-center justify-between gap-3">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="preset"><input type="hidden" name="preset" value="{{ key }}">
+        <div class="min-w-0 flex-1"><p class="font-semibold">{{ label }}</p><p class="mt-1 text-sm text-slate-600">{{ note }}</p></div>
+        <button class="btn-secondary btn-sm">Use</button>
+      </form>
+    {% endfor %}
+  {% endif %}
+</div>
+{% endblock %}

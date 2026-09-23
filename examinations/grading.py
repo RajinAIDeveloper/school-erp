@@ -40,6 +40,19 @@ def grade_for(percent, rules):
     return {"letter": "F", "grade_point": "0"}
 
 
+def _cap_rule(letter, rules):
+    """The scale's rule for a paper's highest allowed grade, matched exactly, then ignoring case."""
+    if not letter:
+        return None
+    for rule in rules:
+        if rule["letter"] == letter:
+            return rule
+    for rule in rules:
+        if rule["letter"].lower() == letter.lower():
+            return rule
+    return None
+
+
 def failing_letter(rules):
     """The scale's lowest grade: F on the national scale, U on Cambridge and Edexcel scales."""
     if not rules:
@@ -114,6 +127,11 @@ def grade_paper(paper, mark, rules, pass_marks=True):
         )
     percent = pct_of(score, paper["full_marks"])
     band = grade_for(percent, rules)
+    capped = False
+    cap = _cap_rule(paper.get("max_grade"), rules)
+    if cap and Decimal(str(band.get("min_percent", 0))) > Decimal(str(cap["min_percent"])):
+        # A tiered paper (Cambridge Core) cannot earn above its tier's top grade.
+        band, capped = cap, True
     if pass_marks:
         passed = not missing and not absent and score >= Decimal(str(paper["pass_marks"])) and parts_ok
         letter = band["letter"] if passed else failing_letter(rules)
@@ -144,6 +162,7 @@ def grade_paper(paper, mark, rules, pass_marks=True):
         "grade_point": str(grade_point),
         "passed": passed,
         "failed_part": bool(pass_marks and not parts_ok),
+        "capped": capped,
         "components": parts,
         "is_fourth": paper["role"] == "fourth",
         "level": paper.get("level", ""),

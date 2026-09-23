@@ -22,6 +22,7 @@ urlpatterns = [
     path("verify/<uuid:code>/", views.verify, name="verify"),
     path("unlocks/", views.unlocks, name="unlocks"),
     path("schedule/<int:pk>/unlock/", views.request_unlock, name="request_unlock"),
+    path("schedule/<int:pk>/parts/", views.paper_parts, name="paper_parts"),
     path("unlocks/<int:pk>/review/", views.unlock_review, name="unlock_review"),
     path("scales/<int:pk>/rules/", views.grade_rules, name="rules"),
     path("scales/presets/", views.scale_presets, name="scale_presets"),

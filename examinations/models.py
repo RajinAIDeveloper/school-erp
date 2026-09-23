@@ -147,6 +147,14 @@ class ExamSchedule(SchoolScopedModel):
             "scale, for example Edexcel 9-1 Mathematics in a Cambridge year."
         ),
     )
+    max_grade = models.CharField(
+        max_length=5,
+        blank=True,
+        help_text=(
+            "The highest grade this paper can earn, for a tiered entry: C for Cambridge IGCSE Core, "
+            "5 for Core on a 9-1 scale. Leave blank for no cap."
+        ),
+    )
 
     class Meta:
         ordering = ["date", "start_time", "subject__name"]

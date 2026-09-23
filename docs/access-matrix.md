@@ -76,6 +76,7 @@ quietly join it.
 | /exams/scales/presets/ | examinations:scale_presets | `examinations.add_gradescale` | - | Y | Y | . | . | . | . | . |
 | /exams/schedule/ | examinations:schedule_list | `examinations.view_examschedule` | - | Y | Y | . | Y | . | . | . |
 | /exams/schedule/<int:pk>/edit/ | examinations:schedule_update | `examinations.change_examschedule` | - | Y | Y | . | . | . | . | . |
+| /exams/schedule/<int:pk>/parts/ | examinations:paper_parts | `examinations.change_examschedule` | - | Y | Y | . | . | . | . | . |
 | /exams/schedule/<int:pk>/unlock/ | examinations:request_unlock | `examinations.change_mark` | - | Y | Y | . | Y | . | . | . |
 | /exams/schedule/new/ | examinations:schedule_create | `examinations.add_examschedule` | - | Y | Y | . | . | . | . | . |
 | /exams/unlocks/ | examinations:unlocks | `examinations.view_mark` | own requests unless a manager | Y | Y | . | Y | . | . | . |
