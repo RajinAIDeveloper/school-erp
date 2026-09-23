@@ -38,8 +38,8 @@ PRESETS = {
     ),
     "igcse-9-1": (
         "International GCSE (9 to 1)",
-        "For Edexcel International GCSE and Cambridge 9-1 syllabuses. 4 is a standard pass, 5 a strong "
-        "pass. The thresholds are typical internal ones; replace them with your school's.",
+        "For Edexcel International GCSE and Cambridge 9-1 syllabuses, 9 highest. The thresholds are "
+        "typical internal ones; replace them with your school's.",
         [
             ("9", 90, 9),
             ("8", 80, 8),
@@ -75,6 +75,12 @@ PRESETS = {
         "For DP subjects and other 1-7 reporting. The IB sets official boundaries per subject and "
         "session; these are typical internal ones. Replace them with your school's.",
         [("7", 80, 7), ("6", 70, 6), ("5", 60, 5), ("4", 50, 4), ("3", 40, 3), ("2", 25, 2), ("1", 0, 1)],
+    ),
+    "ib-core": (
+        "IB core: TOK and Extended Essay (A to E)",
+        "For TOK and the Extended Essay, whose grades feed the diploma's core points. The IB grades "
+        "them against criteria; these internal thresholds are placeholders to replace with your school's.",
+        [("A", 80, 5), ("B", 65, 4), ("C", 50, 3), ("D", 35, 2), ("E", 0, 1)],
     ),
     "ib-myp": (
         "IB MYP criteria (total out of 32 to 1-7)",

@@ -40,6 +40,7 @@ class AssessmentSystem(models.TextChoices):
     CAMBRIDGE = "cambridge", "Cambridge (IGCSE, O Level, AS and A Level)"
     EDEXCEL = "edexcel", "Pearson Edexcel (International GCSE, International AS and A Level)"
     IB_MYP = "ib_myp", "IB Middle Years Programme (criteria to grades 1-7)"
+    IB_DP = "ib_dp", "IB Diploma Programme (grades 1-7, core points, diploma conditions)"
 
 
 LANGUAGES = [("en", "English"), ("bn", "বাংলা")]

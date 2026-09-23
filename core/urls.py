@@ -52,7 +52,12 @@ for model, key, fields, columns in [
         ["class_level", "name", "capacity", "class_teacher"],
         [("Section", "__str__"), ("Teacher", "class_teacher"), ("Capacity", "capacity")],
     ),
-    (Subject, "subject", ["name", "code", "class_levels", "is_optional"], [("Subject", "name"), ("Code", "code")]),
+    (
+        Subject,
+        "subject",
+        ["name", "name_bn", "code", "class_levels", "is_optional", "combines_into", "religion", "ib_level", "ib_core"],
+        [("Subject", "name"), ("Code", "code")],
+    ),
     (
         SubjectTeacher,
         "subject_teacher",

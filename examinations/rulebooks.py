@@ -17,6 +17,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from .grading import (
+    dp_outcome,
     grades_outcome,
     merit_key,
     myp_outcome,
@@ -92,6 +93,18 @@ RULEBOOKS = {
         label="Pearson Edexcel",
         outcome=grades_outcome,
         rank_key=percent_key,
+        pass_marks=False,
+        combine_papers=False,
+        fourth_subject=False,
+        ranks_by_default=False,
+        has_gpa=False,
+        has_result=False,
+    ),
+    "ib_dp": Rulebook(
+        key="ib_dp",
+        label="IB Diploma Programme (school estimate)",
+        outcome=dp_outcome,
+        rank_key=points_key,
         pass_marks=False,
         combine_papers=False,
         fourth_subject=False,

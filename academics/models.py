@@ -166,6 +166,23 @@ class Subject(SchoolScopedModel):
         blank=True,
         help_text="For a religion paper: only students of this religion sit it.",
     )
+    ib_level = models.CharField(
+        "IB level",
+        max_length=2,
+        blank=True,
+        choices=[("HL", "Higher Level"), ("SL", "Standard Level")],
+        help_text="For IB Diploma subjects. Record Biology HL and Biology SL as two subjects.",
+    )
+    ib_core = models.CharField(
+        "IB core",
+        max_length=3,
+        blank=True,
+        choices=[("tok", "Theory of Knowledge"), ("ee", "Extended Essay"), ("cas", "CAS")],
+        help_text=(
+            "For the IB Diploma core. TOK and the Extended Essay are graded A to E; CAS is complete "
+            "when its mark reaches the paper's pass mark."
+        ),
+    )
 
     is_active = models.BooleanField(
         default=True, help_text="Clear this to retire the record without losing the history that uses it."

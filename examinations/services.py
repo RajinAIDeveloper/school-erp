@@ -297,6 +297,8 @@ def _paper_spec(schedule, role):
         "pass_marks": schedule.pass_marks,
         "components": [(c.code, c.name, c.full_marks, c.pass_marks) for c in schedule.components.all()],
         "role": role,
+        "level": subject.ib_level,
+        "core": subject.ib_core,
     }
 
 

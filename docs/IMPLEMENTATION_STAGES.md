@@ -105,9 +105,9 @@ Each stage closes only when its tests pass and the full gate passes:
 
 | Stage | Goal | Scope | Must be proven by tests |
 |---|---|---|---|
-| **S0 · Baseline and schema** | Reconcile in-progress work; record decisions | Review uncommitted models and migrations; migrate a copy of the development database; this document | Migration runs on a copy of real data with the marks lock restored; old classes unchanged |
-| **S1 · Safe mark entry and publishing** (Codex EX-01) | No wrong reads, no version or SMS storms, stable cards | Section-level authorisation; clear-to-unentered; unchanged rows skipped; one snapshot per batch; change-only notifications; typed values kept on error; frozen card fields; fingerprint; defined verification; one historical-access rule | The review's four scenarios; repeated POST makes no new version; stale version rejects the batch; two prints identical |
-| **S2 · Rulebooks** (Codex EX-03) | Results correct for each programme | `cambridge`, `edexcel`, `ib_myp`, `ib_dp` beside `own` and `national`; grade scale presets (Cambridge IGCSE A*–G, O Level A*–E, AS/A Level A*–E, Edexcel International GCSE 9–1, International A Level A*–E, IB 1–7, MYP criterion boundaries); per-paper scale override; weighted paper parts; rank optional; staff-only calculation trace | Worked examples per rulebook; board rules never applied outside `national`; `own` unchanged |
+| **S0 · Baseline and schema** · *done* | Reconcile in-progress work; record decisions | Review uncommitted models and migrations; migrate a copy of the development database; this document | Migration runs on a copy of real data with the marks lock restored; old classes unchanged |
+| **S1 · Safe mark entry and publishing** (Codex EX-01) · *done* | No wrong reads, no version or SMS storms, stable cards | Section-level authorisation; clear-to-unentered; unchanged rows skipped; one snapshot per batch; change-only notifications; typed values kept on error; frozen card fields; fingerprint; defined verification; one historical-access rule | The review's four scenarios; repeated POST makes no new version; stale version rejects the batch; two prints identical |
+| **S2 · Rulebooks** (Codex EX-03) · *done: S2a Cambridge, Edexcel, MYP; S2b IB Diploma* | Results correct for each programme | `cambridge`, `edexcel`, `ib_myp`, `ib_dp` beside `own` and `national`; grade scale presets (Cambridge IGCSE A*–G, O Level A*–E, AS/A Level A*–E, Edexcel International GCSE 9–1, International A Level A*–E, IB 1–7, MYP criterion boundaries); per-paper scale override; weighted paper parts; rank optional; staff-only calculation trace | Worked examples per rulebook; board rules never applied outside `national`; `own` unchanged |
 | **S3 · Subjects per student everywhere** (Codex EX-02) | Mixed subject choices work end to end | Eligibility used by grid, completeness, results, exports, admit cards, exam progress, teacher dashboard; subject-plan setup with presets (IGCSE option blocks, national Class 9–10); choices screen with an exception list | Mixed choices publish; not-sat papers never missing; tampering refused |
 | **S4 · Paper parts setup** (Codex EX-04) | Parts configured without hand-editing | Parts editor with presets (Cambridge weighted papers, MYP criteria A–D, national creative/MCQ/practical); locked once marks exist or results publish | Parts validate; weights reproduce the published weighting; editing after marks blocked |
 | **S5 · Report cards per rulebook** (Codex EX-06) | Cards a school would hand out | Templates for grade-only, IB and national cards; teacher comment per subject; effort grade; predicted grade recorded separately and labelled as the school's; attendance with a stated cut-off | Each template renders from the snapshot; no GPA or rank where the rulebook has none; comments frozen |
@@ -121,6 +121,32 @@ Each stage closes only when its tests pass and the full gate passes:
 | **S13 · Demonstration and hand-over** | Ready for the mentor | Seed a Cambridge IGCSE class with options and weighted papers, an IB class, and a national Class 9; documentation; print checklist | Seed repeatable; full gate on the final commit |
 
 **Deferred by the owner:** the parent app.
+
+### Scope changes from the English-medium research
+
+[The research](ENGLISH_MEDIUM_RESEARCH.md) verified or corrected several points. The stages
+absorb them as follows:
+
+- **S2 (done):**
+  - Cambridge Physics 0625's 30/50/20 weighting from raw 40/80/40 is the weighted-paper test.
+  - The MYP boundaries and the DP core matrix and eight conditions are verified and tested.
+  - AS Level has its own scale, a–e in lower case with no a*.
+- **S4:**
+  - Tiers cap the grade a paper can earn (Cambridge Core C–G, 9–1 Core 5–1), so a paper gets an
+    optional maximum grade.
+  - Internal thresholds can be set per exam (a scale per mock) to mirror per-series thresholds.
+- **S5:** predicted, forecast and target grades are separate records, dated and approved, never
+  calculated from averages. Effort and approaches-to-learning comments sit beside attainment.
+- **S10:** the Cambridge and Pearson candidate export carries:
+  - the name as it should print on the certificate, up to 60 characters;
+  - date of birth as dd/mm/yyyy;
+  - a 4-digit candidate number and a UCI;
+  - syllabus, option or entry codes.
+- **S12:** VAT is a per-fee-head rate that defaults to none. The 5% rate could not be verified,
+  and the courts have ruled on it before, so the school sets it on its tax adviser's advice.
+- **Later, when a school needs them:**
+  - Edexcel International A Level UMS cash-in and its A* rule;
+  - PYP narrative reports.
 
 ## 4. What only a school can sign off
 

@@ -122,6 +122,11 @@ def grade_paper(paper, mark, rules, pass_marks=True):
         passed = not missing and not absent
         letter = "ABS" if absent else band["letter"]
         grade_point = ZERO if (absent or missing) else Decimal(str(band["grade_point"]))
+    if paper.get("core") == "cas":
+        # CAS has no grade: it is complete or it is not.
+        reached = not missing and not absent and score >= Decimal(str(paper["pass_marks"]))
+        letter = "Complete" if reached else ("ABS" if absent else "Not complete")
+        grade_point = ZERO
     return {
         "schedule_id": paper["schedule_id"],
         "subject": paper["subject"],
@@ -141,6 +146,11 @@ def grade_paper(paper, mark, rules, pass_marks=True):
         "failed_part": bool(pass_marks and not parts_ok),
         "components": parts,
         "is_fourth": paper["role"] == "fourth",
+        "level": paper.get("level", ""),
+        "core": paper.get("core", ""),
+        # Whether the raw mark reached the paper's pass mark, whatever the rulebook does with
+        # it. The IB core uses it for CAS: complete or not.
+        "reached_pass_mark": not missing and not absent and score >= Decimal(str(paper["pass_marks"])),
     }
 
 
@@ -183,6 +193,9 @@ def combine_units(cells, rules, combine=True):
                     "grade_point": cell["grade_point"],
                     "passed": cell["passed"],
                     "is_fourth": cell["is_fourth"],
+                    "level": cell.get("level", ""),
+                    "core": cell.get("core", ""),
+                    "reached_pass_mark": cell.get("reached_pass_mark", cell["passed"]),
                 }
             )
             continue
@@ -364,6 +377,108 @@ def myp_outcome(units, rules):
     trace = [f"{u['name']}: {u['score']} of {u['full_marks']} gives grade {u['letter']}." for u in graded]
     trace.append(f"Sum of subject grades: {total}.")
     return _outcome(points=total, headline=f"{total} points across {len(graded)} subject(s)", trace=trace)
+
+
+# Diploma core points from the Extended Essay (rows) and TOK (columns). None is a failing
+# condition. Source: the IB's DP passing criteria, checked on ibo.org, September 2026.
+DP_CORE_MATRIX = {
+    "A": {"A": 3, "B": 3, "C": 2, "D": 2, "E": None},
+    "B": {"A": 3, "B": 2, "C": 2, "D": 1, "E": None},
+    "C": {"A": 2, "B": 2, "C": 1, "D": 0, "E": None},
+    "D": {"A": 2, "B": 1, "C": 0, "D": 0, "E": None},
+    "E": {"A": None, "B": None, "C": None, "D": None, "E": None},
+}
+
+
+def dp_core_points(ee, tok):
+    """Core points for an EE and a TOK grade, or None when either is an E (a failing condition)."""
+    return DP_CORE_MATRIX.get(ee, {}).get(tok)
+
+
+def dp_outcome(units, rules):
+    """
+    IB Diploma, as the school's estimate from its own marks.
+
+    Six subjects graded 1-7, plus core points from TOK and the Extended Essay, and the IB's
+    eight conditions for the diploma. The result is labelled a school estimate throughout:
+    the diploma itself is awarded by the IB, and an official result is recorded as imported.
+    """
+    subjects = [u for u in units if not u.get("core")]
+    core = {u["core"]: u for u in units if u.get("core")}
+    trace, unmet = [], []
+
+    missing = [u["name"] for u in units if u["missing"]]
+    if missing:
+        return _incomplete(units)
+
+    # Condition 3: a grade in every subject, TOK and the EE. An absence is an N.
+    no_grade = [u["name"] for u in subjects if u["absent"]]
+    for key, label in (("tok", "TOK"), ("ee", "Extended Essay")):
+        if key not in core:
+            unmet.append(f"{label} is not recorded, so the diploma cannot be confirmed.")
+        elif core[key]["absent"]:
+            no_grade.append(label)
+    if no_grade:
+        unmet.append(f"No grade (N) in: {', '.join(no_grade)}.")
+
+    grades = {u["name"]: int(Decimal(u["grade_point"])) for u in subjects if not u["absent"]}
+    subject_points = sum(grades.values())
+    trace.append(f"Subject grades: {' + '.join(str(g) for g in grades.values())} = {subject_points}.")
+
+    core_points = 0
+    ee = core.get("ee", {}).get("letter")
+    tok = core.get("tok", {}).get("letter")
+    if ee and tok and ee != "ABS" and tok != "ABS":
+        points = dp_core_points(ee, tok)
+        if points is None:
+            unmet.append(f"An E in TOK or the Extended Essay (EE {ee}, TOK {tok}) is a failing condition.")
+        else:
+            core_points = points
+            trace.append(f"Core: Extended Essay {ee} with TOK {tok} gives {points} point(s).")
+
+    total = subject_points + core_points
+    trace.append(f"Total: {subject_points} + {core_points} = {total} of 45.")
+
+    # Condition 1: CAS.
+    cas = core.get("cas")
+    if cas is None:
+        unmet.append("CAS is not recorded, so the diploma cannot be confirmed.")
+    elif not cas.get("reached_pass_mark"):
+        unmet.append("CAS requirements are not met.")
+    # Condition 2: at least 24 points.
+    if total < 24:
+        unmet.append(f"{total} points is below the minimum of 24.")
+    values = list(grades.values())
+    # Condition 4: at least a 2 in every subject.
+    ones = [name for name, grade in grades.items() if grade < 2]
+    if ones:
+        unmet.append(f"A grade 1 in: {', '.join(ones)}.")
+    # Condition 5: no more than two grade 2s.
+    if sum(1 for g in values if g == 2) > 2:
+        unmet.append("More than two grade 2s.")
+    # Condition 6: no more than three grades of 3 or below.
+    if sum(1 for g in values if g <= 3) > 3:
+        unmet.append("More than three grades of 3 or below.")
+    # Condition 7: at least 12 points on HL (best three when there are four).
+    hl = sorted((grades[u["name"]] for u in subjects if u.get("level") == "HL" and u["name"] in grades), reverse=True)
+    if hl:
+        hl_points = sum(hl[:3])
+        trace.append(f"HL points (best three): {hl_points}.")
+        if hl_points < 12:
+            unmet.append(f"{hl_points} points on HL subjects; at least 12 are needed.")
+    # Condition 8: at least 9 on SL, or at least 5 when there are only two SL subjects.
+    sl = [grades[u["name"]] for u in subjects if u.get("level") == "SL" and u["name"] in grades]
+    if sl:
+        need = 5 if len(sl) == 2 else 9
+        trace.append(f"SL points: {sum(sl)} (at least {need} needed).")
+        if sum(sl) < need:
+            unmet.append(f"{sum(sl)} points on SL subjects; at least {need} are needed.")
+    if not hl and not sl:
+        unmet.append("No subject is marked HL or SL, so the level conditions cannot be checked.")
+
+    trace.extend(unmet)
+    status = "diploma conditions met" if not unmet else "diploma conditions not met"
+    return _outcome(points=total, headline=f"{total} points · {status} (school estimate)", trace=trace)
 
 
 def merit_key(row):
