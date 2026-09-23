@@ -1,0 +1,291 @@
+{% extends "layouts/base.html" %}
+{% load erp humanize %}
+{% block header %}Dashboard <span class="ml-2 text-sm font-normal text-slate-500">{{ today|date:"l, d M Y" }}{% if year %} · {{ year }}{% endif %}</span>{% endblock %}
+{% block content %}
+{% if panel.closed_today %}
+  <div class="mb-4 rounded-md border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800">
+    The school is closed today, so no register is expected.
+  </div>
+{% endif %}
+{% if panel.unlinked %}
+  <div class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+    Your account is not linked to a staff record yet, so there is nothing personal to show.
+    Ask the school office to link it.
+  </div>
+{% endif %}
+
+{% if panel.tiles %}
+<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+  {% for tile in panel.tiles %}
+    <div class="stat">
+      <p class="text-sm text-slate-500">{{ tile.label }}</p>
+      <p class="mt-1 text-3xl font-bold
+        {% if tile.tone == 'good' %}text-emerald-600{% elif tile.tone == 'warn' %}text-amber-600{% elif tile.tone == 'bad' %}text-red-600{% elif tile.tone == 'muted' %}text-slate-400{% else %}text-slate-900{% endif %}">
+        {% if tile.money %}{% money tile.value %}{% else %}{{ tile.value }}{% endif %}
+      </p>
+      <p class="mt-1 text-xs text-slate-500">{{ tile.note }}</p>
+    </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if panel.kind == "manager" %}
+  {% if panel.approvals.leaves or panel.approvals.unlocks %}
+    <div class="mt-6 flex flex-wrap gap-3">
+      {% if panel.approvals.leaves %}
+        <a href="{% url 'attendance:leave_list' %}?status=pending" class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 hover:border-amber-300">
+          <b>{{ panel.approvals.leaves }}</b> leave request{{ panel.approvals.leaves|pluralize }} waiting for you
+        </a>
+      {% endif %}
+      {% if panel.approvals.unlocks %}
+        <a href="{% url 'examinations:unlocks' %}" class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 hover:border-amber-300">
+          <b>{{ panel.approvals.unlocks }}</b> mark unlock request{{ panel.approvals.unlocks|pluralize }} waiting
+        </a>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  <div class="mt-6 grid gap-6 lg:grid-cols-3">
+    <section class="card lg:col-span-2">
+      <div class="card-header"><h2 class="font-semibold">Class strength</h2>
+        <a href="{% url 'students:list' %}" class="link text-sm">All students</a></div>
+      <div class="card-body">
+        {% if panel.strength %}
+          <div class="space-y-2">
+            {% for row in panel.strength %}
+              <div class="flex items-center gap-3 text-sm">
+                <span class="w-28 shrink-0 text-slate-600">{{ row.class_level__name }}</span>
+                <div class="h-4 flex-1 rounded bg-slate-100">
+                  <div class="h-4 rounded bg-indigo-500" style="width: {% widthratio row.count panel.enrolled 100 %}%"></div>
+                </div>
+                <span class="w-10 text-right font-medium">{{ row.count }}</span>
+              </div>
+            {% endfor %}
+          </div>
+          <div class="mt-4 flex gap-4 text-xs text-slate-500">
+            {% for g in panel.gender_split %}
+              <span>{% if g.gender == 'M' %}Boys{% elif g.gender == 'F' %}Girls{% else %}Other{% endif %}: <b>{{ g.count }}</b></span>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="text-sm text-slate-500">No enrollments yet. Admit students to see class strength.</p>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-header"><h2 class="font-semibold">Quick actions</h2></div>
+      <div class="card-body grid grid-cols-1 gap-2 text-sm">
+        {% if perms.students.add_student %}<a href="{% url 'students:admission' %}" class="btn-secondary justify-start">Admit a student</a>{% endif %}
+        {% if perms.attendance.add_studentattendance %}<a href="{% url 'attendance:student_take' %}" class="btn-secondary justify-start">Take a register</a>{% endif %}
+        {% if perms.attendance.view_studentattendance %}<a href="{% url 'attendance:daily_summary' %}" class="btn-secondary justify-start">Which registers are missing</a>{% endif %}
+        {% if perms.fees.view_feeinvoice %}<a href="{% url 'fees:dues' %}" class="btn-secondary justify-start">Who owes fees</a>{% endif %}
+        {% if perms.messaging.add_smsmessage %}<a href="{% url 'messaging:compose' %}" class="btn-secondary justify-start">Send a message</a>{% endif %}
+        {% if perms.examinations.view_exam %}<a href="{% url 'examinations:exam_list' %}" class="btn-secondary justify-start">Exams and results</a>{% endif %}
+      </div>
+    </section>
+  </div>
+
+  <div class="mt-6 grid gap-6 lg:grid-cols-3">
+    <section class="card">
+      <div class="card-header"><h2 class="font-semibold">Recent payments</h2>
+        {% if perms.fees.view_feepayment %}<a href="{% url 'fees:report' %}" class="link text-sm">All</a>{% endif %}</div>
+      <ul class="divide-y divide-slate-100 text-sm">
+        {% for p in panel.recent_payments %}
+          <li class="flex items-center justify-between px-5 py-2.5">
+            <div><p class="font-medium">{{ p.invoice.student.full_name }}</p>
+              <p class="text-xs text-slate-500">{{ p.receipt_no }} · {{ p.date|date:"d M" }}</p></div>
+            <span class="font-semibold text-emerald-700">{% money p.amount %}</span>
+          </li>
+        {% empty %}<li class="px-5 py-6 text-center text-slate-500">No payments yet.</li>{% endfor %}
+      </ul>
+    </section>
+
+    <section class="card">
+      <div class="card-header"><h2 class="font-semibold">Coming up</h2>
+        <a href="{% url 'holidays:month' %}" class="link text-sm">Calendar</a></div>
+      <ul class="divide-y divide-slate-100 text-sm">
+        {% for h in panel.upcoming_holidays %}
+          <li class="flex items-center justify-between px-5 py-2.5">
+            <div><p class="font-medium">{{ h.name }}</p><p class="text-xs text-slate-500">{{ h.get_holiday_type_display }}</p></div>
+            <span class="text-xs text-slate-600">{{ h.start_date|date:"d M" }}{% if h.days > 1 %} – {{ h.end_date|date:"d M" }}{% endif %}</span>
+          </li>
+        {% empty %}<li class="px-5 py-6 text-center text-slate-500">Nothing on the calendar ahead.</li>{% endfor %}
+      </ul>
+    </section>
+
+    <section class="card">
+      <div class="card-header"><h2 class="font-semibold">Recent admissions</h2>
+        <a href="{% url 'students:list' %}" class="link text-sm">All</a></div>
+      <ul class="divide-y divide-slate-100 text-sm">
+        {% for s in panel.recent_students %}
+          <li class="flex items-center justify-between px-5 py-2.5">
+            <a href="{% url 'students:detail' s.pk %}" class="font-medium hover:underline">{{ s.full_name }}</a>
+            <span class="text-xs text-slate-500">{{ s.student_id }}</span>
+          </li>
+        {% empty %}<li class="px-5 py-6 text-center text-slate-500">No students yet.</li>{% endfor %}
+      </ul>
+    </section>
+  </div>
+
+{% elif panel.kind == "teacher" %}
+  <div class="mt-6 grid gap-6 lg:grid-cols-2">
+    <section class="card">
+      <div class="card-header"><h2 class="font-semibold">Registers</h2>
+        <a href="{% url 'attendance:student_take' %}" class="link text-sm">Take one</a></div>
+      <ul class="divide-y divide-slate-100 text-sm">
+        {% for row in panel.registers %}
+          <li class="flex items-center justify-between px-5 py-2.5">
+            <span class="font-medium">{{ row.section }}</span>
+            {% if row.taken %}
+              <span class="text-xs text-emerald-700">Taken</span>
+            {% else %}
+              <a href="{% url 'attendance:student_take' %}?date={{ today|date:'Y-m-d' }}&amp;section={{ row.section.pk }}"
+                 class="btn-primary btn-sm">Take now</a>
+            {% endif %}
+          </li>
+        {% empty %}<li class="px-5 py-6 text-center text-slate-500">No sections are assigned to you yet.</li>{% endfor %}
+      </ul>
+    </section>
+
+    <section class="card">
+      <div class="card-header"><h2 class="font-semibold">My day</h2>
+        <a href="{% url 'timetable:routine' %}" class="link text-sm">Full routine</a></div>
+      <ul class="divide-y divide-slate-100 text-sm">
+        {% for slot in panel.today_slots %}
+          <li class="flex items-center justify-between px-5 py-2.5">
+            <div><p class="font-medium">{{ slot.subject }} · {{ slot.section }}</p>
+              <p class="text-xs text-slate-500">{{ slot.period }}{% if slot.room %} · {{ slot.room }}{% endif %}</p></div>
+          </li>
+        {% empty %}<li class="px-5 py-6 text-center text-slate-500">Nothing on your routine today.</li>{% endfor %}
+      </ul>
+    </section>
+
+    <section class="card lg:col-span-2">
+      <div class="card-header"><h2 class="font-semibold">Marks still to enter</h2>
+        <a href="{% url 'examinations:marks' %}" class="link text-sm">Mark entry</a></div>
+      <table class="table">
+        <thead><tr><th>Exam</th><th>Subject</th><th>Section</th><th class="text-right">Entered</th><th></th></tr></thead>
+        <tbody>
+          {% for row in panel.pending_marks %}
+            <tr>
+              <td>{{ row.schedule.exam.name }}</td>
+              <td>{{ row.schedule.subject }}</td>
+              <td>{{ row.section }}</td>
+              <td class="text-right {% if row.entered == 0 %}text-red-600{% else %}text-amber-700{% endif %}">{{ row.entered }}/{{ row.expected }}</td>
+              <td class="text-right">
+                <a href="{% url 'examinations:marks' %}?schedule={{ row.schedule.pk }}&amp;section={{ row.section.pk }}" class="link text-xs">Enter</a>
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="5">{% include "components/empty.html" with message="Nothing outstanding. Every paper assigned to you is marked." %}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  </div>
+
+{% elif panel.kind == "accountant" %}
+  <div class="mt-6 grid gap-6 lg:grid-cols-2">
+    <section class="card">
+      <div class="card-header"><h2 class="font-semibold">Collections this month</h2>
+        <a href="{% url 'fees:report' %}" class="link text-sm">Report</a></div>
+      <table class="table">
+        <thead><tr><th>Method</th><th class="text-right">Receipts</th><th class="text-right">Amount</th></tr></thead>
+        <tbody>
+          {% for row in panel.by_method %}
+            <tr><td>{{ row.method|title }}</td><td class="text-right">{{ row.count }}</td>
+              <td class="text-right font-medium">{% money row.total %}</td></tr>
+          {% empty %}<tr><td colspan="3">{% include "components/empty.html" with message="Nothing collected this month yet." %}</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <div class="card-header"><h2 class="font-semibold">Largest balances</h2>
+        <a href="{% url 'fees:dues' %}" class="link text-sm">All dues</a></div>
+      <table class="table">
+        <thead><tr><th>Student</th><th>Class</th><th>Due</th><th class="text-right">Balance</th></tr></thead>
+        <tbody>
+          {% for invoice in panel.defaulters %}
+            <tr>
+              <td><a href="{% url 'fees:invoice_detail' invoice.pk %}" class="link">{{ invoice.student.full_name }}</a></td>
+              <td class="text-xs text-slate-500">{{ invoice.enrollment.section }}</td>
+              <td class="text-xs {% if invoice.days_overdue %}text-red-600{% endif %}">{{ invoice.due_date|date:"d M" }}</td>
+              <td class="text-right font-medium">{% money invoice.balance %}</td>
+            </tr>
+          {% empty %}<tr><td colspan="4">{% include "components/empty.html" with message="Nothing outstanding." %}</td></tr>{% endfor %}
+        </tbody>
+      </table>
+      {% if panel.due_this_week %}
+        <p class="border-t border-slate-200 px-5 py-3 text-sm text-amber-700">
+          {{ panel.due_this_week }} invoice{{ panel.due_this_week|pluralize }} fall{{ panel.due_this_week|pluralize:"s," }} due within a week.
+        </p>
+      {% endif %}
+    </section>
+
+    <section class="card lg:col-span-2">
+      <div class="card-header"><h2 class="font-semibold">Quick actions</h2></div>
+      <div class="card-body grid gap-2 sm:grid-cols-3">
+        {% if perms.fees.add_feeinvoice %}<a href="{% url 'fees:generate' %}" class="btn-secondary justify-start">Generate the month's invoices</a>{% endif %}
+        {% if perms.fees.add_feeinvoice %}<a href="{% url 'fees:invoice_create' %}" class="btn-secondary justify-start">Raise a one-off invoice</a>{% endif %}
+        {% if perms.finance.add_journalentry %}<a href="{% url 'finance:quick_entry' %}" class="btn-secondary justify-start">Record an expense</a>{% endif %}
+        {% if perms.finance.view_account %}<a href="{% url 'finance:trial_balance' %}" class="btn-secondary justify-start">Trial balance</a>{% endif %}
+        {% if perms.finance.view_payroll %}<a href="{% url 'finance:payroll' %}" class="btn-secondary justify-start">Payroll</a>{% endif %}
+        {% if perms.finance.view_account %}<a href="{% url 'finance:cash_book' %}" class="btn-secondary justify-start">Cash book</a>{% endif %}
+      </div>
+    </section>
+  </div>
+
+{% elif panel.kind == "staff" and not panel.unlinked %}
+  <div class="mt-6 grid gap-6 lg:grid-cols-2">
+    <section class="card">
+      <div class="card-header"><h2 class="font-semibold">My attendance</h2>
+        <a href="{% url 'employees:me' %}" class="link text-sm">My file</a></div>
+      <div class="card-body">
+        {% if panel.recent_attendance %}
+          <div class="flex flex-wrap gap-1">
+            {% for a in panel.recent_attendance %}<span title="{{ a.date|date:'d M Y' }}">{{ a.status|status_badge }}</span>{% endfor %}
+          </div>
+        {% else %}<p class="text-sm text-slate-500">Nothing recorded yet this month.</p>{% endif %}
+        {% if current_school.staff_self_checkin %}
+          <form method="post" action="{% url 'attendance:check_in' %}" class="mt-4">{% csrf_token %}
+            <input type="hidden" name="next" value="/">
+            <button class="btn-success btn-sm">Check in / out</button></form>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-header"><h2 class="font-semibold">My leave</h2>
+        <a href="{% url 'attendance:leave_list' %}" class="link text-sm">Requests</a></div>
+      <table class="table">
+        <thead><tr><th>Type</th><th class="text-right">Entitled</th><th class="text-right">Used</th><th class="text-right">Left</th></tr></thead>
+        <tbody>
+          {% for row in panel.balances %}
+            <tr><td>{{ row.leave_type }}</td><td class="text-right">{{ row.entitlement }}</td>
+              <td class="text-right">{{ row.used }}</td>
+              <td class="text-right font-medium {% if row.remaining <= 0 %}text-red-600{% endif %}">{{ row.remaining }}</td></tr>
+          {% empty %}<tr><td colspan="4">{% include "components/empty.html" with message="No leave types configured." %}</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+    {% if panel.payrolls %}
+      <section class="card lg:col-span-2">
+        <div class="card-header"><h2 class="font-semibold">My payslips</h2></div>
+        <table class="table">
+          <thead><tr><th>Month</th><th class="text-right">Net</th><th>Paid</th><th></th></tr></thead>
+          <tbody>
+            {% for row in panel.payrolls %}
+              <tr><td>{{ row.month|date:"F Y" }}</td><td class="text-right">{% money row.net %}</td>
+                <td>{{ row.paid_on|date:"d M Y"|default:"Not paid" }}</td>
+                <td class="text-right"><a href="{% url 'finance:payslip' row.pk %}" class="link text-xs">Payslip</a></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+    {% endif %}
+  </div>
+{% endif %}
+{% endblock %}

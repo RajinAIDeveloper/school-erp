@@ -2,15 +2,12 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import PasswordChangeView
 from django.core.exceptions import PermissionDenied
-from django.db.models import Sum
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.views.generic import ListView, UpdateView
 
 from academics.models import AcademicYear
-from employees.models import Employee
-from fees.models import FeePayment
-from holidays.models import Holiday
 
 from .access import require_permission
 from .forms import FinancePolicyForm, NotificationSettingsForm, SchoolForm, SMSSettingsForm
@@ -20,54 +17,32 @@ from .models import AuditLog, audit
 
 @login_required
 def dashboard(request):
-    from django.db.models import F
-    from django.utils import timezone
+    """Whatever this person signed in to find out."""
+    from academics.models import AcademicYear
 
-    from core.access import is_manager, students_for
-    from examinations.models import ResultSnapshot
+    from . import dashboards
 
     school = request.school
     if school is None:
         return render(request, "core/no_school.html")
     if not school.is_active:
-        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied("This school is not active.")
 
-        raise PermissionDenied
-    stats = []
-    if request.user.has_perm("students.view_student"):
-        stats.append(("Students", students_for(request.user, school).count()))
-    if request.user.has_perm("employees.view_employee"):
-        stats.append(("Employees", Employee.objects.filter(school=school, status="active").count()))
-    if request.user.has_perm("fees.view_feepayment"):
-        stats.append(
-            (
-                "Collected this month",
-                FeePayment.objects.filter(
-                    school=school, is_cancelled=False, date__gte=timezone.localdate().replace(day=1)
-                ).aggregate(total=Sum("amount"))["total"]
-                or 0,
-            )
-        )
-    my_students = (
-        students_for(request.user, school)
-        if not (is_manager(request.user) or request.user.has_perm("students.view_student"))
-        else []
-    )
-    snapshots = ResultSnapshot.objects.filter(
-        school=school,
-        enrollment__student__in=my_students,
-        exam__status="published",
-        version=F("exam__publication_version"),
-    ).select_related("exam", "enrollment")
+    # A student or guardian is not staff; home shows their own records, not the school's.
+    if hasattr(request.user, "student_profile") or hasattr(request.user, "guardian_profile"):
+        from core.portal_views import index as portal_index
+
+        return portal_index(request)
+
+    panel = dashboards.build(school, request.user)
     return render(
         request,
-        "core/home.html",
+        "core/dashboard.html",
         {
+            "panel": panel,
+            "year": AcademicYear.current_for(school),
+            "today": timezone.localdate(),
             "page_title": "Dashboard",
-            "stats": stats,
-            "my_students": my_students,
-            "snapshots": snapshots,
-            "holidays": Holiday.objects.filter(school=school, end_date__gte=timezone.localdate())[:8],
         },
     )
 
