@@ -5,6 +5,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import Count, Prefetch, Q
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 
 from academics.models import ClassLevel, Section
@@ -478,3 +479,143 @@ def subject_choices(request):
         }
     )
     return render(request, "students/subject_choices.html", context)
+
+
+@require_permission("students.view_certificate")
+def certificates(request, pk):
+    """
+    A student's certificates: issue a transfer, leaving or character certificate, revoke one
+    issued in error, or reissue one after the record is corrected.
+    """
+    from datetime import date as _date
+
+    from .certificates import CONDUCT, issue_certificate, reissue_certificate, revoke_certificate
+    from .models import Certificate
+
+    student = get_object_or_404(Student, school=request.school, pk=pk)
+    here = reverse("students:certificates", args=[student.pk])
+    typed = {}
+    if request.method == "POST":
+        action = request.POST.get("action")
+        try:
+            if action == "issue":
+                typed = {
+                    k: request.POST.get(k, "").strip()
+                    for k in ("kind", "language", "leaving_date", "reason", "conduct", "remarks")
+                }
+                try:
+                    leaving = _date.fromisoformat(typed["leaving_date"]) if typed["leaving_date"] else None
+                except ValueError:
+                    raise ValidationError("Enter the leaving date as a date.") from None
+                certificate = issue_certificate(
+                    school=request.school,
+                    user=request.user,
+                    student=student,
+                    kind=typed["kind"],
+                    language=typed["language"] or "en",
+                    leaving_date=leaving,
+                    reason=typed["reason"],
+                    conduct=typed["conduct"] or "good",
+                    remarks=typed["remarks"],
+                    force=request.POST.get("force") == "on",
+                )
+                messages.success(request, f"Issued {certificate.serial}.")
+                return redirect("students:certificate", pk=certificate.pk)
+            certificate = get_object_or_404(
+                Certificate, school=request.school, student=student, pk=request.POST.get("certificate") or 0
+            )
+            if action == "revoke":
+                revoke_certificate(
+                    school=request.school,
+                    user=request.user,
+                    certificate=certificate,
+                    reason=request.POST.get("reason", ""),
+                )
+                messages.success(request, f"Revoked {certificate.serial}.")
+            elif action == "reissue":
+                new = reissue_certificate(
+                    school=request.school,
+                    user=request.user,
+                    certificate=certificate,
+                    force=request.POST.get("force") == "on",
+                )
+                messages.success(request, f"Issued {new.serial} to replace {certificate.serial}.")
+                return redirect("students:certificate", pk=new.pk)
+            return redirect(here)
+        except ValidationError as exc:
+            messages.error(request, " ".join(exc.messages))
+    return render(
+        request,
+        "students/certificates.html",
+        {
+            "student": student,
+            "issued": Certificate.objects.filter(school=request.school, student=student).select_related(
+                "issued_by", "revoked_by", "replaces"
+            ),
+            "kinds": Certificate.Kind.choices,
+            "conduct": [(key, en.capitalize()) for key, (en, _bn) in CONDUCT.items()],
+            "bangla": request.school.bangla_enabled,
+            "typed": typed,
+            "today": timezone.localdate().isoformat(),
+            "page_title": f"Certificates · {student}",
+        },
+    )
+
+
+def _verification_link(request, certificate):
+    return request.build_absolute_uri(reverse("students:certificate_verify", args=[certificate.verification_code]))
+
+
+@require_permission("students.view_certificate")
+def certificate(request, pk):
+    """The certificate as issued, for printing from the browser (which sets Bangla correctly)."""
+    from core.qr import qr_svg
+
+    from .certificates import certificate_text, date_text
+    from .models import Certificate
+
+    item = get_object_or_404(Certificate.objects.select_related("student", "replaces"), school=request.school, pk=pk)
+    title, paragraphs, closing = certificate_text(item.payload)
+    link = _verification_link(request, item)
+    return render(
+        request,
+        "students/certificate.html",
+        {
+            "certificate": item,
+            "p": item.payload,
+            "title": title,
+            "paragraphs": paragraphs,
+            "closing": closing,
+            "issued_on": date_text(item.payload.get("issued_on"), item.language),
+            "bn": item.language == "bn",
+            "verify_url": link,
+            "qr": qr_svg(link),
+            "page_title": f"{item.serial}",
+        },
+    )
+
+
+def certificate_verify(request, code):
+    """
+    Public check that a certificate is genuine and still stands.
+
+    It shows what someone holding the paper needs to compare: the school, the kind, the serial,
+    the student's initials, the issue date and the fingerprint, and whether it has been revoked
+    or replaced. It never shows the full name, parents or dates of birth.
+    """
+    from .certificates import mask_name
+    from .models import Certificate
+
+    item = get_object_or_404(Certificate.objects.select_related("school", "replaces"), verification_code=code)
+    replacement = getattr(item, "replaced_by", None)
+    return render(
+        request,
+        "students/certificate_verify.html",
+        {
+            "certificate": item,
+            "school": item.school,
+            "initials": mask_name(item.payload.get("student", "")),
+            "replacement": replacement,
+            "page_title": "Certificate verification",
+        },
+    )

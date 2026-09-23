@@ -266,3 +266,48 @@ class StudentDocument(SchoolScopedModel):
 
     def __str__(self):
         return self.title
+
+
+class Certificate(SchoolScopedModel):
+    """
+    A transfer, leaving or character certificate as issued: numbered, frozen and verifiable.
+
+    Everything it prints is copied into `payload` when it is issued, so correcting the student's
+    record later does not change a certificate already handed over. A mistake is put right by
+    revoking it and issuing a replacement, which the verification page then points to.
+    """
+
+    class Kind(models.TextChoices):
+        TRANSFER = "transfer", "Transfer certificate"
+        LEAVING = "leaving", "School leaving certificate"
+        CHARACTER = "character", "Character certificate (testimonial)"
+
+    class Language(models.TextChoices):
+        ENGLISH = "en", "English"
+        BANGLA = "bn", "Bangla"
+
+    student = models.ForeignKey(Student, on_delete=models.PROTECT, related_name="certificates")
+    kind = models.CharField(max_length=10, choices=Kind.choices)
+    language = models.CharField(max_length=2, choices=Language.choices, default=Language.ENGLISH)
+    serial = models.CharField(max_length=30)
+    payload = models.JSONField(default=dict)
+    fingerprint = models.CharField(max_length=20, blank=True)
+    verification_code = models.UUIDField(unique=True, editable=False)
+    issued_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    revoked_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    revoke_reason = models.CharField(max_length=200, blank=True)
+    replaces = models.OneToOneField("self", null=True, blank=True, on_delete=models.PROTECT, related_name="replaced_by")
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [models.UniqueConstraint(fields=["school", "serial"], name="unique_certificate_serial")]
+
+    def __str__(self):
+        return f"{self.serial} {self.get_kind_display()}"
+
+    @property
+    def is_revoked(self):
+        return self.revoked_at is not None

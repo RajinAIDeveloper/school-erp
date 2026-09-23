@@ -1,0 +1,54 @@
+{% extends "layouts/base.html" %}
+{% block head %}
+<style>
+  @media print {
+    @page { size: A4; margin: 16mm; }
+    body { background: #fff; }
+    .card-print { box-shadow: none !important; border: 0 !important; }
+  }
+</style>
+{% endblock %}
+{% block header_actions %}
+  <button type="button" onclick="window.print()" class="btn-primary btn-sm">Print</button>
+  <a href="{% url 'students:certificates' certificate.student_id %}" class="btn-secondary btn-sm">All certificates</a>
+{% endblock %}
+{% block content %}
+<article class="card card-body card-print relative mx-auto max-w-3xl" {% if bn %}lang="bn"{% endif %}
+         style="font-family: 'Noto Sans Bengali', ui-serif, Georgia, serif;">
+  {% if certificate.is_revoked %}
+    <p class="mb-4 rounded border border-red-300 bg-red-50 px-3 py-2 text-center text-sm font-bold uppercase tracking-wide text-red-700">
+      Revoked {{ certificate.revoked_at|date:"d M Y" }}{% if certificate.replaced_by %} · replaced by {{ certificate.replaced_by.serial }}{% endif %} · not valid
+    </p>
+  {% endif %}
+  <header class="border-b border-slate-300 pb-4 text-center">
+    <p class="text-xl font-bold text-slate-900">{{ p.school }}</p>
+    {% if p.school_address %}<p class="text-xs text-slate-500">{{ p.school_address|linebreaksbr }}</p>{% endif %}
+    {% if p.eiin %}<p class="text-xs text-slate-500">EIIN {{ p.eiin }}</p>{% endif %}
+  </header>
+  <div class="mt-4 flex justify-between text-sm text-slate-700">
+    <p>{% if bn %}ক্রমিক নং{% else %}Serial no.{% endif %}: <span class="font-mono">{{ certificate.serial }}</span></p>
+    <p>{% if bn %}তারিখ{% else %}Date{% endif %}: {{ issued_on }}</p>
+  </div>
+  <h1 class="mt-6 text-center text-2xl font-bold tracking-wide text-slate-900 underline underline-offset-8">{{ title }}</h1>
+  <div class="mt-8 space-y-4 text-justify text-base leading-8 text-slate-800">
+    {% for paragraph in paragraphs %}<p>{{ paragraph }}</p>{% endfor %}
+    <p>{{ closing }}</p>
+  </div>
+
+  <div class="mt-16 flex items-end justify-between gap-6">
+    <div class="text-xs text-slate-600">
+      <div class="inline-block">{{ qr|safe }}</div>
+      <p class="mt-1">{% if bn %}যাচাই{% else %}Verify{% endif %}: <span class="break-all">{{ verify_url }}</span></p>
+      <p>{% if bn %}ফিঙ্গারপ্রিন্ট{% else %}Fingerprint{% endif %}: <b class="font-mono">{{ certificate.fingerprint }}</b></p>
+    </div>
+    <div class="w-56 border-t border-slate-500 pt-1 text-center text-sm">
+      {% if p.head %}<p class="font-semibold">{{ p.head }}</p>{% endif %}
+      <p class="text-slate-600">{% if bn %}প্রতিষ্ঠান প্রধান{% else %}Head of institution{% endif %}</p>
+    </div>
+  </div>
+  <p class="mt-6 text-center text-[11px] text-slate-500">
+    {% if bn %}এটি বিদ্যালয়ের নিজস্ব সনদ; কোনো শিক্ষা বোর্ড বা পরীক্ষা বোর্ডের সনদ নয়।
+    {% else %}This is a certificate issued by the school. It is not a certificate from any examination board or education board.{% endif %}
+  </p>
+</article>
+{% endblock %}

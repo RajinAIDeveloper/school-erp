@@ -1,0 +1,45 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>Certificate verification · {{ school.name }}</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body class="flex min-h-full items-center justify-center bg-slate-100 px-4 py-10">
+  <main class="w-full max-w-lg rounded-xl bg-white p-8 shadow-lg">
+    <p class="text-sm uppercase tracking-wide text-slate-500">Certificate verification</p>
+    <h1 class="mt-1 text-xl font-semibold text-slate-900">{{ school.name }}</h1>
+
+    {% if certificate.is_revoked %}
+      <div class="mt-6 rounded-lg border border-red-200 bg-red-50 px-5 py-4">
+        <p class="font-medium text-red-800">This certificate has been revoked and is not valid.</p>
+        <p class="mt-2 text-sm text-slate-600">
+          Revoked on {{ certificate.revoked_at|date:"d M Y" }}.
+          {% if replacement %}It was replaced by certificate {{ replacement.serial }}.{% endif %}
+        </p>
+      </div>
+    {% else %}
+      <div class="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 px-5 py-4">
+        <p class="font-medium text-emerald-800">This certificate was issued by the school and is valid.</p>
+      </div>
+    {% endif %}
+
+    <dl class="mt-6 grid grid-cols-2 gap-3 text-sm">
+      <div><dt class="text-xs text-slate-500">Certificate</dt><dd class="font-semibold">{{ certificate.get_kind_display }}</dd></div>
+      <div><dt class="text-xs text-slate-500">Serial</dt><dd class="font-mono font-semibold">{{ certificate.serial }}</dd></div>
+      <div><dt class="text-xs text-slate-500">Student (initials)</dt><dd class="font-semibold tracking-wide">{{ initials }}</dd></div>
+      <div><dt class="text-xs text-slate-500">Issued</dt><dd class="font-semibold">{{ certificate.created_at|date:"d M Y" }}</dd></div>
+      <div class="col-span-2"><dt class="text-xs text-slate-500">Fingerprint</dt><dd class="font-mono font-semibold">{{ certificate.fingerprint }}</dd></div>
+    </dl>
+
+    <p class="mt-6 text-sm text-slate-500">
+      Compare the serial and fingerprint with the paper in hand; if they differ, the paper has been
+      altered. This page confirms a certificate issued by {{ school.name }}. It does not confirm any
+      certificate or result from Cambridge, Pearson, the IB or an education board. For anything
+      else, contact the school office.
+    </p>
+  </main>
+</body>
+</html>

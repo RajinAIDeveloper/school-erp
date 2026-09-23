@@ -1,0 +1,88 @@
+{% extends "layouts/base.html" %}
+{% block header_actions %}
+  <a href="{% url 'students:detail' student.pk %}" class="btn-secondary btn-sm">Back to student</a>
+{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-4xl space-y-4">
+  <div class="rounded-md border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+    These are the school's own certificates. Each copies the student's details as they stand when it
+    is issued, so correct the record first; a mistake afterwards is put right by reissuing, which
+    revokes the old one and points its verification page to the new one. They are never an
+    examination board's certificate.
+  </div>
+
+  <div class="card overflow-x-auto">
+    <table class="table">
+      <thead><tr><th>Serial</th><th>Certificate</th><th>Language</th><th>Issued</th><th>Status</th><th class="text-right"></th></tr></thead>
+      <tbody>
+        {% for c in issued %}
+          <tr class="align-top">
+            <td class="font-mono text-sm">{{ c.serial }}</td>
+            <td>{{ c.get_kind_display }}</td>
+            <td>{{ c.get_language_display }}</td>
+            <td class="text-sm">{{ c.created_at|date:"d M Y" }}{% if c.issued_by %}<br><span class="text-xs text-slate-500">{{ c.issued_by }}</span>{% endif %}</td>
+            <td class="text-sm">
+              {% if c.is_revoked %}<span class="font-medium text-red-700">Revoked</span> {{ c.revoked_at|date:"d M Y" }}<br><span class="text-xs text-slate-500">{{ c.revoke_reason }}</span>
+              {% else %}<span class="font-medium text-emerald-700">Valid</span>{% endif %}
+              {% if c.replaces %}<br><span class="text-xs text-slate-500">Replaces {{ c.replaces.serial }}</span>{% endif %}
+            </td>
+            <td class="space-y-2 text-right">
+              <a href="{% url 'students:certificate' c.pk %}" class="link text-xs">Print</a>
+              {% if perms.students.change_certificate %}
+                {% if not c.is_revoked %}
+                  <form method="post" class="flex justify-end gap-2">
+                    {% csrf_token %}<input type="hidden" name="action" value="revoke"><input type="hidden" name="certificate" value="{{ c.pk }}">
+                    <input name="reason" maxlength="200" placeholder="Reason" class="input w-40 py-1 text-xs" required>
+                    <button class="btn-secondary btn-sm">Revoke</button>
+                  </form>
+                {% endif %}
+                <form method="post" data-confirm="Issue a replacement from the student's current record? {{ c.serial }} will be revoked.">
+                  {% csrf_token %}<input type="hidden" name="action" value="reissue"><input type="hidden" name="certificate" value="{{ c.pk }}">
+                  <button class="btn-secondary btn-sm">Reissue</button>
+                </form>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6">{% include "components/empty.html" with message="No certificates issued." %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if perms.students.add_certificate %}
+    <form method="post" class="card card-body space-y-4">
+      {% csrf_token %}<input type="hidden" name="action" value="issue">
+      <h3 class="font-semibold">Issue a certificate</h3>
+      <div class="grid gap-4 sm:grid-cols-3">
+        <div><label class="label" for="kind">Certificate</label>
+          <select id="kind" name="kind" class="input">
+            {% for value, label in kinds %}<option value="{{ value }}" {% if typed.kind == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+          </select></div>
+        <div><label class="label" for="language">Language</label>
+          <select id="language" name="language" class="input">
+            <option value="en">English</option>
+            {% if bangla %}<option value="bn" {% if typed.language == "bn" %}selected{% endif %}>Bangla</option>{% endif %}
+          </select></div>
+        <div><label class="label" for="conduct">Conduct</label>
+          <select id="conduct" name="conduct" class="input">
+            {% for value, label in conduct %}<option value="{{ value }}" {% if typed.conduct == value or not typed.conduct and value == "good" %}selected{% endif %}>{{ label }}</option>{% endfor %}
+          </select></div>
+        <div><label class="label" for="leaving_date">Date left</label>
+          <input id="leaving_date" type="date" name="leaving_date" value="{{ typed.leaving_date }}" max="{{ today }}" class="input">
+          <p class="mt-1 text-xs text-slate-500">Needed for transfer and leaving certificates.</p></div>
+        <div class="sm:col-span-2"><label class="label" for="reason">Reason for leaving</label>
+          <input id="reason" name="reason" value="{{ typed.reason }}" maxlength="200" class="input"></div>
+        <div class="sm:col-span-3"><label class="label" for="remarks">Remarks</label>
+          <input id="remarks" name="remarks" value="{{ typed.remarks }}" maxlength="300" class="input"></div>
+      </div>
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        {% if perms.fees.change_feeinvoice %}
+          <label class="inline-flex items-center gap-2 text-sm"><input type="checkbox" name="force" class="h-4 w-4 rounded border-slate-300"> Release even if fees are unpaid</label>
+        {% else %}<span></span>{% endif %}
+        <button class="btn-primary">Issue certificate</button>
+      </div>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}

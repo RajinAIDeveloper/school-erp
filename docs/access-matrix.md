@@ -208,12 +208,15 @@ quietly join it.
 | /sms/template/new/ | messaging:template_create | `messaging.add_smstemplate` | - | Y | Y | . | . | . | . | . |
 | /students/ | students:list | `students.view_student` | - | Y | Y | Y | Y | . | . | . |
 | /students/<int:pk>/ | students:detail | `(sign-in only)` | own children or your own sections | o | o | o | o | o | o | o |
+| /students/<int:pk>/certificates/ | students:certificates | `students.view_certificate` | - | Y | Y | . | . | . | . | . |
 | /students/<int:pk>/documents/new/ | students:document_upload | `students.add_studentdocument` | - | Y | Y | . | . | . | . | . |
 | /students/<int:pk>/edit/ | students:update | `students.change_student` | - | Y | Y | . | . | . | . | . |
 | /students/<int:pk>/id-card.pdf | students:id_card | `(sign-in only)` | - | o | o | o | o | o | o | o |
 | /students/<int:pk>/leaving/ | students:leaving | `students.change_student` | - | Y | Y | . | . | . | . | . |
 | /students/<int:student_pk>/guardian/ | students:guardian_create | `students.add_guardian` | - | Y | Y | . | . | . | . | . |
 | /students/admit/ | students:admission | `students.add_student` | - | Y | Y | . | . | . | . | . |
+| /students/certificates/<int:pk>/ | students:certificate | `students.view_certificate` | - | Y | Y | . | . | . | . | . |
+| /students/certificates/verify/<uuid:code>/ | students:certificate_verify | `(public)` | - | * | * | * | * | * | * | * |
 | /students/choices/ | students:subject_choices | `students.change_enrollment` | - | Y | Y | . | . | . | . | . |
 | /students/documents/<int:pk>/ | students:document | `(sign-in only)` | - | o | o | o | o | o | o | o |
 | /students/enrollment/ | students:enrollment_list | `students.view_enrollment` | - | Y | Y | Y | Y | . | . | . |

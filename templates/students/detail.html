@@ -2,6 +2,7 @@
 {% load erp %}
 {% block header_actions %}
   <a href="{% url 'students:id_card' student.pk %}" class="btn-secondary btn-sm">ID card</a>
+  {% if perms.students.view_certificate %}<a href="{% url 'students:certificates' student.pk %}" class="btn-secondary btn-sm">Certificates</a>{% endif %}
   {% if perms.users.add_user and not student.user_id %}
     <form method="post" action="{% url 'users:provision' 'student' student.pk %}" class="inline">
       {% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
