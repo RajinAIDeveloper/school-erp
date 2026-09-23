@@ -40,9 +40,18 @@ class Rulebook:
     ranks_by_default: bool
     has_gpa: bool
     has_result: bool  # an overall PASS / FAIL
+    # Who awards the official result this rulebook imitates. A school's own exam graded this
+    # way is still the school's assessment, and every card says so.
+    official_body: str = ""
 
     def show_rank(self, exam):
         return self.ranks_by_default if exam.show_rank is None else exam.show_rank
+
+    @property
+    def notice(self):
+        if not self.official_body:
+            return ""
+        return f"A school assessment, not an official result. Official results are issued only by {self.official_body}."
 
 
 def _total_key(row):
@@ -67,6 +76,7 @@ RULEBOOKS = {
     "national": Rulebook(
         key="national",
         label="Bangladesh national curriculum",
+        official_body="the education board",
         outcome=national_outcome,
         rank_key=merit_key,
         pass_marks=True,
@@ -78,7 +88,8 @@ RULEBOOKS = {
     ),
     "cambridge": Rulebook(
         key="cambridge",
-        label="Cambridge",
+        label="Cambridge grades (school assessment)",
+        official_body="Cambridge International Education",
         outcome=grades_outcome,
         rank_key=percent_key,
         pass_marks=False,
@@ -90,7 +101,8 @@ RULEBOOKS = {
     ),
     "edexcel": Rulebook(
         key="edexcel",
-        label="Pearson Edexcel",
+        label="Pearson Edexcel grades (school assessment)",
+        official_body="Pearson",
         outcome=grades_outcome,
         rank_key=percent_key,
         pass_marks=False,
@@ -103,6 +115,7 @@ RULEBOOKS = {
     "ib_dp": Rulebook(
         key="ib_dp",
         label="IB Diploma Programme (school estimate)",
+        official_body="the International Baccalaureate",
         outcome=dp_outcome,
         rank_key=points_key,
         pass_marks=False,
@@ -114,7 +127,8 @@ RULEBOOKS = {
     ),
     "ib_myp": Rulebook(
         key="ib_myp",
-        label="IB Middle Years Programme",
+        label="IB Middle Years Programme (school assessment)",
+        official_body="the International Baccalaureate",
         outcome=myp_outcome,
         rank_key=points_key,
         pass_marks=False,
@@ -139,3 +153,9 @@ def rulebook(key):
     if key not in RULEBOOKS:
         raise ValidationError(f"Results cannot be worked out: the '{key}' rulebook is not supported.")
     return RULEBOOKS[key]
+
+
+def official_notice(row):
+    """The card's statement that it is the school's assessment, for rows old and new."""
+    book = RULEBOOKS.get(row.get("system") or "")
+    return book.notice if book else ""

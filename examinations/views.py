@@ -19,6 +19,7 @@ from students.models import Enrollment
 from .exports import about, filter_rows
 from .grading import headline
 from .models import Exam, ExamSchedule, GradeRule, GradeScale, Mark, ResultSnapshot, UnlockRequest
+from .rulebooks import official_notice
 from .services import (
     MarkEntryError,
     active_unlock,
@@ -637,6 +638,7 @@ def report_card(request, exam_pk, student_pk):
             if attendance and attendance.get("until")
             else None,
             "show_effort": any(line["effort"] for line in lines),
+            "official_notice": official_notice(row),
             "comment_span": 5 + any(line["parts"] for line in lines) + any(line["effort"] for line in lines),
             "effort_label": row.get("effort_label") or "Effort",
             "board": row.get("system") == "national",

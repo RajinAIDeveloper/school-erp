@@ -11,8 +11,11 @@ Two rulebooks live here. The national-curriculum rules are the education boards'
   average; only its grade point above 2.00 is added, and it can never fail the student.
 - A fail in any main subject makes the result a fail and the GPA 0.00. GPA never exceeds 5.00.
 
-The other rulebook is for English-medium, IB and schools with their own scheme: every paper
-counts the same, any failed paper fails the result, and nothing is combined or discounted.
+The school's own rules (`standard_outcome`) are the system's original numeric gradebook:
+every paper counts the same, any failed paper fails the result, and nothing is combined or
+discounted. Cambridge, Edexcel and IB classes do not use it: they grade by band with no pass
+mark, GPA or overall pass/fail (`grades_outcome`, `myp_outcome`, `dp_outcome`). Which rules a
+class follows is chosen in `examinations.rulebooks`.
 
 Everything here is a plain function of numbers, with no database access, so the rules can be
 checked against worked examples one line at a time.

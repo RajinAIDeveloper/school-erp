@@ -74,6 +74,33 @@ are adopted, parts adapted, and parts set aside, each with the reason.
   deferred. They are ordered after the results core. Where they collect data, every new field is
   optional, so a school collects only what it uses.
 
+## 1b. Evaluation of Codex's second review (23 September 2026)
+
+Codex reviewed the plan against Cambridge, Pearson and IB guidance. It read an earlier state
+of the code: several findings were already fixed by S2–S6, committed before the review.
+Every finding was checked against the committed code or the published source.
+
+| Finding | Verdict | Action |
+|---|---|---|
+| The numeric pass/fail and GPA path is used for English-medium and IB | **Out of date.** Since S2, Cambridge, Edexcel, MYP and DP classes use their own rulebooks with no pass mark, GPA or overall pass/fail, and the card prints GPA only where the rulebook has one. The `grading.py` docstring still said otherwise | Docstring corrected |
+| Configure the programme per school, class and exam, not one school-wide switch | **Already done** (exam, then class, then school); per-subject qualification only through a paper's own scale | Series and entries modelled in S6b |
+| Keep internal assessment, school predictions and official awards apart | **Valid, partly done.** Estimates are separate, dated and approved (S5). But a Cambridge card printed "Worked out by: Cambridge", which can read as official, and there is no record of official results | Fixed now: relabelled as school assessments, and every card except the school's own rules states that official results come only from the awarding body. S6b adds an official results register |
+| QR verification must not imply it authenticates an awarding-body certificate | **Valid** | The verification page now says so; S7 certificates will too |
+| Grade presets must be qualified as internal grading | **Already stated** on the presets screen; now also on every card | None |
+| Evidence models: grade-only, MYP criteria, narrative, exempt and not-applicable, optional GPA and rank | Grade-only, criteria, not-applicable and optional GPA and rank **done**; narrative is per-subject comments (S5); **exempt** is missing; moderation is missing | Exempt added to S8; moderation left for a school that asks |
+| Exam-officer workflow: centre identifiers, candidates, entries, options, tiers, HL/SL, series, clashes, access arrangements, release dates, post-results cases | **Valid.** This shapes the data design, so it must not wait for S10 | New S6b (series, entries, official results) before certificates; access arrangements in S10 with restricted access |
+| Edexcel modular: units, UMS, cash-in | **Valid, already deferred** until a school runs modular International A Levels | Stays deferred; the official register records unit and overall awards as imported |
+| IB: name PYP, MYP, DP and CP separately; a diploma is not "24 points" | DP applies all eight conditions and is labelled a school estimate (S2b). **PYP and CP are not supported** | Stated as unsupported below |
+| Privacy is a launch requirement | **Valid** | New S12b privacy baseline gates any real school data |
+| Data protection law dates and hosting | **Codex is right; our review was wrong.** Checked against the Act on bdlaws.minlaw.gov.bd: in force from 6 November 2025 except sections 23 and 31–35; foreign transfer is conditional, not banned | Market review corrected |
+| Public lookup by student ID and date of birth | **Valid.** Dates of birth are guessable | S11 redesigned: a random lookup code printed on the card, rate limited, off by default |
+| Never advertise as certified by Cambridge, Pearson or the IB | **Agreed**; already in section 4 | None |
+
+**Not supported, stated plainly:** IB PYP narrative reporting, the IB Career-related
+Programme, Edexcel modular UMS and cash-in, moderation workflows, and submitting entries to an
+awarding body. The system keeps the records; the exam officer submits through the board's own
+portal.
+
 ## 2. Decisions record
 
 | Decision | Choice | Status |
@@ -112,12 +139,14 @@ Each stage closes only when its tests pass and the full gate passes:
 | **S4 · Paper parts setup** (Codex EX-04) · *done* | Parts configured without hand-editing | Parts editor with presets (Cambridge weighted papers, MYP criteria A–D, national creative/MCQ/practical); locked once marks exist or results publish | Parts validate; weights reproduce the published weighting; editing after marks blocked |
 | **S5 · Report cards per rulebook** (Codex EX-06) · *done* | Cards a school would hand out | Templates for grade-only, IB and national cards; teacher comment per subject; effort grade; predicted grade recorded separately and labelled as the school's; attendance with a stated cut-off | Each template renders from the snapshot; no GPA or rank where the rulebook has none; comments frozen |
 | **S6 · Class result exports** (Codex EX-07) · *done* | What heads and exam officers print | Grade distribution per subject; class results sheet; national tabulation sheet; optional merit lists; every export carries exam, version and rulebook | Totals reconcile to published cards; filters keep denominators honest |
-| **S7 · Certificates** | Leaving and character certificates | Transfer or leaving certificate and character certificate (testimonial); issue, freeze, revoke, reissue; QR verification; English and Bangla | Frozen after issue; revoked shows revoked; access by role |
-| **S8 · Release control and term results** (Codex EX-05) | Review before publishing; term weights; promotion | Pre-publish checklist; combined results with configured weights, published as their own version; promotion from results with override | Weighted examples; a source correction marks the combined result out of date |
+| **S6b · Exam series, entries and official results** (from Codex's second review) | Exam officers' records; official results kept apart | Exam series (board and session, such as Cambridge June 2027); per-candidate entries with syllabus or unit code, option, tier or HL/SL, candidate number; an official results register imported from the board's statement of results, with source, date and amendment history; cards never mix official and school results | An imported result is shown as official with its source; an amendment keeps the old value; school grades never appear as official |
+| **S7 · Certificates** | Leaving and character certificates, clearly the school's own and never an awarding body's | Transfer or leaving certificate and character certificate (testimonial); issue, freeze, revoke, reissue; QR verification; English and Bangla | Frozen after issue; revoked shows revoked; access by role |
+| **S8 · Release control and term results** (Codex EX-05) | Review before publishing; term weights; promotion | Pre-publish checklist; an exempt state for a paper a student is excused from; combined results with configured weights, published as their own version; promotion from results with override | Weighted examples; a source correction marks the combined result out of date |
 | **S9 · Bangla and English** | Language toggle for families who want Bangla | School switch; per-person toggle; translated screens | Toggle persists; English unchanged |
 | **S10 · Candidate and registration data** | Exports exam officers need | Optional identity fields; Cambridge and Edexcel candidate list; national eSIF and unique-ID export; data-check list | Format checks; nothing required that a school does not use |
-| **S11 · Public result lookup** | Families check without signing in | Off by default; student ID plus date of birth; rate limited; published only | Drafts never visible; wrong date of birth refused |
+| **S11 · Public result lookup** | Families check without signing in | Off by default; a random lookup code printed on the card (never student ID plus date of birth, which is guessable); rate limited; published only; shows no more than the card | Drafts never visible; wrong code refused; repeated guesses throttled |
 | **S12 · Online fees and VAT** (separate track) | Demonstrable online payment; correct VAT | Demonstration gateway (off in production unless allowed); SSLCommerz sandbox; verified callbacks; idempotency; 5% VAT on English-medium tuition as a fee-head setting | Replayed callback posts once; tampered amount refused; VAT computed and posted |
+| **S12b · Privacy baseline** (gate for real school data) | Lawful handling of children's data | Guardian consent records (Act section 9); classification of stored fields; restricted access and access logs for sensitive records (access arrangements, health, identity numbers); retention schedule and deletion; hosting and transfer review with counsel (section 29) | Consent recorded before sensitive data; restricted records hidden from other roles; deletion leaves no orphaned personal data |
 | **S13 · Demonstration and hand-over** | Ready for the mentor | Seed a Cambridge IGCSE class with options and weighted papers, an IB class, and a national Class 9; documentation; print checklist | Seed repeatable; full gate on the final commit |
 
 **Deferred by the owner:** the parent app.

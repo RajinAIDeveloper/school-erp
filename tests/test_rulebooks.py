@@ -437,3 +437,33 @@ def test_a_rulebook_without_pass_marks_ignores_part_pass_marks(erp):
     )
     assert cell["letter"] == "F"  # 30% is an F on the IGCSE scale, whatever the parts' pass marks
     assert cell["failed_part"] is False
+
+
+def test_a_cambridge_card_says_it_is_the_schools_assessment_not_an_official_result(erp, igcse):
+    mark_all(
+        erp,
+        igcse,
+        [
+            ({"mcq": "38", "theory": "76", "practical": "38"}, 92),
+            ({"mcq": "20", "theory": "40", "practical": "20"}, 55),
+        ],
+    )
+    publish_exam(igcse.exam, erp.admin)
+    client = Client()
+    client.force_login(erp.admin)
+    url = f"/exams/{igcse.exam.pk}/report/{igcse.pupils[0].student_id}/"
+    body = client.get(url).content.decode()
+    assert "Cambridge grades (school assessment)" in body
+    assert "Official results are issued only by Cambridge International Education." in body
+    assert client.get(url + "?format=pdf").status_code == 200
+    snapshot = ResultSnapshot.objects.filter(exam=igcse.exam).first()
+    verify = Client().get(f"/exams/verify/{snapshot.verification_code}/").content.decode()
+    assert "does not confirm any" in verify
+
+
+def test_the_schools_own_rules_carry_no_awarding_body_notice(erp):
+    save_mark(user=erp.teacher, schedule=erp.schedule, enrollment=erp.enrollment, score=Decimal(80))
+    client = Client()
+    client.force_login(erp.admin)
+    body = client.get(f"/exams/{erp.exam.pk}/report/{erp.student.pk}/").content.decode()
+    assert "not an official result" not in body

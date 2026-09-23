@@ -280,6 +280,11 @@ def report_card_flowables(school, exam, enrollment, row, snapshot, style, verify
     )
 
     flow = [_facts(facts, style), Spacer(1, 6), table, Spacer(1, 8), summary, Spacer(1, 6)]
+    from .rulebooks import official_notice
+
+    if official_notice(row):
+        flow.append(Paragraph(f"<font color='#475569' size='7.5'>{escape(official_notice(row))}</font>", style["cell"]))
+        flow.append(Spacer(1, 4))
     if words:
         flow.append(Paragraph("<b>Comments</b>", style["normal"]))
         flow.extend(words)
