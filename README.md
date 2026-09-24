@@ -39,7 +39,8 @@ that page. An account stores only a hash; the single place a readable password e
 credential SMS waiting in the queue, and that message's text is cleared as soon as delivery ends,
 leaving the number, the outcome and the time for an audit.
 
-Seven roles: Administrator, Principal, Accountant, Teacher, Staff, Student, Guardian.
+Eight roles: Administrator, Principal, Vice Principal (the same access as a Principal), Accountant,
+Teacher, Staff, Student, Guardian.
 [docs/access-matrix.md](docs/access-matrix.md) lists every screen with the permission it
 declares, and names the further limit where a screen applies one of its own — a teacher holding
 `attendance.view_leaverequest` opens the leave list and sees only their own requests. It is
@@ -165,13 +166,18 @@ database is busy. For a server:
    `DJANGO_CSRF_TRUSTED_ORIGINS`. Never run a server with the default `DJANGO_DEBUG=1`: it shows
    error details to anyone.
 3. Run `migrate`, `createcachetable` (the login limit's shared cache), `collectstatic` and
-   `setup_roles`.
+   `setup_roles`. After upgrading from a version without analytics, run `rebuild_result_facts`
+   once so exams published before then appear in the analytics; publishing keeps them current.
 4. Run the SMS worker (`python manage.py process_sms --loop`) beside the web server, if SMS is on.
 5. Schedule the backup (below) and keep a copy off the server.
 6. For the demonstration gateway, set `ALLOW_DEMO_PAYMENTS=1`.
 
 Behind a reverse proxy (needed for HTTPS), set `TRUSTED_PROXY_COUNT=1` so rate limits see each
 visitor's own address rather than the proxy's.
+
+The platform administrator (a superuser, created with `createsuperuser`) has a **Platform** page:
+every school, the modules each has been given (homework, online admissions), and which school
+to work in. Only a superuser can switch a module on; a school without it never sees it.
 
 ### Backups
 
@@ -230,7 +236,7 @@ correctly.
 ## Demonstration
 
 `python manage.py seed_demo` builds a demonstration school with one login per role
-(`demo_admin`, `demo_principal`, `demo_accountant`, `demo_teacher`, `demo_staff`,
+(`demo_admin`, `demo_principal`, `demo_vice`, `demo_accountant`, `demo_teacher`, `demo_staff`,
 `demo_student`, `demo_guardian`; password `DemoPass!2026` unless `--demo-password` is given).
 Besides Class 1 with fees and attendance, it creates:
 

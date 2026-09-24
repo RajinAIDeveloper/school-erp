@@ -6,13 +6,16 @@ so that adding a new role is a data change, not a code change.
 
 ADMIN = "Administrator"
 PRINCIPAL = "Principal"
+VICE_PRINCIPAL = "Vice Principal"
 ACCOUNTANT = "Accountant"
 TEACHER = "Teacher"
 STAFF = "Staff"
 STUDENT = "Student"
 GUARDIAN = "Guardian"
 
-ALL_ROLES = [ADMIN, PRINCIPAL, ACCOUNTANT, TEACHER, STAFF, STUDENT, GUARDIAN]
+ALL_ROLES = [ADMIN, PRINCIPAL, VICE_PRINCIPAL, ACCOUNTANT, TEACHER, STAFF, STUDENT, GUARDIAN]
+# The school's managers: whole-school access, the manager dashboard and whole-school analytics.
+MANAGERS = (ADMIN, PRINCIPAL, VICE_PRINCIPAL)
 ROLE_LABELS = {r: r for r in ALL_ROLES}
 
 # app labels whose full permission set a role receives
@@ -46,6 +49,8 @@ FULL_APP_ACCESS = {
     ],
     ACCOUNTANT: ["fees", "finance"],
 }
+# A vice principal has exactly the principal's access.
+FULL_APP_ACCESS[VICE_PRINCIPAL] = list(FULL_APP_ACCESS[PRINCIPAL])
 
 # explicit (app_label, codename) permissions for restricted roles
 EXPLICIT_PERMS = {
@@ -128,6 +133,9 @@ EXPLICIT_PERMS = {
         ("timetable", "view_routineslot"),
     ],
 }
+
+
+EXPLICIT_PERMS[VICE_PRINCIPAL] = list(EXPLICIT_PERMS[PRINCIPAL])
 
 
 def user_roles(user):

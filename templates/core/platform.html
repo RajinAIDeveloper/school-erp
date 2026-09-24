@@ -1,0 +1,49 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<p class="mb-4 text-sm text-slate-600">
+  Only you, as the platform administrator, see this page. A module you give a school appears for
+  it straight away; a school without a module never sees it anywhere. Every change is recorded in
+  that school's audit log.
+</p>
+<div class="card overflow-x-auto">
+  <table class="table">
+    <thead>
+      <tr><th>School</th>{% for key, module in modules.items %}<th>{{ module.label }}</th>{% endfor %}<th>Working in</th></tr>
+    </thead>
+    <tbody>
+      {% for row in schools %}
+        <tr>
+          <td><p class="font-medium">{{ row.school.name }}</p><p class="text-xs text-slate-500">{{ row.school.slug }}{% if not row.school.is_active %} &middot; inactive{% endif %}</p></td>
+          {% for key, label, on in row.modules %}
+            <td>
+              <form method="post" class="flex items-center gap-2"{% if on %} data-confirm="Take {{ label }} away from {{ row.school.name }}?"{% endif %}>{% csrf_token %}
+                <input type="hidden" name="school" value="{{ row.school.pk }}"><input type="hidden" name="module" value="{{ key }}">
+                {% if on %}
+                  <span class="text-sm font-medium text-emerald-700">On</span>
+                  <button name="action" value="disable" class="btn-secondary btn-sm">Turn off</button>
+                {% else %}
+                  <span class="text-sm text-slate-400">Off</span>
+                  <button name="action" value="enable" class="btn-secondary btn-sm">Turn on</button>
+                {% endif %}
+              </form>
+            </td>
+          {% endfor %}
+          <td>
+            {% if current_school.pk == row.school.pk %}
+              <span class="text-sm font-medium text-indigo-700">This school</span>
+            {% elif row.school.is_active %}
+              <form method="post">{% csrf_token %}<input type="hidden" name="school" value="{{ row.school.pk }}">
+                <button name="action" value="work_in" class="btn-secondary btn-sm">Work in this school</button></form>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<div class="mt-4 grid gap-3 sm:grid-cols-2">
+  {% for key, module in modules.items %}
+    <div class="card card-body text-sm"><p class="font-semibold">{{ module.label }}</p><p class="mt-1 text-slate-600">{{ module.description }}</p></div>
+  {% endfor %}
+</div>
+{% endblock %}

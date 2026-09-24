@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "messaging",
     "holidays",
     "reports",
+    "analytics",
 ]
 
 MIDDLEWARE = [

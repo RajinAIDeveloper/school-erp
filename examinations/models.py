@@ -5,9 +5,9 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 
-from academics.models import AcademicYear, ClassLevel, Subject, Term
+from academics.models import AcademicYear, ClassLevel, Section, Subject, Term
 from core.models import AssessmentSystem, SchoolScopedModel
-from students.models import Enrollment
+from students.models import Enrollment, Student
 
 
 class GradeScale(SchoolScopedModel):
@@ -726,3 +726,81 @@ class Seat(SchoolScopedModel):
 
     def __str__(self):
         return f"{self.room} seat {self.number}"
+
+
+# ------------------------------------------------------------------ published results, for analysis
+
+
+class ExamResultFact(SchoolScopedModel):
+    """
+    One student's published result in one exam, laid out for analysis.
+
+    Written from the published snapshot whenever an exam is published or republished, and
+    replaced as a whole each time, so every analytic agrees with the cards. Nothing here is
+    edited by hand; `manage.py rebuild_result_facts` writes it again from the snapshots.
+    """
+
+    exam = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name="result_facts")
+    enrollment = models.ForeignKey(Enrollment, on_delete=models.CASCADE, related_name="result_facts")
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="result_facts")
+    academic_year = models.ForeignKey(AcademicYear, on_delete=models.CASCADE, related_name="+")
+    class_level = models.ForeignKey(ClassLevel, on_delete=models.CASCADE, related_name="+")
+    section = models.ForeignKey(Section, null=True, on_delete=models.CASCADE, related_name="+")
+    version = models.PositiveIntegerField()
+    rulebook = models.CharField(max_length=20)
+    group = models.CharField(max_length=40, blank=True)
+    total = models.DecimalField(max_digits=9, decimal_places=2, null=True)
+    full_total = models.DecimalField(max_digits=9, decimal_places=2, null=True)
+    percent = models.DecimalField(max_digits=6, decimal_places=2, null=True)
+    gpa = models.DecimalField(max_digits=4, decimal_places=2, null=True)
+    points = models.DecimalField(max_digits=6, decimal_places=2, null=True)
+    result = models.CharField(max_length=12, blank=True)
+    section_rank = models.PositiveIntegerField(null=True)
+    class_rank = models.PositiveIntegerField(null=True)
+    # Whether the published card shows positions; a family sees a position only where it does.
+    show_rank = models.BooleanField(default=True)
+    subjects_failed = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["exam", "enrollment"], name="one_result_fact_per_exam")]
+        indexes = [
+            models.Index(fields=["school", "academic_year"]),
+            models.Index(fields=["exam", "class_level", "section"]),
+            models.Index(fields=["student"]),
+        ]
+
+    def __str__(self):
+        return f"{self.exam} · {self.enrollment_id}"
+
+
+class SubjectResultFact(SchoolScopedModel):
+    """One student's published result in one subject of one exam, as the card grades it."""
+
+    exam_fact = models.ForeignKey(ExamResultFact, on_delete=models.CASCADE, related_name="subjects")
+    exam = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name="+")
+    enrollment = models.ForeignKey(Enrollment, on_delete=models.CASCADE, related_name="+")
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="+")
+    section = models.ForeignKey(Section, null=True, on_delete=models.CASCADE, related_name="+")
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name="+")
+    subject_name = models.CharField(max_length=150)
+    # The paper, when the subject is examined in one; two papers graded together have none.
+    schedule = models.ForeignKey(ExamSchedule, null=True, on_delete=models.SET_NULL, related_name="+")
+    papers = models.PositiveSmallIntegerField(default=1)
+    score = models.DecimalField(max_digits=8, decimal_places=2, null=True)
+    full_marks = models.DecimalField(max_digits=8, decimal_places=2, null=True)
+    percent = models.DecimalField(max_digits=6, decimal_places=2, null=True)
+    letter = models.CharField(max_length=10, blank=True)
+    grade_point = models.DecimalField(max_digits=4, decimal_places=2, null=True)
+    passed = models.BooleanField(null=True)
+    absent = models.BooleanField(default=False)
+    is_fourth = models.BooleanField(default=False)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["exam_fact", "subject"], name="one_subject_fact_per_result")]
+        indexes = [
+            models.Index(fields=["exam", "subject", "section"]),
+            models.Index(fields=["student", "subject"]),
+        ]
+
+    def __str__(self):
+        return f"{self.exam_fact} · {self.subject_name}"

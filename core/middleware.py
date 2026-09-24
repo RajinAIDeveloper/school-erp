@@ -16,8 +16,13 @@ class CurrentSchoolMiddleware(MiddlewareMixin):
         user = getattr(request, "user", None)
         if user is not None and user.is_authenticated:
             school = user.school
-            if school is None and user.is_superuser:
-                school = School.objects.filter(is_active=True).order_by("pk").first()
+            if user.is_superuser:
+                # The platform administrator works in whichever school they chose on the platform page.
+                chosen = request.session.get("platform_school") if hasattr(request, "session") else None
+                if chosen:
+                    school = School.objects.filter(pk=chosen, is_active=True).first() or school
+                if school is None:
+                    school = School.objects.filter(is_active=True).order_by("pk").first()
         request.school = school
 
 

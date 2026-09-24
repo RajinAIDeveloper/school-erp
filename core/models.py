@@ -150,6 +150,14 @@ class School(TimeStampedModel):
             "accounting records are kept either way, without the personal details."
         ),
     )
+    # Modules the platform administrator gives a school. A school without one never sees it:
+    # no menu entry, no screen, no report. Only a platform administrator can change these.
+    homework_enabled = models.BooleanField(
+        "Homework module", default=False, help_text="Set by the platform administrator only."
+    )
+    admissions_enabled = models.BooleanField(
+        "Online admissions module", default=False, help_text="Set by the platform administrator only."
+    )
     public_results_enabled = models.BooleanField(
         "Publish results online",
         default=False,

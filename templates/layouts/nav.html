@@ -87,6 +87,7 @@
 <a href="{% url 'users:list' %}" class="{{ base }} {% active request 'users' %}"><span class="w-5 text-center">👥</span> {% translate "User Management" %}</a>
 {% endif %}
 {% if user.is_superuser %}
+<a href="{% url 'platform' %}" class="{{ base }} {% active request 'platform' %}"><span class="w-5 text-center">🌐</span> {% translate "Platform" %}</a>
 <a href="{% url 'admin:index' %}" class="{{ base }}"><span class="w-5 text-center">🛠️</span> {% translate "Django Admin" %}</a>
 {% endif %}
 {% endwith %}

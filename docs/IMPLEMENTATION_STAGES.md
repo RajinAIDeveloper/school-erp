@@ -246,6 +246,11 @@ quizzes, chat) are not being built.
 | P3 | Recompute-and-compare for pilots; early-warning report | Done: test_compare_and_warnings.py. Compare is read-only and for managers; early warning is in Reports, teachers see their own sections |
 | P4 | Transcript; online admissions (module) | Later round |
 | P5 | Full homework (module) | Later round |
+| P6a | Analytics foundation: Vice Principal role (the Principal's access); the platform page where only the platform administrator gives a school a module; the analytics tables, written on every publication and rebuildable; one access check for all analytics | Done: test_analytics_foundation.py |
+| P6b | Student and family progress (portal, English and Bangla), with a printable progress report | |
+| P6c | Teacher and class teacher analytics | |
+| P6d | School analytics for the Principal, Vice Principal and Administrator | |
+| P6e | Homework analytics, with Phase 5 and only for schools given homework | |
 
 Class-highest marks are worked out when a card is shown, from the class's current published
 results, and never stored in a result: storing them would change every card's fingerprint

@@ -23,4 +23,4 @@ class Command(BaseCommand):
                 )
             # The ERP administration pages replace direct Django-admin access.
             group.permissions.set(ids)
-        self.stdout.write(self.style.SUCCESS("Configured 7 ERP roles."))
+        self.stdout.write(self.style.SUCCESS(f"Configured {len(ALL_ROLES)} ERP roles."))

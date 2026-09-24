@@ -373,9 +373,9 @@ def staff_dashboard(school, user):
 
 def build(school, user):
     """Pick the panel that answers this person's question."""
-    from core.roles import ACCOUNTANT, ADMIN, PRINCIPAL, TEACHER, has_role
+    from core.roles import ACCOUNTANT, MANAGERS, TEACHER, has_role
 
-    if has_role(user, ADMIN, PRINCIPAL):
+    if has_role(user, *MANAGERS):
         return manager_dashboard(school, user)
     if has_role(user, ACCOUNTANT):
         return accountant_dashboard(school, user)

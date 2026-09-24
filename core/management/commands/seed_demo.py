@@ -24,6 +24,7 @@ from users.models import User
 DEMO_ROLES = (
     ("demo_admin", "Administrator", "Demo", "Administrator"),
     ("demo_principal", "Principal", "Demo", "Principal"),
+    ("demo_vice", "Vice Principal", "Demo", "Vice Principal"),
     ("demo_accountant", "Accountant", "Demo", "Accountant"),
     ("demo_teacher", "Teacher", "Demo", "Teacher"),
     ("demo_staff", "Staff", "Demo", "Staff"),

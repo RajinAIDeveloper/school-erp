@@ -30,6 +30,7 @@ urlpatterns = [
     path("healthz/", views.healthz, name="healthz"),
     path("", views.dashboard, name="dashboard"),
     path("language/", views.set_language, name="set_language"),
+    path("platform/", views.platform, name="platform"),
     path("results/<slug:slug>/", exam_views.public_results, name="public_results"),
     path("academics/", include("academics.urls")),
     path("students/", include("students.urls")),

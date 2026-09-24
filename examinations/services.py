@@ -701,6 +701,10 @@ def snapshot_exam(exam, user):
             for r in all_rows
         ]
     )
+    from .facts import record_exam
+
+    # The analytics tables follow the published version, in the same transaction.
+    record_exam(exam, all_rows, version)
     first = exam.publication_version == 0
     exam.status = "published"
     exam.publication_version = version

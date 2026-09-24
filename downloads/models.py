@@ -28,7 +28,9 @@ def audience_allows(record, user):
         return False
     if user.school_id != record.school_id and not user.is_superuser:
         return False
-    if user.is_superuser or user.groups.filter(name__in=["Administrator", "Principal"]).exists():
+    from core.roles import MANAGERS
+
+    if user.is_superuser or user.groups.filter(name__in=MANAGERS).exists():
         return True
 
     is_staff_member = (

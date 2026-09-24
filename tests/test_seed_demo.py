@@ -17,10 +17,11 @@ def test_seed_demo_creates_all_role_accounts_and_test_records(settings, tmp_path
     from users.models import User
 
     users = User.objects.filter(username__startswith="demo_")
-    assert users.count() == 7
+    assert users.count() == 8
     assert {name for user in users for name in user.groups.values_list("name", flat=True)} == {
         "Administrator",
         "Principal",
+        "Vice Principal",
         "Accountant",
         "Teacher",
         "Staff",

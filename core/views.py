@@ -9,7 +9,7 @@ from django.views.generic import ListView, UpdateView
 
 from academics.models import AcademicYear
 
-from .access import require_permission
+from .access import platform_admin, require_permission
 from .forms import FinancePolicyForm, NotificationSettingsForm, PaymentSettingsForm, SchoolForm, SMSSettingsForm
 from .mixins import ERPPermissionMixin
 from .models import AuditLog, audit
@@ -371,3 +371,49 @@ def set_language(request):
         request.user.language = choice
         request.user.save(update_fields=["language"])
     return redirect(safe_next(request, request.POST.get("next"), "/"))
+
+
+@platform_admin
+def platform(request):
+    """
+    The platform administrator's page: every school, which modules each has been given, and
+    which school the administrator is working in.
+    """
+    from .models import School
+    from .modules import MODULES
+
+    if request.method == "POST":
+        school = get_object_or_404(School, pk=request.POST.get("school"))
+        action = request.POST.get("action", "")
+        if action == "work_in":
+            request.session["platform_school"] = school.pk
+            messages.success(request, f"You are now working in {school}.")
+        elif action in ("enable", "disable") and request.POST.get("module") in MODULES:
+            key = request.POST["module"]
+            module = MODULES[key]
+            on = action == "enable"
+            if getattr(school, module["field"]) != on:
+                setattr(school, module["field"], on)
+                school.save(update_fields=[module["field"], "updated_at"])
+                AuditLog.objects.create(
+                    school=school,
+                    user=request.user,
+                    action=f"platform.module_{'enabled' if on else 'disabled'}",
+                    model=School._meta.label,
+                    object_id=str(school.pk),
+                    description=f"{module['label']} {'given to' if on else 'taken from'} {school}",
+                )
+            messages.success(request, f"{module['label']} is {'on' if on else 'off'} for {school}.")
+        return redirect("platform")
+    schools = [
+        {
+            "school": school,
+            "modules": [(key, module["label"], getattr(school, module["field"])) for key, module in MODULES.items()],
+        }
+        for school in School.objects.order_by("name")
+    ]
+    return render(
+        request,
+        "core/platform.html",
+        {"schools": schools, "modules": MODULES, "page_title": "Platform"},
+    )

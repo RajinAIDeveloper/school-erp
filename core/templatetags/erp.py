@@ -52,6 +52,14 @@ def shows_rank(row):
 
 
 @register.filter
+def has_module(school, key):
+    """Whether the platform administrator has given this school a module."""
+    from core.modules import has_module as _has
+
+    return _has(school, key)
+
+
+@register.filter
 def can_configure(user):
     """Whether someone can change anything under Basic Settings; seeing the lists is not enough."""
     from core.views import SETTINGS_CARDS

@@ -5,6 +5,7 @@ from functools import wraps
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
+from django.http import Http404
 
 from core.roles import has_role
 
@@ -50,7 +51,29 @@ def require_permission(permission, *, also=""):
 
 
 def is_manager(user):
-    return has_role(user, "Administrator", "Principal")
+    from core.roles import MANAGERS
+
+    return has_role(user, *MANAGERS)
+
+
+def platform_admin(view):
+    """
+    A view for the platform's own administrator (a superuser) and nobody else.
+
+    Everyone else gets "not found", not "forbidden": a school has no reason to know the
+    platform's controls exist.
+    """
+
+    @login_required
+    @wraps(view)
+    def wrapped(request, *args, **kwargs):
+        if not request.user.is_superuser:
+            raise Http404
+        return view(request, *args, **kwargs)
+
+    wrapped.erp_permission = "(platform admin)"
+    wrapped.erp_also = "platform administrator only"
+    return wrapped
 
 
 def plans_timetable(user):

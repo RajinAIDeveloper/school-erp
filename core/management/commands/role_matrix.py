@@ -97,6 +97,8 @@ class Command(BaseCommand):
             for role in roles:
                 if permission == "(public)":
                     marks.append("*")
+                elif permission == "(platform admin)":
+                    marks.append("-")
                 elif permission == "(sign-in only)":
                     marks.append("o")
                 else:
@@ -110,7 +112,8 @@ class Command(BaseCommand):
         # Deliberately ASCII: this output is routinely redirected to a file on
         # Windows, where the console encoding would mangle anything else.
         self.stdout.write(
-            "Y = allowed | . = 403 | o = any signed-in user, scoped inside the view | * = no sign-in needed."
+            "Y = allowed | . = 403 | o = any signed-in user, scoped inside the view | * = no sign-in needed"
+            " | - = platform administrator only (404 for every school account)."
         )
         self.stdout.write(
             "A Y is necessary, not always sufficient: where 'Also enforced' names a further limit, "

@@ -949,3 +949,6 @@ msgstr "অকৃতকার্য বিষয়"
 
 msgid "Near the pass mark"
 msgstr "পাস নম্বরের কাছাকাছি"
+
+msgid "Platform"
+msgstr "প্ল্যাটফর্ম"

@@ -19,252 +19,253 @@ report-card verification page (which names the examination but no child and no m
 health probe. A test asserts that list, so a view that forgets its permission decorator cannot
 quietly join it.
 
-| URL | View | Permission | Also enforced | Administrator | Principal | Accountant | Teacher | Staff | Student | Guardian |
-|---|---|---|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
-| / | dashboard | `(sign-in only)` | - | o | o | o | o | o | o | o |
-| /academics/sections.json | academics:sections_json | `academics.view_section` | - | Y | Y | Y | Y | . | . | . |
-| /academics/subject-plan/ | academics:subject_plan | `academics.view_classsubject` | - | Y | Y | . | . | . | . | . |
-| /attendance/ | attendance:student_take | `(sign-in only)` | - | o | o | o | o | o | o | o |
-| /attendance/leave/ | attendance:leave_list | `attendance.view_leaverequest` | own requests unless a manager | Y | Y | . | Y | Y | . | . |
-| /attendance/leave/<int:pk>/review/ | attendance:leave_review | `attendance.change_leaverequest` | managers only | Y | Y | . | . | . | . | . |
-| /attendance/leave/new/ | attendance:leave_create | `attendance.add_leaverequest` | - | Y | Y | . | Y | Y | . | . |
-| /attendance/report/ | attendance:student_report | `(sign-in only)` | - | o | o | o | o | o | o | o |
-| /attendance/staff/ | attendance:staff_take | `(sign-in only)` | - | o | o | o | o | o | o | o |
-| /attendance/staff/check-in/ | attendance:check_in | `(sign-in only)` | - | o | o | o | o | o | o | o |
-| /attendance/staff/report/ | attendance:staff_report | `(sign-in only)` | - | o | o | o | o | o | o | o |
-| /attendance/student/<int:pk>/ | attendance:student_history | `attendance.view_studentattendance` | own students only | Y | Y | . | Y | . | . | . |
-| /attendance/summary/ | attendance:daily_summary | `attendance.view_studentattendance` | own sections only | Y | Y | . | Y | . | . | . |
-| /downloads/ | downloads:list | `downloads.view_downloaditem` | - | Y | Y | Y | Y | Y | Y | Y |
-| /downloads/<int:pk>/file/ | downloads:file | `(public)` | - | * | * | * | * | * | * | * |
-| /downloads/category/ | downloads:category_list | `downloads.view_downloadcategory` | - | Y | Y | . | . | . | . | . |
-| /downloads/category/<int:pk>/edit/ | downloads:category_update | `downloads.change_downloadcategory` | - | Y | Y | . | . | . | . | . |
-| /downloads/category/new/ | downloads:category_create | `downloads.add_downloadcategory` | - | Y | Y | . | . | . | . | . |
-| /downloads/item/ | downloads:item_list | `downloads.change_downloaditem` | - | Y | Y | . | . | . | . | . |
-| /downloads/item/<int:pk>/edit/ | downloads:item_update | `downloads.change_downloaditem` | - | Y | Y | . | . | . | . | . |
-| /downloads/item/new/ | downloads:item_create | `downloads.add_downloaditem` | - | Y | Y | . | Y | . | . | . |
-| /downloads/new/ | downloads:create | `downloads.add_downloaditem` | - | Y | Y | . | Y | . | . | . |
-| /downloads/notice/ | downloads:notice_list | `downloads.change_notice` | - | Y | Y | . | . | . | . | . |
-| /downloads/notice/<int:pk>/edit/ | downloads:notice_update | `downloads.change_notice` | - | Y | Y | . | . | . | . | . |
-| /downloads/notice/new/ | downloads:notice_create | `downloads.add_notice` | - | Y | Y | . | . | . | . | . |
-| /downloads/notices/ | downloads:notices | `downloads.view_downloaditem` | - | Y | Y | Y | Y | Y | Y | Y |
-| /employees/ | employees:list | `employees.view_employee` | - | Y | Y | Y | . | . | . | . |
-| /employees/<int:pk>/ | employees:detail | `(sign-in only)` | own file unless you hold the roster | o | o | o | o | o | o | o |
-| /employees/<int:pk>/documents/new/ | employees:document_upload | `employees.add_employeedocument` | - | Y | Y | . | . | . | . | . |
-| /employees/<int:pk>/edit/ | employees:update | `employees.change_employee` | - | Y | Y | . | . | . | . | . |
-| /employees/documents/<int:pk>/ | employees:document | `(sign-in only)` | own documents unless a manager | o | o | o | o | o | o | o |
-| /employees/export/ | employees:export | `employees.view_employee` | - | Y | Y | Y | . | . | . | . |
-| /employees/me/ | employees:me | `(sign-in only)` | - | o | o | o | o | o | o | o |
-| /employees/new/ | employees:create | `employees.add_employee` | - | Y | Y | . | . | . | . | . |
-| /exams/ | examinations:exam_list | `examinations.view_exam` | - | Y | Y | . | Y | . | . | . |
-| /exams/<int:exam_pk>/report/<int:student_pk>/ | examinations:report_card | `(sign-in only)` | own children, or sections taught in the exam's year | o | o | o | o | o | o | o |
-| /exams/<int:pk>/ | examinations:exam_detail | `examinations.view_exam` | - | Y | Y | . | Y | . | . | . |
-| /exams/<int:pk>/publish/ | examinations:publish | `examinations.change_exam` | - | Y | Y | . | . | . | . | . |
-| /exams/<int:pk>/routine/ | examinations:exam_routine | `examinations.view_exam` | - | Y | Y | . | Y | . | . | . |
-| /exams/<int:pk>/seating/ | examinations:seat_plans | `examinations.change_exam` | - | Y | Y | . | . | . | . | . |
-| /exams/<int:pk>/seating/sitting/ | examinations:seat_plan | `examinations.change_exam` | - | Y | Y | . | . | . | . | . |
-| /exams/admit-cards.pdf | examinations:admit_cards | `examinations.view_exam` | own sections only | Y | Y | . | Y | . | . | . |
-| /exams/combined/ | examinations:combined_list | `examinations.view_combinedresult` | - | Y | Y | . | . | . | . | . |
-| /exams/combined/<int:pk>/ | examinations:combined_detail | `examinations.view_combinedresult` | - | Y | Y | . | . | . | . | . |
-| /exams/combined/<int:pk>/card/<int:student_pk>/ | examinations:combined_card | `(sign-in only)` | managers; teachers of the section that year; the child's own family | o | o | o | o | o | o | o |
-| /exams/combined/verify/<uuid:code>/ | examinations:combined_verify | `(public)` | - | * | * | * | * | * | * | * |
-| /exams/comments/ | examinations:comments | `examinations.change_resultcomment` | assigned subjects and sections; class teachers overall | Y | Y | . | Y | . | . | . |
-| /exams/estimates/ | examinations:forecasts | `examinations.add_gradeforecast` | subjects taught in the section; managers approve | Y | Y | . | Y | . | . | . |
-| /exams/manage/ | examinations:exam_list | `examinations.view_exam` | - | Y | Y | . | Y | . | . | . |
-| /exams/manage/<int:pk>/edit/ | examinations:exam_update | `examinations.change_exam` | - | Y | Y | . | . | . | . | . |
-| /exams/manage/new/ | examinations:exam_create | `examinations.add_exam` | - | Y | Y | . | . | . | . | . |
-| /exams/marks/ | examinations:marks | `examinations.view_mark` | assigned subjects and sections only | Y | Y | . | Y | . | . | . |
-| /exams/marks/import/ | examinations:marks_import | `examinations.change_mark` | assigned subjects and sections only | Y | Y | . | Y | . | . | . |
-| /exams/marks/save/ | examinations:save_mark | `examinations.change_mark` | - | Y | Y | . | Y | . | . | . |
-| /exams/marks/sheet.pdf | examinations:mark_sheet | `examinations.view_mark` | assigned subjects and sections only | Y | Y | . | Y | . | . | . |
-| /exams/progress/<int:student_pk>/ | examinations:progress | `(sign-in only)` | - | o | o | o | o | o | o | o |
-| /exams/registration/ | examinations:board_registration | `students.view_student` | managers only: identity numbers of students and parents | Y | Y | Y | Y | . | . | . |
-| /exams/report-cards.pdf | examinations:report_cards | `examinations.view_mark` | own sections, published only | Y | Y | . | Y | . | . | . |
-| /exams/results/ | examinations:results | `examinations.view_mark` | own sections only | Y | Y | . | Y | . | . | . |
-| /exams/results/compare/ | examinations:compare_results | `examinations.change_exam` | - | Y | Y | . | . | . | . | . |
-| /exams/scale/ | examinations:scale_list | `examinations.view_gradescale` | - | Y | Y | . | . | . | . | . |
-| /exams/scale/<int:pk>/edit/ | examinations:scale_update | `examinations.change_gradescale` | - | Y | Y | . | . | . | . | . |
-| /exams/scale/new/ | examinations:scale_create | `examinations.add_gradescale` | - | Y | Y | . | . | . | . | . |
-| /exams/scales/<int:pk>/rules/ | examinations:rules | `examinations.change_gradescale` | - | Y | Y | . | . | . | . | . |
-| /exams/scales/presets/ | examinations:scale_presets | `examinations.add_gradescale` | - | Y | Y | . | . | . | . | . |
-| /exams/schedule/ | examinations:schedule_list | `examinations.view_examschedule` | - | Y | Y | . | Y | . | . | . |
-| /exams/schedule/<int:pk>/edit/ | examinations:schedule_update | `examinations.change_examschedule` | - | Y | Y | . | . | . | . | . |
-| /exams/schedule/<int:pk>/parts/ | examinations:paper_parts | `examinations.change_examschedule` | - | Y | Y | . | . | . | . | . |
-| /exams/schedule/<int:pk>/unlock/ | examinations:request_unlock | `examinations.change_mark` | - | Y | Y | . | Y | . | . | . |
-| /exams/schedule/new/ | examinations:schedule_create | `examinations.add_examschedule` | - | Y | Y | . | . | . | . | . |
-| /exams/series/ | examinations:series_list | `examinations.view_examseries` | - | Y | Y | . | . | . | . | . |
-| /exams/series/<int:pk>/ | examinations:series_detail | `examinations.view_examseries` | - | Y | Y | . | . | . | . | . |
-| /exams/series/<int:pk>/entries.csv | examinations:series_export | `examinations.view_examseries` | - | Y | Y | . | . | . | . | . |
-| /exams/series/<int:pk>/results/ | examinations:series_results | `examinations.view_officialresult` | - | Y | Y | . | . | . | . | . |
-| /exams/series/manage/ | examinations:series_list | `examinations.view_examseries` | - | Y | Y | . | . | . | . | . |
-| /exams/series/manage/<int:pk>/edit/ | examinations:series_update | `examinations.change_examseries` | - | Y | Y | . | . | . | . | . |
-| /exams/series/manage/new/ | examinations:series_create | `examinations.add_examseries` | - | Y | Y | . | . | . | . | . |
-| /exams/unlocks/ | examinations:unlocks | `examinations.view_mark` | own requests unless a manager | Y | Y | . | Y | . | . | . |
-| /exams/unlocks/<int:pk>/review/ | examinations:unlock_review | `examinations.change_exam` | - | Y | Y | . | . | . | . | . |
-| /exams/verify/<uuid:code>/ | examinations:verify | `(public)` | - | * | * | * | * | * | * | * |
-| /fees/ | fees:invoice_list | `fees.view_feeinvoice` | - | Y | Y | Y | . | . | . | . |
-| /fees/<int:pk>/ | fees:invoice_detail | `(sign-in only)` | own invoices unless you hold fees | o | o | o | o | o | o | o |
-| /fees/<int:pk>/cancel/ | fees:invoice_cancel | `fees.change_feeinvoice` | - | Y | . | Y | . | . | . | . |
-| /fees/<int:pk>/edit/ | fees:invoice_edit | `fees.change_feeinvoice` | - | Y | . | Y | . | . | . | . |
-| /fees/<int:pk>/pay-online/ | fees:pay_online | `(sign-in only)` | the family's own invoices, or fee staff | o | o | o | o | o | o | o |
-| /fees/category/ | fees:category_list | `fees.view_feecategory` | - | Y | . | Y | . | . | . | . |
-| /fees/category/<int:pk>/edit/ | fees:category_update | `fees.change_feecategory` | - | Y | . | Y | . | . | . | . |
-| /fees/category/new/ | fees:category_create | `fees.add_feecategory` | - | Y | . | Y | . | . | . | . |
-| /fees/concession/ | fees:concession_list | `fees.view_feeconcession` | - | Y | . | Y | . | . | . | . |
-| /fees/concession/<int:pk>/edit/ | fees:concession_update | `fees.change_feeconcession` | - | Y | . | Y | . | . | . | . |
-| /fees/concession/new/ | fees:concession_create | `fees.add_feeconcession` | - | Y | . | Y | . | . | . | . |
-| /fees/due/ | fees:dues | `fees.view_feeinvoice` | - | Y | Y | Y | . | . | . | . |
-| /fees/due/late-fees/ | fees:late_fees | `fees.change_feeinvoice` | - | Y | . | Y | . | . | . | . |
-| /fees/due/remind/ | fees:remind | `messaging.add_smsmessage` | - | Y | Y | Y | . | . | . | . |
-| /fees/generate/ | fees:generate | `fees.add_feeinvoice` | - | Y | . | Y | . | . | . | . |
-| /fees/new/ | fees:invoice_create | `fees.add_feeinvoice` | - | Y | . | Y | . | . | . | . |
-| /fees/online/ | fees:online_payments | `fees.view_feepayment` | - | Y | Y | Y | . | . | . | . |
-| /fees/online/<str:tran_id>/<str:outcome>/ | fees:online_return | `(public)` | - | * | * | * | * | * | * | * |
-| /fees/online/<str:tran_id>/demo/ | fees:online_demo | `(public)` | - | * | * | * | * | * | * | * |
-| /fees/online/notify/ | fees:online_ipn | `(public)` | - | * | * | * | * | * | * | * |
-| /fees/payments/<int:pk>/cancel/ | fees:cancel | `fees.change_feepayment` | - | Y | . | Y | . | . | . | . |
-| /fees/receipts/<int:pk>.pdf | fees:receipt | `(sign-in only)` | own receipts unless you hold fees | o | o | o | o | o | o | o |
-| /fees/reports/ | fees:report | `fees.view_feepayment` | - | Y | Y | Y | . | . | . | . |
-| /fees/statement/<int:student_pk>/ | fees:statement | `(sign-in only)` | own children only | o | o | o | o | o | o | o |
-| /fees/structure/ | fees:structure_list | `fees.view_feestructure` | - | Y | . | Y | . | . | . | . |
-| /fees/structure/<int:pk>/edit/ | fees:structure_update | `fees.change_feestructure` | - | Y | . | Y | . | . | . | . |
-| /fees/structure/new/ | fees:structure_create | `fees.add_feestructure` | - | Y | . | Y | . | . | . | . |
-| /finance/ | finance:dashboard | `finance.view_journalentry` | - | Y | Y | Y | . | . | . | . |
-| /finance/account/ | finance:account_list | `finance.view_account` | - | Y | Y | Y | . | . | . | . |
-| /finance/account/<int:pk>/edit/ | finance:account_update | `finance.change_account` | - | Y | . | Y | . | . | . | . |
-| /finance/account/new/ | finance:account_create | `finance.add_account` | - | Y | . | Y | . | . | . | . |
-| /finance/accounts/<int:pk>/ledger/ | finance:ledger | `finance.view_account` | - | Y | Y | Y | . | . | . | . |
-| /finance/close/ | finance:close_period | `core.change_school` | - | Y | . | . | . | . | . | . |
-| /finance/journals/<int:pk>/reverse/ | finance:reverse | `finance.change_journalentry` | - | Y | . | Y | . | . | . | . |
-| /finance/journals/new/ | finance:journal_create | `finance.add_journalentry` | - | Y | . | Y | . | . | . | . |
-| /finance/journals/quick/ | finance:quick_entry | `finance.add_journalentry` | - | Y | . | Y | . | . | . | . |
-| /finance/opening-balances/ | finance:opening_balances | `finance.add_journalentry` | - | Y | . | Y | . | . | . | . |
-| /finance/payroll/ | finance:payroll | `finance.view_payroll` | - | Y | . | Y | . | . | . | . |
-| /finance/payroll/<int:pk>.pdf | finance:payslip | `finance.view_payroll` | - | Y | . | Y | . | . | . | . |
-| /finance/payroll/<int:pk>/pay/ | finance:payroll_pay | `finance.change_payroll` | - | Y | . | Y | . | . | . | . |
-| /finance/payroll/<int:pk>/reverse/ | finance:payroll_reverse | `finance.change_payroll` | - | Y | . | Y | . | . | . | . |
-| /finance/payroll/new/ | finance:payroll_create | `finance.add_payroll` | - | Y | . | Y | . | . | . | . |
-| /finance/payroll/run/ | finance:payroll_run | `finance.add_payroll` | - | Y | . | Y | . | . | . | . |
-| /finance/reports/ | finance:report | `finance.view_account` | - | Y | Y | Y | . | . | . | . |
-| /finance/reports/balance-sheet/ | finance:balance_sheet | `finance.view_account` | - | Y | Y | Y | . | . | . | . |
-| /finance/reports/cash-book/ | finance:cash_book | `finance.view_account` | - | Y | Y | Y | . | . | . | . |
-| /finance/reports/income/ | finance:income_statement | `finance.view_account` | - | Y | Y | Y | . | . | . | . |
-| /finance/reports/integrity/ | finance:integrity | `finance.view_account` | - | Y | Y | Y | . | . | . | . |
-| /finance/reports/trial-balance/ | finance:trial_balance | `finance.view_account` | - | Y | Y | Y | . | . | . | . |
-| /healthz/ | healthz | `(public)` | - | * | * | * | * | * | * | * |
-| /holidays/ | holidays:list | `holidays.view_holiday` | - | Y | Y | Y | Y | Y | Y | Y |
-| /holidays/<int:pk>/edit/ | holidays:update | `holidays.change_holiday` | - | Y | Y | . | . | . | . | . |
-| /holidays/calendar.ics | holidays:calendar | `holidays.view_holiday` | - | Y | Y | Y | Y | Y | Y | Y |
-| /holidays/calendar/ | holidays:month | `holidays.view_holiday` | - | Y | Y | Y | Y | Y | Y | Y |
-| /holidays/import-national/ | holidays:import_national | `holidays.add_holiday` | - | Y | Y | . | . | . | . | . |
-| /holidays/new/ | holidays:create | `holidays.add_holiday` | - | Y | Y | . | . | . | . | . |
-| /language/ | set_language | `(sign-in only)` | - | o | o | o | o | o | o | o |
-| /portal/ | portal:index | `(sign-in only)` | - | o | o | o | o | o | o | o |
-| /portal/attendance/ | portal:attendance | `(sign-in only)` | - | o | o | o | o | o | o | o |
-| /portal/fees/ | portal:fees | `(sign-in only)` | - | o | o | o | o | o | o | o |
-| /portal/privacy/ | portal:privacy | `(sign-in only)` | - | o | o | o | o | o | o | o |
-| /portal/results/ | portal:results | `(sign-in only)` | - | o | o | o | o | o | o | o |
-| /reports/ | reports:hub | `(sign-in only)` | - | o | o | o | o | o | o | o |
-| /reports/early-warning/ | reports:early_warning | `examinations.view_mark` | own sections unless a manager | Y | Y | . | Y | . | . | . |
-| /reports/leave/ | reports:leave_register | `attendance.view_leaverequest` | own requests unless a manager | Y | Y | . | Y | Y | . | . |
-| /reports/overview/ | reports:overview | `finance.view_account` | - | Y | Y | Y | . | . | . | . |
-| /reports/payroll/ | reports:payroll_register | `finance.view_payroll` | - | Y | . | Y | . | . | . | . |
-| /reports/strength/ | reports:strength | `students.view_student` | - | Y | Y | Y | Y | . | . | . |
-| /reports/teacher-load/ | reports:teacher_load | `timetable.view_routineslot` | timetable editors only | Y | Y | . | Y | Y | Y | Y |
-| /results/<slug:slug>/ | public_results | `(public)` | - | * | * | * | * | * | * | * |
-| /routine/ | timetable:routine | `timetable.view_routineslot` | own class or children unless a manager | Y | Y | . | Y | Y | Y | Y |
-| /routine/edit/ | timetable:grid_edit | `timetable.change_routineslot` | - | Y | Y | . | . | . | . | . |
-| /routine/free-teachers.json | timetable:free_teachers | `timetable.view_routineslot` | timetable editors only | Y | Y | . | Y | Y | Y | Y |
-| /routine/period/ | timetable:period_list | `timetable.change_period` | - | Y | Y | . | . | . | . | . |
-| /routine/period/<int:pk>/edit/ | timetable:period_update | `timetable.change_period` | - | Y | Y | . | . | . | . | . |
-| /routine/period/new/ | timetable:period_create | `timetable.add_period` | - | Y | Y | . | . | . | . | . |
-| /routine/room/ | timetable:room_list | `timetable.change_room` | - | Y | Y | . | . | . | . | . |
-| /routine/room/<int:pk>/edit/ | timetable:room_update | `timetable.change_room` | - | Y | Y | . | . | . | . | . |
-| /routine/room/new/ | timetable:room_create | `timetable.add_room` | - | Y | Y | . | . | . | . | . |
-| /routine/slot/ | timetable:slot_list | `timetable.change_routineslot` | - | Y | Y | . | . | . | . | . |
-| /routine/slot/<int:pk>/edit/ | timetable:slot_update | `timetable.change_routineslot` | - | Y | Y | . | . | . | . | . |
-| /routine/slot/new/ | timetable:slot_create | `timetable.add_routineslot` | - | Y | Y | . | . | . | . | . |
-| /routine/utilisation/ | timetable:utilisation | `timetable.view_routineslot` | timetable editors only | Y | Y | . | Y | Y | Y | Y |
-| /settings/ | settings:hub | `(sign-in only)` | - | o | o | o | o | o | o | o |
-| /settings/audit/ | settings:audit | `core.view_auditlog` | - | Y | . | . | . | . | . | . |
-| /settings/class-subject/ | settings:class_subject_list | `academics.view_classsubject` | - | Y | Y | . | . | . | . | . |
-| /settings/class-subject/<int:pk>/edit/ | settings:class_subject_update | `academics.change_classsubject` | - | Y | Y | . | . | . | . | . |
-| /settings/class-subject/new/ | settings:class_subject_create | `academics.add_classsubject` | - | Y | Y | . | . | . | . | . |
-| /settings/class/ | settings:class_list | `academics.view_classlevel` | - | Y | Y | Y | Y | . | . | . |
-| /settings/class/<int:pk>/edit/ | settings:class_update | `academics.change_classlevel` | - | Y | Y | . | . | . | . | . |
-| /settings/class/new/ | settings:class_create | `academics.add_classlevel` | - | Y | Y | . | . | . | . | . |
-| /settings/department/ | settings:department_list | `employees.view_department` | - | Y | Y | . | . | . | . | . |
-| /settings/department/<int:pk>/edit/ | settings:department_update | `employees.change_department` | - | Y | Y | . | . | . | . | . |
-| /settings/department/new/ | settings:department_create | `employees.add_department` | - | Y | Y | . | . | . | . | . |
-| /settings/designation/ | settings:designation_list | `employees.view_designation` | - | Y | Y | . | . | . | . | . |
-| /settings/designation/<int:pk>/edit/ | settings:designation_update | `employees.change_designation` | - | Y | Y | . | . | . | . | . |
-| /settings/designation/new/ | settings:designation_create | `employees.add_designation` | - | Y | Y | . | . | . | . | . |
-| /settings/initialise/ | settings:initialise | `core.change_school` | - | Y | . | . | . | . | . | . |
-| /settings/leave-type/ | settings:leave_type_list | `attendance.view_leavetype` | - | Y | Y | . | . | . | . | . |
-| /settings/leave-type/<int:pk>/edit/ | settings:leave_type_update | `attendance.change_leavetype` | - | Y | Y | . | . | . | . | . |
-| /settings/leave-type/new/ | settings:leave_type_create | `attendance.add_leavetype` | - | Y | Y | . | . | . | . | . |
-| /settings/notifications/ | settings:notifications | `core.change_school` | - | Y | . | . | . | . | . | . |
-| /settings/payments/ | settings:payments | `core.change_school` | - | Y | . | . | . | . | . | . |
-| /settings/policy/ | settings:policy | `core.change_school` | - | Y | . | . | . | . | . | . |
-| /settings/school/ | settings:school | `core.change_school` | - | Y | . | . | . | . | . | . |
-| /settings/section/ | settings:section_list | `academics.view_section` | - | Y | Y | Y | Y | . | . | . |
-| /settings/section/<int:pk>/edit/ | settings:section_update | `academics.change_section` | - | Y | Y | . | . | . | . | . |
-| /settings/section/new/ | settings:section_create | `academics.add_section` | - | Y | Y | . | . | . | . | . |
-| /settings/sms/ | settings:sms | `core.change_school` | - | Y | . | . | . | . | . | . |
-| /settings/subject-teacher/ | settings:subject_teacher_list | `academics.view_subjectteacher` | - | Y | Y | . | . | . | . | . |
-| /settings/subject-teacher/<int:pk>/edit/ | settings:subject_teacher_update | `academics.change_subjectteacher` | - | Y | Y | . | . | . | . | . |
-| /settings/subject-teacher/new/ | settings:subject_teacher_create | `academics.add_subjectteacher` | - | Y | Y | . | . | . | . | . |
-| /settings/subject/ | settings:subject_list | `academics.view_subject` | - | Y | Y | . | Y | . | . | . |
-| /settings/subject/<int:pk>/edit/ | settings:subject_update | `academics.change_subject` | - | Y | Y | . | . | . | . | . |
-| /settings/subject/new/ | settings:subject_create | `academics.add_subject` | - | Y | Y | . | . | . | . | . |
-| /settings/term/ | settings:term_list | `academics.view_term` | - | Y | Y | . | . | . | . | . |
-| /settings/term/<int:pk>/edit/ | settings:term_update | `academics.change_term` | - | Y | Y | . | . | . | . | . |
-| /settings/term/new/ | settings:term_create | `academics.add_term` | - | Y | Y | . | . | . | . | . |
-| /settings/year/ | settings:year_list | `academics.view_academicyear` | - | Y | Y | Y | Y | . | . | . |
-| /settings/year/<int:pk>/edit/ | settings:year_update | `academics.change_academicyear` | - | Y | Y | . | . | . | . | . |
-| /settings/year/<int:pk>/switch/ | settings:year_switch | `academics.change_academicyear` | - | Y | Y | . | . | . | . | . |
-| /settings/year/new/ | settings:year_create | `academics.add_academicyear` | - | Y | Y | . | . | . | . | . |
-| /sms/ | messaging:batch_list | `messaging.view_smsmessage` | - | Y | Y | Y | . | . | . | . |
-| /sms/<int:pk>/retry/ | messaging:retry | `messaging.add_smsmessage` | - | Y | Y | Y | . | . | . | . |
-| /sms/batch/<int:pk>/ | messaging:batch_detail | `messaging.view_smsmessage` | - | Y | Y | Y | . | . | . | . |
-| /sms/batch/<int:pk>/retry/ | messaging:retry_batch | `messaging.add_smsmessage` | - | Y | Y | Y | . | . | . | . |
-| /sms/compose/ | messaging:compose | `messaging.add_smsmessage` | - | Y | Y | Y | . | . | . | . |
-| /sms/gateway-test/ | messaging:gateway_test | `core.change_school` | - | Y | . | . | . | . | . | . |
-| /sms/outbox/ | messaging:message_list | `messaging.view_smsmessage` | - | Y | Y | Y | . | . | . | . |
-| /sms/template/ | messaging:template_list | `messaging.view_smstemplate` | - | Y | Y | . | . | . | . | . |
-| /sms/template/<int:pk>/edit/ | messaging:template_update | `messaging.change_smstemplate` | - | Y | Y | . | . | . | . | . |
-| /sms/template/new/ | messaging:template_create | `messaging.add_smstemplate` | - | Y | Y | . | . | . | . | . |
-| /students/ | students:list | `students.view_student` | - | Y | Y | Y | Y | . | . | . |
-| /students/<int:pk>/ | students:detail | `(sign-in only)` | own children or your own sections | o | o | o | o | o | o | o |
-| /students/<int:pk>/certificates/ | students:certificates | `students.view_certificate` | - | Y | Y | . | . | . | . | . |
-| /students/<int:pk>/consent/ | students:consent | `students.change_student` | - | Y | Y | . | . | . | . | . |
-| /students/<int:pk>/documents/new/ | students:document_upload | `students.add_studentdocument` | - | Y | Y | . | . | . | . | . |
-| /students/<int:pk>/edit/ | students:update | `students.change_student` | - | Y | Y | . | . | . | . | . |
-| /students/<int:pk>/id-card.pdf | students:id_card | `(sign-in only)` | - | o | o | o | o | o | o | o |
-| /students/<int:pk>/leaving/ | students:leaving | `students.change_student` | - | Y | Y | . | . | . | . | . |
-| /students/<int:pk>/result-code/ | students:reissue_result_code | `students.change_student` | - | Y | Y | . | . | . | . | . |
-| /students/<int:student_pk>/guardian/ | students:guardian_create | `students.add_guardian` | - | Y | Y | . | . | . | . | . |
-| /students/admit/ | students:admission | `students.add_student` | - | Y | Y | . | . | . | . | . |
-| /students/certificates/<int:pk>/ | students:certificate | `students.view_certificate` | - | Y | Y | . | . | . | . | . |
-| /students/certificates/verify/<uuid:code>/ | students:certificate_verify | `(public)` | - | * | * | * | * | * | * | * |
-| /students/choices/ | students:subject_choices | `students.change_enrollment` | - | Y | Y | . | . | . | . | . |
-| /students/documents/<int:pk>/ | students:document | `(sign-in only)` | - | o | o | o | o | o | o | o |
-| /students/enrollment/ | students:enrollment_list | `students.view_enrollment` | - | Y | Y | Y | Y | . | . | . |
-| /students/enrollment/<int:pk>/edit/ | students:enrollment_update | `students.change_enrollment` | - | Y | Y | . | . | . | . | . |
-| /students/enrollment/new/ | students:enrollment_create | `students.add_enrollment` | - | Y | Y | . | . | . | . | . |
-| /students/export/ | students:export | `students.view_student` | - | Y | Y | Y | Y | . | . | . |
-| /students/id-cards.pdf | students:id_cards | `students.view_student` | - | Y | Y | Y | Y | . | . | . |
-| /students/import/ | students:import | `students.add_student` | - | Y | Y | . | . | . | . | . |
-| /students/new/ | students:create | `students.add_student` | - | Y | Y | . | . | . | . | . |
-| /students/promote/ | students:promote | `students.change_enrollment` | - | Y | Y | . | . | . | . | . |
-| /students/retention/ | students:retention | `students.delete_student` | managers only | Y | Y | . | . | . | . | . |
-| /users/ | users:list | `users.view_user` | - | Y | Y | . | . | . | . | . |
-| /users/<int:pk>/ | users:detail | `users.view_user` | - | Y | Y | . | . | . | . | . |
-| /users/<int:pk>/edit/ | users:update | `users.change_user` | - | Y | . | . | . | . | . | . |
-| /users/<int:pk>/reset/ | users:reset | `users.change_user` | - | Y | . | . | . | . | . | . |
-| /users/new/ | users:create | `users.add_user` | - | Y | . | . | . | . | . | . |
-| /users/profile/ | users:profile | `(sign-in only)` | - | o | o | o | o | o | o | o |
-| /users/provision/ | users:provision_bulk | `users.add_user` | - | Y | . | . | . | . | . | . |
-| /users/provision/<str:kind>/<int:pk>/ | users:provision | `users.add_user` | - | Y | . | . | . | . | . | . |
+| URL | View | Permission | Also enforced | Administrator | Principal | Vice Principal | Accountant | Teacher | Staff | Student | Guardian |
+|---|---|---|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| / | dashboard | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
+| /academics/sections.json | academics:sections_json | `academics.view_section` | - | Y | Y | Y | Y | Y | . | . | . |
+| /academics/subject-plan/ | academics:subject_plan | `academics.view_classsubject` | - | Y | Y | Y | . | . | . | . | . |
+| /attendance/ | attendance:student_take | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
+| /attendance/leave/ | attendance:leave_list | `attendance.view_leaverequest` | own requests unless a manager | Y | Y | Y | . | Y | Y | . | . |
+| /attendance/leave/<int:pk>/review/ | attendance:leave_review | `attendance.change_leaverequest` | managers only | Y | Y | Y | . | . | . | . | . |
+| /attendance/leave/new/ | attendance:leave_create | `attendance.add_leaverequest` | - | Y | Y | Y | . | Y | Y | . | . |
+| /attendance/report/ | attendance:student_report | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
+| /attendance/staff/ | attendance:staff_take | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
+| /attendance/staff/check-in/ | attendance:check_in | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
+| /attendance/staff/report/ | attendance:staff_report | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
+| /attendance/student/<int:pk>/ | attendance:student_history | `attendance.view_studentattendance` | own students only | Y | Y | Y | . | Y | . | . | . |
+| /attendance/summary/ | attendance:daily_summary | `attendance.view_studentattendance` | own sections only | Y | Y | Y | . | Y | . | . | . |
+| /downloads/ | downloads:list | `downloads.view_downloaditem` | - | Y | Y | Y | Y | Y | Y | Y | Y |
+| /downloads/<int:pk>/file/ | downloads:file | `(public)` | - | * | * | * | * | * | * | * | * |
+| /downloads/category/ | downloads:category_list | `downloads.view_downloadcategory` | - | Y | Y | Y | . | . | . | . | . |
+| /downloads/category/<int:pk>/edit/ | downloads:category_update | `downloads.change_downloadcategory` | - | Y | Y | Y | . | . | . | . | . |
+| /downloads/category/new/ | downloads:category_create | `downloads.add_downloadcategory` | - | Y | Y | Y | . | . | . | . | . |
+| /downloads/item/ | downloads:item_list | `downloads.change_downloaditem` | - | Y | Y | Y | . | . | . | . | . |
+| /downloads/item/<int:pk>/edit/ | downloads:item_update | `downloads.change_downloaditem` | - | Y | Y | Y | . | . | . | . | . |
+| /downloads/item/new/ | downloads:item_create | `downloads.add_downloaditem` | - | Y | Y | Y | . | Y | . | . | . |
+| /downloads/new/ | downloads:create | `downloads.add_downloaditem` | - | Y | Y | Y | . | Y | . | . | . |
+| /downloads/notice/ | downloads:notice_list | `downloads.change_notice` | - | Y | Y | Y | . | . | . | . | . |
+| /downloads/notice/<int:pk>/edit/ | downloads:notice_update | `downloads.change_notice` | - | Y | Y | Y | . | . | . | . | . |
+| /downloads/notice/new/ | downloads:notice_create | `downloads.add_notice` | - | Y | Y | Y | . | . | . | . | . |
+| /downloads/notices/ | downloads:notices | `downloads.view_downloaditem` | - | Y | Y | Y | Y | Y | Y | Y | Y |
+| /employees/ | employees:list | `employees.view_employee` | - | Y | Y | Y | Y | . | . | . | . |
+| /employees/<int:pk>/ | employees:detail | `(sign-in only)` | own file unless you hold the roster | o | o | o | o | o | o | o | o |
+| /employees/<int:pk>/documents/new/ | employees:document_upload | `employees.add_employeedocument` | - | Y | Y | Y | . | . | . | . | . |
+| /employees/<int:pk>/edit/ | employees:update | `employees.change_employee` | - | Y | Y | Y | . | . | . | . | . |
+| /employees/documents/<int:pk>/ | employees:document | `(sign-in only)` | own documents unless a manager | o | o | o | o | o | o | o | o |
+| /employees/export/ | employees:export | `employees.view_employee` | - | Y | Y | Y | Y | . | . | . | . |
+| /employees/me/ | employees:me | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
+| /employees/new/ | employees:create | `employees.add_employee` | - | Y | Y | Y | . | . | . | . | . |
+| /exams/ | examinations:exam_list | `examinations.view_exam` | - | Y | Y | Y | . | Y | . | . | . |
+| /exams/<int:exam_pk>/report/<int:student_pk>/ | examinations:report_card | `(sign-in only)` | own children, or sections taught in the exam's year | o | o | o | o | o | o | o | o |
+| /exams/<int:pk>/ | examinations:exam_detail | `examinations.view_exam` | - | Y | Y | Y | . | Y | . | . | . |
+| /exams/<int:pk>/publish/ | examinations:publish | `examinations.change_exam` | - | Y | Y | Y | . | . | . | . | . |
+| /exams/<int:pk>/routine/ | examinations:exam_routine | `examinations.view_exam` | - | Y | Y | Y | . | Y | . | . | . |
+| /exams/<int:pk>/seating/ | examinations:seat_plans | `examinations.change_exam` | - | Y | Y | Y | . | . | . | . | . |
+| /exams/<int:pk>/seating/sitting/ | examinations:seat_plan | `examinations.change_exam` | - | Y | Y | Y | . | . | . | . | . |
+| /exams/admit-cards.pdf | examinations:admit_cards | `examinations.view_exam` | own sections only | Y | Y | Y | . | Y | . | . | . |
+| /exams/combined/ | examinations:combined_list | `examinations.view_combinedresult` | - | Y | Y | Y | . | . | . | . | . |
+| /exams/combined/<int:pk>/ | examinations:combined_detail | `examinations.view_combinedresult` | - | Y | Y | Y | . | . | . | . | . |
+| /exams/combined/<int:pk>/card/<int:student_pk>/ | examinations:combined_card | `(sign-in only)` | managers; teachers of the section that year; the child's own family | o | o | o | o | o | o | o | o |
+| /exams/combined/verify/<uuid:code>/ | examinations:combined_verify | `(public)` | - | * | * | * | * | * | * | * | * |
+| /exams/comments/ | examinations:comments | `examinations.change_resultcomment` | assigned subjects and sections; class teachers overall | Y | Y | Y | . | Y | . | . | . |
+| /exams/estimates/ | examinations:forecasts | `examinations.add_gradeforecast` | subjects taught in the section; managers approve | Y | Y | Y | . | Y | . | . | . |
+| /exams/manage/ | examinations:exam_list | `examinations.view_exam` | - | Y | Y | Y | . | Y | . | . | . |
+| /exams/manage/<int:pk>/edit/ | examinations:exam_update | `examinations.change_exam` | - | Y | Y | Y | . | . | . | . | . |
+| /exams/manage/new/ | examinations:exam_create | `examinations.add_exam` | - | Y | Y | Y | . | . | . | . | . |
+| /exams/marks/ | examinations:marks | `examinations.view_mark` | assigned subjects and sections only | Y | Y | Y | . | Y | . | . | . |
+| /exams/marks/import/ | examinations:marks_import | `examinations.change_mark` | assigned subjects and sections only | Y | Y | Y | . | Y | . | . | . |
+| /exams/marks/save/ | examinations:save_mark | `examinations.change_mark` | - | Y | Y | Y | . | Y | . | . | . |
+| /exams/marks/sheet.pdf | examinations:mark_sheet | `examinations.view_mark` | assigned subjects and sections only | Y | Y | Y | . | Y | . | . | . |
+| /exams/progress/<int:student_pk>/ | examinations:progress | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
+| /exams/registration/ | examinations:board_registration | `students.view_student` | managers only: identity numbers of students and parents | Y | Y | Y | Y | Y | . | . | . |
+| /exams/report-cards.pdf | examinations:report_cards | `examinations.view_mark` | own sections, published only | Y | Y | Y | . | Y | . | . | . |
+| /exams/results/ | examinations:results | `examinations.view_mark` | own sections only | Y | Y | Y | . | Y | . | . | . |
+| /exams/results/compare/ | examinations:compare_results | `examinations.change_exam` | - | Y | Y | Y | . | . | . | . | . |
+| /exams/scale/ | examinations:scale_list | `examinations.view_gradescale` | - | Y | Y | Y | . | . | . | . | . |
+| /exams/scale/<int:pk>/edit/ | examinations:scale_update | `examinations.change_gradescale` | - | Y | Y | Y | . | . | . | . | . |
+| /exams/scale/new/ | examinations:scale_create | `examinations.add_gradescale` | - | Y | Y | Y | . | . | . | . | . |
+| /exams/scales/<int:pk>/rules/ | examinations:rules | `examinations.change_gradescale` | - | Y | Y | Y | . | . | . | . | . |
+| /exams/scales/presets/ | examinations:scale_presets | `examinations.add_gradescale` | - | Y | Y | Y | . | . | . | . | . |
+| /exams/schedule/ | examinations:schedule_list | `examinations.view_examschedule` | - | Y | Y | Y | . | Y | . | . | . |
+| /exams/schedule/<int:pk>/edit/ | examinations:schedule_update | `examinations.change_examschedule` | - | Y | Y | Y | . | . | . | . | . |
+| /exams/schedule/<int:pk>/parts/ | examinations:paper_parts | `examinations.change_examschedule` | - | Y | Y | Y | . | . | . | . | . |
+| /exams/schedule/<int:pk>/unlock/ | examinations:request_unlock | `examinations.change_mark` | - | Y | Y | Y | . | Y | . | . | . |
+| /exams/schedule/new/ | examinations:schedule_create | `examinations.add_examschedule` | - | Y | Y | Y | . | . | . | . | . |
+| /exams/series/ | examinations:series_list | `examinations.view_examseries` | - | Y | Y | Y | . | . | . | . | . |
+| /exams/series/<int:pk>/ | examinations:series_detail | `examinations.view_examseries` | - | Y | Y | Y | . | . | . | . | . |
+| /exams/series/<int:pk>/entries.csv | examinations:series_export | `examinations.view_examseries` | - | Y | Y | Y | . | . | . | . | . |
+| /exams/series/<int:pk>/results/ | examinations:series_results | `examinations.view_officialresult` | - | Y | Y | Y | . | . | . | . | . |
+| /exams/series/manage/ | examinations:series_list | `examinations.view_examseries` | - | Y | Y | Y | . | . | . | . | . |
+| /exams/series/manage/<int:pk>/edit/ | examinations:series_update | `examinations.change_examseries` | - | Y | Y | Y | . | . | . | . | . |
+| /exams/series/manage/new/ | examinations:series_create | `examinations.add_examseries` | - | Y | Y | Y | . | . | . | . | . |
+| /exams/unlocks/ | examinations:unlocks | `examinations.view_mark` | own requests unless a manager | Y | Y | Y | . | Y | . | . | . |
+| /exams/unlocks/<int:pk>/review/ | examinations:unlock_review | `examinations.change_exam` | - | Y | Y | Y | . | . | . | . | . |
+| /exams/verify/<uuid:code>/ | examinations:verify | `(public)` | - | * | * | * | * | * | * | * | * |
+| /fees/ | fees:invoice_list | `fees.view_feeinvoice` | - | Y | Y | Y | Y | . | . | . | . |
+| /fees/<int:pk>/ | fees:invoice_detail | `(sign-in only)` | own invoices unless you hold fees | o | o | o | o | o | o | o | o |
+| /fees/<int:pk>/cancel/ | fees:invoice_cancel | `fees.change_feeinvoice` | - | Y | . | . | Y | . | . | . | . |
+| /fees/<int:pk>/edit/ | fees:invoice_edit | `fees.change_feeinvoice` | - | Y | . | . | Y | . | . | . | . |
+| /fees/<int:pk>/pay-online/ | fees:pay_online | `(sign-in only)` | the family's own invoices, or fee staff | o | o | o | o | o | o | o | o |
+| /fees/category/ | fees:category_list | `fees.view_feecategory` | - | Y | . | . | Y | . | . | . | . |
+| /fees/category/<int:pk>/edit/ | fees:category_update | `fees.change_feecategory` | - | Y | . | . | Y | . | . | . | . |
+| /fees/category/new/ | fees:category_create | `fees.add_feecategory` | - | Y | . | . | Y | . | . | . | . |
+| /fees/concession/ | fees:concession_list | `fees.view_feeconcession` | - | Y | . | . | Y | . | . | . | . |
+| /fees/concession/<int:pk>/edit/ | fees:concession_update | `fees.change_feeconcession` | - | Y | . | . | Y | . | . | . | . |
+| /fees/concession/new/ | fees:concession_create | `fees.add_feeconcession` | - | Y | . | . | Y | . | . | . | . |
+| /fees/due/ | fees:dues | `fees.view_feeinvoice` | - | Y | Y | Y | Y | . | . | . | . |
+| /fees/due/late-fees/ | fees:late_fees | `fees.change_feeinvoice` | - | Y | . | . | Y | . | . | . | . |
+| /fees/due/remind/ | fees:remind | `messaging.add_smsmessage` | - | Y | Y | Y | Y | . | . | . | . |
+| /fees/generate/ | fees:generate | `fees.add_feeinvoice` | - | Y | . | . | Y | . | . | . | . |
+| /fees/new/ | fees:invoice_create | `fees.add_feeinvoice` | - | Y | . | . | Y | . | . | . | . |
+| /fees/online/ | fees:online_payments | `fees.view_feepayment` | - | Y | Y | Y | Y | . | . | . | . |
+| /fees/online/<str:tran_id>/<str:outcome>/ | fees:online_return | `(public)` | - | * | * | * | * | * | * | * | * |
+| /fees/online/<str:tran_id>/demo/ | fees:online_demo | `(public)` | - | * | * | * | * | * | * | * | * |
+| /fees/online/notify/ | fees:online_ipn | `(public)` | - | * | * | * | * | * | * | * | * |
+| /fees/payments/<int:pk>/cancel/ | fees:cancel | `fees.change_feepayment` | - | Y | . | . | Y | . | . | . | . |
+| /fees/receipts/<int:pk>.pdf | fees:receipt | `(sign-in only)` | own receipts unless you hold fees | o | o | o | o | o | o | o | o |
+| /fees/reports/ | fees:report | `fees.view_feepayment` | - | Y | Y | Y | Y | . | . | . | . |
+| /fees/statement/<int:student_pk>/ | fees:statement | `(sign-in only)` | own children only | o | o | o | o | o | o | o | o |
+| /fees/structure/ | fees:structure_list | `fees.view_feestructure` | - | Y | . | . | Y | . | . | . | . |
+| /fees/structure/<int:pk>/edit/ | fees:structure_update | `fees.change_feestructure` | - | Y | . | . | Y | . | . | . | . |
+| /fees/structure/new/ | fees:structure_create | `fees.add_feestructure` | - | Y | . | . | Y | . | . | . | . |
+| /finance/ | finance:dashboard | `finance.view_journalentry` | - | Y | Y | Y | Y | . | . | . | . |
+| /finance/account/ | finance:account_list | `finance.view_account` | - | Y | Y | Y | Y | . | . | . | . |
+| /finance/account/<int:pk>/edit/ | finance:account_update | `finance.change_account` | - | Y | . | . | Y | . | . | . | . |
+| /finance/account/new/ | finance:account_create | `finance.add_account` | - | Y | . | . | Y | . | . | . | . |
+| /finance/accounts/<int:pk>/ledger/ | finance:ledger | `finance.view_account` | - | Y | Y | Y | Y | . | . | . | . |
+| /finance/close/ | finance:close_period | `core.change_school` | - | Y | . | . | . | . | . | . | . |
+| /finance/journals/<int:pk>/reverse/ | finance:reverse | `finance.change_journalentry` | - | Y | . | . | Y | . | . | . | . |
+| /finance/journals/new/ | finance:journal_create | `finance.add_journalentry` | - | Y | . | . | Y | . | . | . | . |
+| /finance/journals/quick/ | finance:quick_entry | `finance.add_journalentry` | - | Y | . | . | Y | . | . | . | . |
+| /finance/opening-balances/ | finance:opening_balances | `finance.add_journalentry` | - | Y | . | . | Y | . | . | . | . |
+| /finance/payroll/ | finance:payroll | `finance.view_payroll` | - | Y | . | . | Y | . | . | . | . |
+| /finance/payroll/<int:pk>.pdf | finance:payslip | `finance.view_payroll` | - | Y | . | . | Y | . | . | . | . |
+| /finance/payroll/<int:pk>/pay/ | finance:payroll_pay | `finance.change_payroll` | - | Y | . | . | Y | . | . | . | . |
+| /finance/payroll/<int:pk>/reverse/ | finance:payroll_reverse | `finance.change_payroll` | - | Y | . | . | Y | . | . | . | . |
+| /finance/payroll/new/ | finance:payroll_create | `finance.add_payroll` | - | Y | . | . | Y | . | . | . | . |
+| /finance/payroll/run/ | finance:payroll_run | `finance.add_payroll` | - | Y | . | . | Y | . | . | . | . |
+| /finance/reports/ | finance:report | `finance.view_account` | - | Y | Y | Y | Y | . | . | . | . |
+| /finance/reports/balance-sheet/ | finance:balance_sheet | `finance.view_account` | - | Y | Y | Y | Y | . | . | . | . |
+| /finance/reports/cash-book/ | finance:cash_book | `finance.view_account` | - | Y | Y | Y | Y | . | . | . | . |
+| /finance/reports/income/ | finance:income_statement | `finance.view_account` | - | Y | Y | Y | Y | . | . | . | . |
+| /finance/reports/integrity/ | finance:integrity | `finance.view_account` | - | Y | Y | Y | Y | . | . | . | . |
+| /finance/reports/trial-balance/ | finance:trial_balance | `finance.view_account` | - | Y | Y | Y | Y | . | . | . | . |
+| /healthz/ | healthz | `(public)` | - | * | * | * | * | * | * | * | * |
+| /holidays/ | holidays:list | `holidays.view_holiday` | - | Y | Y | Y | Y | Y | Y | Y | Y |
+| /holidays/<int:pk>/edit/ | holidays:update | `holidays.change_holiday` | - | Y | Y | Y | . | . | . | . | . |
+| /holidays/calendar.ics | holidays:calendar | `holidays.view_holiday` | - | Y | Y | Y | Y | Y | Y | Y | Y |
+| /holidays/calendar/ | holidays:month | `holidays.view_holiday` | - | Y | Y | Y | Y | Y | Y | Y | Y |
+| /holidays/import-national/ | holidays:import_national | `holidays.add_holiday` | - | Y | Y | Y | . | . | . | . | . |
+| /holidays/new/ | holidays:create | `holidays.add_holiday` | - | Y | Y | Y | . | . | . | . | . |
+| /language/ | set_language | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
+| /platform/ | platform | `(platform admin)` | platform administrator only | - | - | - | - | - | - | - | - |
+| /portal/ | portal:index | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
+| /portal/attendance/ | portal:attendance | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
+| /portal/fees/ | portal:fees | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
+| /portal/privacy/ | portal:privacy | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
+| /portal/results/ | portal:results | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
+| /reports/ | reports:hub | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
+| /reports/early-warning/ | reports:early_warning | `examinations.view_mark` | own sections unless a manager | Y | Y | Y | . | Y | . | . | . |
+| /reports/leave/ | reports:leave_register | `attendance.view_leaverequest` | own requests unless a manager | Y | Y | Y | . | Y | Y | . | . |
+| /reports/overview/ | reports:overview | `finance.view_account` | - | Y | Y | Y | Y | . | . | . | . |
+| /reports/payroll/ | reports:payroll_register | `finance.view_payroll` | - | Y | . | . | Y | . | . | . | . |
+| /reports/strength/ | reports:strength | `students.view_student` | - | Y | Y | Y | Y | Y | . | . | . |
+| /reports/teacher-load/ | reports:teacher_load | `timetable.view_routineslot` | timetable editors only | Y | Y | Y | . | Y | Y | Y | Y |
+| /results/<slug:slug>/ | public_results | `(public)` | - | * | * | * | * | * | * | * | * |
+| /routine/ | timetable:routine | `timetable.view_routineslot` | own class or children unless a manager | Y | Y | Y | . | Y | Y | Y | Y |
+| /routine/edit/ | timetable:grid_edit | `timetable.change_routineslot` | - | Y | Y | Y | . | . | . | . | . |
+| /routine/free-teachers.json | timetable:free_teachers | `timetable.view_routineslot` | timetable editors only | Y | Y | Y | . | Y | Y | Y | Y |
+| /routine/period/ | timetable:period_list | `timetable.change_period` | - | Y | Y | Y | . | . | . | . | . |
+| /routine/period/<int:pk>/edit/ | timetable:period_update | `timetable.change_period` | - | Y | Y | Y | . | . | . | . | . |
+| /routine/period/new/ | timetable:period_create | `timetable.add_period` | - | Y | Y | Y | . | . | . | . | . |
+| /routine/room/ | timetable:room_list | `timetable.change_room` | - | Y | Y | Y | . | . | . | . | . |
+| /routine/room/<int:pk>/edit/ | timetable:room_update | `timetable.change_room` | - | Y | Y | Y | . | . | . | . | . |
+| /routine/room/new/ | timetable:room_create | `timetable.add_room` | - | Y | Y | Y | . | . | . | . | . |
+| /routine/slot/ | timetable:slot_list | `timetable.change_routineslot` | - | Y | Y | Y | . | . | . | . | . |
+| /routine/slot/<int:pk>/edit/ | timetable:slot_update | `timetable.change_routineslot` | - | Y | Y | Y | . | . | . | . | . |
+| /routine/slot/new/ | timetable:slot_create | `timetable.add_routineslot` | - | Y | Y | Y | . | . | . | . | . |
+| /routine/utilisation/ | timetable:utilisation | `timetable.view_routineslot` | timetable editors only | Y | Y | Y | . | Y | Y | Y | Y |
+| /settings/ | settings:hub | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
+| /settings/audit/ | settings:audit | `core.view_auditlog` | - | Y | . | . | . | . | . | . | . |
+| /settings/class-subject/ | settings:class_subject_list | `academics.view_classsubject` | - | Y | Y | Y | . | . | . | . | . |
+| /settings/class-subject/<int:pk>/edit/ | settings:class_subject_update | `academics.change_classsubject` | - | Y | Y | Y | . | . | . | . | . |
+| /settings/class-subject/new/ | settings:class_subject_create | `academics.add_classsubject` | - | Y | Y | Y | . | . | . | . | . |
+| /settings/class/ | settings:class_list | `academics.view_classlevel` | - | Y | Y | Y | Y | Y | . | . | . |
+| /settings/class/<int:pk>/edit/ | settings:class_update | `academics.change_classlevel` | - | Y | Y | Y | . | . | . | . | . |
+| /settings/class/new/ | settings:class_create | `academics.add_classlevel` | - | Y | Y | Y | . | . | . | . | . |
+| /settings/department/ | settings:department_list | `employees.view_department` | - | Y | Y | Y | . | . | . | . | . |
+| /settings/department/<int:pk>/edit/ | settings:department_update | `employees.change_department` | - | Y | Y | Y | . | . | . | . | . |
+| /settings/department/new/ | settings:department_create | `employees.add_department` | - | Y | Y | Y | . | . | . | . | . |
+| /settings/designation/ | settings:designation_list | `employees.view_designation` | - | Y | Y | Y | . | . | . | . | . |
+| /settings/designation/<int:pk>/edit/ | settings:designation_update | `employees.change_designation` | - | Y | Y | Y | . | . | . | . | . |
+| /settings/designation/new/ | settings:designation_create | `employees.add_designation` | - | Y | Y | Y | . | . | . | . | . |
+| /settings/initialise/ | settings:initialise | `core.change_school` | - | Y | . | . | . | . | . | . | . |
+| /settings/leave-type/ | settings:leave_type_list | `attendance.view_leavetype` | - | Y | Y | Y | . | . | . | . | . |
+| /settings/leave-type/<int:pk>/edit/ | settings:leave_type_update | `attendance.change_leavetype` | - | Y | Y | Y | . | . | . | . | . |
+| /settings/leave-type/new/ | settings:leave_type_create | `attendance.add_leavetype` | - | Y | Y | Y | . | . | . | . | . |
+| /settings/notifications/ | settings:notifications | `core.change_school` | - | Y | . | . | . | . | . | . | . |
+| /settings/payments/ | settings:payments | `core.change_school` | - | Y | . | . | . | . | . | . | . |
+| /settings/policy/ | settings:policy | `core.change_school` | - | Y | . | . | . | . | . | . | . |
+| /settings/school/ | settings:school | `core.change_school` | - | Y | . | . | . | . | . | . | . |
+| /settings/section/ | settings:section_list | `academics.view_section` | - | Y | Y | Y | Y | Y | . | . | . |
+| /settings/section/<int:pk>/edit/ | settings:section_update | `academics.change_section` | - | Y | Y | Y | . | . | . | . | . |
+| /settings/section/new/ | settings:section_create | `academics.add_section` | - | Y | Y | Y | . | . | . | . | . |
+| /settings/sms/ | settings:sms | `core.change_school` | - | Y | . | . | . | . | . | . | . |
+| /settings/subject-teacher/ | settings:subject_teacher_list | `academics.view_subjectteacher` | - | Y | Y | Y | . | . | . | . | . |
+| /settings/subject-teacher/<int:pk>/edit/ | settings:subject_teacher_update | `academics.change_subjectteacher` | - | Y | Y | Y | . | . | . | . | . |
+| /settings/subject-teacher/new/ | settings:subject_teacher_create | `academics.add_subjectteacher` | - | Y | Y | Y | . | . | . | . | . |
+| /settings/subject/ | settings:subject_list | `academics.view_subject` | - | Y | Y | Y | . | Y | . | . | . |
+| /settings/subject/<int:pk>/edit/ | settings:subject_update | `academics.change_subject` | - | Y | Y | Y | . | . | . | . | . |
+| /settings/subject/new/ | settings:subject_create | `academics.add_subject` | - | Y | Y | Y | . | . | . | . | . |
+| /settings/term/ | settings:term_list | `academics.view_term` | - | Y | Y | Y | . | . | . | . | . |
+| /settings/term/<int:pk>/edit/ | settings:term_update | `academics.change_term` | - | Y | Y | Y | . | . | . | . | . |
+| /settings/term/new/ | settings:term_create | `academics.add_term` | - | Y | Y | Y | . | . | . | . | . |
+| /settings/year/ | settings:year_list | `academics.view_academicyear` | - | Y | Y | Y | Y | Y | . | . | . |
+| /settings/year/<int:pk>/edit/ | settings:year_update | `academics.change_academicyear` | - | Y | Y | Y | . | . | . | . | . |
+| /settings/year/<int:pk>/switch/ | settings:year_switch | `academics.change_academicyear` | - | Y | Y | Y | . | . | . | . | . |
+| /settings/year/new/ | settings:year_create | `academics.add_academicyear` | - | Y | Y | Y | . | . | . | . | . |
+| /sms/ | messaging:batch_list | `messaging.view_smsmessage` | - | Y | Y | Y | Y | . | . | . | . |
+| /sms/<int:pk>/retry/ | messaging:retry | `messaging.add_smsmessage` | - | Y | Y | Y | Y | . | . | . | . |
+| /sms/batch/<int:pk>/ | messaging:batch_detail | `messaging.view_smsmessage` | - | Y | Y | Y | Y | . | . | . | . |
+| /sms/batch/<int:pk>/retry/ | messaging:retry_batch | `messaging.add_smsmessage` | - | Y | Y | Y | Y | . | . | . | . |
+| /sms/compose/ | messaging:compose | `messaging.add_smsmessage` | - | Y | Y | Y | Y | . | . | . | . |
+| /sms/gateway-test/ | messaging:gateway_test | `core.change_school` | - | Y | . | . | . | . | . | . | . |
+| /sms/outbox/ | messaging:message_list | `messaging.view_smsmessage` | - | Y | Y | Y | Y | . | . | . | . |
+| /sms/template/ | messaging:template_list | `messaging.view_smstemplate` | - | Y | Y | Y | . | . | . | . | . |
+| /sms/template/<int:pk>/edit/ | messaging:template_update | `messaging.change_smstemplate` | - | Y | Y | Y | . | . | . | . | . |
+| /sms/template/new/ | messaging:template_create | `messaging.add_smstemplate` | - | Y | Y | Y | . | . | . | . | . |
+| /students/ | students:list | `students.view_student` | - | Y | Y | Y | Y | Y | . | . | . |
+| /students/<int:pk>/ | students:detail | `(sign-in only)` | own children or your own sections | o | o | o | o | o | o | o | o |
+| /students/<int:pk>/certificates/ | students:certificates | `students.view_certificate` | - | Y | Y | Y | . | . | . | . | . |
+| /students/<int:pk>/consent/ | students:consent | `students.change_student` | - | Y | Y | Y | . | . | . | . | . |
+| /students/<int:pk>/documents/new/ | students:document_upload | `students.add_studentdocument` | - | Y | Y | Y | . | . | . | . | . |
+| /students/<int:pk>/edit/ | students:update | `students.change_student` | - | Y | Y | Y | . | . | . | . | . |
+| /students/<int:pk>/id-card.pdf | students:id_card | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
+| /students/<int:pk>/leaving/ | students:leaving | `students.change_student` | - | Y | Y | Y | . | . | . | . | . |
+| /students/<int:pk>/result-code/ | students:reissue_result_code | `students.change_student` | - | Y | Y | Y | . | . | . | . | . |
+| /students/<int:student_pk>/guardian/ | students:guardian_create | `students.add_guardian` | - | Y | Y | Y | . | . | . | . | . |
+| /students/admit/ | students:admission | `students.add_student` | - | Y | Y | Y | . | . | . | . | . |
+| /students/certificates/<int:pk>/ | students:certificate | `students.view_certificate` | - | Y | Y | Y | . | . | . | . | . |
+| /students/certificates/verify/<uuid:code>/ | students:certificate_verify | `(public)` | - | * | * | * | * | * | * | * | * |
+| /students/choices/ | students:subject_choices | `students.change_enrollment` | - | Y | Y | Y | . | . | . | . | . |
+| /students/documents/<int:pk>/ | students:document | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
+| /students/enrollment/ | students:enrollment_list | `students.view_enrollment` | - | Y | Y | Y | Y | Y | . | . | . |
+| /students/enrollment/<int:pk>/edit/ | students:enrollment_update | `students.change_enrollment` | - | Y | Y | Y | . | . | . | . | . |
+| /students/enrollment/new/ | students:enrollment_create | `students.add_enrollment` | - | Y | Y | Y | . | . | . | . | . |
+| /students/export/ | students:export | `students.view_student` | - | Y | Y | Y | Y | Y | . | . | . |
+| /students/id-cards.pdf | students:id_cards | `students.view_student` | - | Y | Y | Y | Y | Y | . | . | . |
+| /students/import/ | students:import | `students.add_student` | - | Y | Y | Y | . | . | . | . | . |
+| /students/new/ | students:create | `students.add_student` | - | Y | Y | Y | . | . | . | . | . |
+| /students/promote/ | students:promote | `students.change_enrollment` | - | Y | Y | Y | . | . | . | . | . |
+| /students/retention/ | students:retention | `students.delete_student` | managers only | Y | Y | Y | . | . | . | . | . |
+| /users/ | users:list | `users.view_user` | - | Y | Y | Y | . | . | . | . | . |
+| /users/<int:pk>/ | users:detail | `users.view_user` | - | Y | Y | Y | . | . | . | . | . |
+| /users/<int:pk>/edit/ | users:update | `users.change_user` | - | Y | . | . | . | . | . | . | . |
+| /users/<int:pk>/reset/ | users:reset | `users.change_user` | - | Y | . | . | . | . | . | . | . |
+| /users/new/ | users:create | `users.add_user` | - | Y | . | . | . | . | . | . | . |
+| /users/profile/ | users:profile | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
+| /users/provision/ | users:provision_bulk | `users.add_user` | - | Y | . | . | . | . | . | . | . |
+| /users/provision/<str:kind>/<int:pk>/ | users:provision | `users.add_user` | - | Y | . | . | . | . | . | . | . |
 
-Y = allowed | . = 403 | o = any signed-in user, scoped inside the view | * = no sign-in needed.
+Y = allowed | . = 403 | o = any signed-in user, scoped inside the view | * = no sign-in needed | - = platform administrator only (404 for every school account).
 A Y is necessary, not always sufficient: where 'Also enforced' names a further limit, the view applies it to the records themselves.

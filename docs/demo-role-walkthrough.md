@@ -15,6 +15,7 @@ Open `http://127.0.0.1:8000/login/` and use one account at a time. Log out befor
 | --- | --- | --- | --- |
 | Administrator | `demo_admin` | `DemoPass!2026` | ERP administrator |
 | Principal | `demo_principal` | `DemoPass!2026` | Senior academic manager |
+| Vice Principal | `demo_vice` | `DemoPass!2026` | The same access as the Principal |
 | Accountant | `demo_accountant` | `DemoPass!2026` | Finance and fee operator |
 | Teacher | `demo_teacher` | `DemoPass!2026` | Employee `DEMO-T1`, Mathematics teacher |
 | Staff | `demo_staff` | `DemoPass!2026` | Employee `DEMO-S1` |
