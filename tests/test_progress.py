@@ -66,6 +66,7 @@ def two_exams(erp, board):
         {(s, "101"): 95, (s, "102"): 95, (h, "101"): 60, (h, "102"): 60, (s, "109"): 70, (h, "109"): 72},
     )
     publish_exam(board.exam, erp.admin)
+    board.exam.refresh_from_db()
 
 
 def family(erp, board):

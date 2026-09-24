@@ -1063,3 +1063,147 @@ msgstr "শ্রেণির গড়ের নিচে"
 
 msgid "down since the last exam"
 msgstr "আগের পরীক্ষার চেয়ে কম"
+
+msgid "Analytics"
+msgstr "বিশ্লেষণ"
+
+msgid "being marked"
+msgstr "নম্বর তোলা চলছে"
+
+msgid "Show"
+msgstr "দেখুন"
+
+msgid "There is no exam in the current year yet."
+msgstr "চলতি শিক্ষাবর্ষে এখনো কোনো পরীক্ষা নেই।"
+
+msgid "This exam is not published yet: subject figures are worked out from the marks entered so far."
+msgstr "এই পরীক্ষা এখনো প্রকাশিত হয়নি: বিষয়ের হিসাব এ পর্যন্ত তোলা নম্বর থেকে করা।"
+
+msgid "Subjects"
+msgstr "বিষয়সমূহ"
+
+msgid "Every subject in the school"
+msgstr "বিদ্যালয়ের সব বিষয়"
+
+msgid "The subjects you teach"
+msgstr "আপনার পড়ানো বিষয়"
+
+msgid "All my sections"
+msgstr "আমার সব শাখা"
+
+msgid "You teach no subject in this exam."
+msgstr "এই পরীক্ষায় আপনার পড়ানো কোনো বিষয় নেই।"
+
+msgid "Sections"
+msgstr "শাখাসমূহ"
+
+msgid "Every student against every subject"
+msgstr "প্রতিটি বিষয়ে প্রত্যেক শিক্ষার্থী"
+
+msgid "Open"
+msgstr "খুলুন"
+
+msgid "After publishing"
+msgstr "প্রকাশের পরে"
+
+msgid "Section grids are for class teachers and the school's managers."
+msgstr "শাখার ছক শ্রেণি শিক্ষক ও বিদ্যালয়ের ব্যবস্থাপকদের জন্য।"
+
+msgid "Sections:"
+msgstr "শাখা:"
+
+msgid "Average"
+msgstr "গড়"
+
+msgid "Middle mark"
+msgstr "মধ্যমা নম্বর"
+
+msgid "lowest"
+msgstr "সর্বনিম্ন"
+
+msgid "Pass rate"
+msgstr "পাসের হার"
+
+msgid "graded, not passed or failed"
+msgstr "গ্রেড দেওয়া হয়, পাস-ফেল নয়"
+
+msgid "Sat"
+msgstr "পরীক্ষা দিয়েছে"
+
+msgid "To follow up"
+msgstr "খোঁজ নিতে হবে"
+
+msgid "students flagged below"
+msgstr "জন শিক্ষার্থী নিচে চিহ্নিত"
+
+msgid "How the marks spread"
+msgstr "নম্বরের বিন্যাস"
+
+msgid "Students in each band of percentage"
+msgstr "প্রতিটি শতাংশ-সীমায় শিক্ষার্থীর সংখ্যা"
+
+msgid "Section by section"
+msgstr "শাখাভিত্তিক"
+
+msgid "Average percent · students"
+msgstr "গড় শতাংশ · শিক্ষার্থী"
+
+msgid "Part by part"
+msgstr "অংশভিত্তিক"
+
+msgid "Average as a percentage of each part's full marks"
+msgstr "প্রতিটি অংশের পূর্ণ নম্বরের শতাংশ হিসেবে গড়"
+
+msgid "Every student"
+msgstr "প্রত্যেক শিক্ষার্থী"
+
+msgid "Change is against the student's last published exam in this subject"
+msgstr "পরিবর্তন এই বিষয়ে শিক্ষার্থীর আগের প্রকাশিত পরীক্ষার তুলনায়"
+
+msgid "Follow up"
+msgstr "খোঁজ নিন"
+
+msgid "No student sits this subject in these sections."
+msgstr "এই শাখাগুলোর কোনো শিক্ষার্থী এই বিষয়ে পরীক্ষা দেয় না।"
+
+msgid "Draft: this exam is not published. Figures come from the marks entered so far (%(entered)s of %(total)s)."
+msgstr "খসড়া: এই পরীক্ষা প্রকাশিত হয়নি। হিসাব এ পর্যন্ত তোলা নম্বর থেকে (%(total)s জনের মধ্যে %(entered)s জন)।"
+
+msgid "pass mark %(mark)s"
+msgstr "পাস নম্বর %(mark)s"
+
+msgid "%(absent)s absent · %(missing)s without a mark"
+msgstr "%(absent)s জন অনুপস্থিত · %(missing)s জনের নম্বর নেই"
+
+msgid "Typical distance from the average: %(spread)s percentage points."
+msgstr "গড় থেকে সাধারণ দূরত্ব: %(spread)s শতাংশ-বিন্দু।"
+
+msgid "No published result for this section in this exam."
+msgstr "এই পরীক্ষায় এই শাখার কোনো প্রকাশিত ফলাফল নেই।"
+
+msgid "Section average"
+msgstr "শাখার গড়"
+
+msgid "Every student against every subject, as published. Colours run from red (low) to green (high)."
+msgstr "প্রকাশিত ফলাফল অনুযায়ী প্রতিটি বিষয়ে প্রত্যেক শিক্ষার্থী। রং লাল (কম) থেকে সবুজ (বেশি)।"
+
+msgid "%(n)s failed"
+msgstr "%(n)sটিতে অকৃতকার্য"
+
+msgid "How the marks spread (percent)"
+msgstr "নম্বরের বিন্যাস (শতাংশ)"
+
+msgid "Average in each section"
+msgstr "প্রতিটি শাখার গড়"
+
+msgid "Average in each part of the paper"
+msgstr "পত্রের প্রতিটি অংশের গড়"
+
+msgid "no mark yet"
+msgstr "এখনো নম্বর নেই"
+
+msgid "only just passed"
+msgstr "অল্পের জন্য পাস"
+
+msgid "All sections"
+msgstr "সব শাখা"

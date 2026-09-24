@@ -34,6 +34,10 @@ TRANSLATED_TEMPLATES = [
     "templates/analytics/_progress.html",
     "templates/analytics/student.html",
     "templates/portal/progress.html",
+    # A teacher's analytics.
+    "templates/analytics/home.html",
+    "templates/analytics/paper.html",
+    "templates/analytics/section.html",
 ]
 
 

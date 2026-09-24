@@ -146,9 +146,10 @@ def _polyline(points, colour, weight):
 
 def shade(value):
     """A background colour for a percentage in a table cell: red when low, green when high."""
-    if value is None:
-        return "#f8fafc"
-    value = float(value)
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        return "#f8fafc"  # nothing to colour: no mark, or no cell at all
     if value < 33:
         return "#fee2e2"
     if value < 50:
@@ -158,3 +159,68 @@ def shade(value):
     if value < 80:
         return "#dcfce7"
     return "#bbf7d0"
+
+
+def histogram(bins, title, colour=CHILD):
+    """How marks spread: `bins` is [(label, count)], drawn as vertical bars with the count on top."""
+    left, top, width, height = 30, 16, 560, 160
+    highest = max((count for _label, count in bins), default=0) or 1
+    slot = width / max(len(bins), 1)
+    parts = [
+        f'<svg viewBox="0 0 {left + width + 10} {top + height + 34}" role="img" aria-label="{escape(title)}" '
+        f'class="w-full" style="max-width:{left + width + 10}px" xmlns="http://www.w3.org/2000/svg">',
+        f"<title>{escape(title)}</title>",
+        f'<line x1="{left}" y1="{top + height}" x2="{left + width}" y2="{top + height}" stroke="{GRID}"/>',
+    ]
+    for index, (label, count) in enumerate(bins):
+        bar = height * count / highest
+        x = left + index * slot + slot * 0.12
+        parts.append(
+            f'<rect x="{x:.1f}" y="{top + height - bar:.1f}" width="{slot * 0.76:.1f}" height="{bar:.1f}" '
+            f'rx="3" fill="{colour}"/>'
+        )
+        if count:
+            parts.append(
+                f'<text x="{x + slot * 0.38:.1f}" y="{top + height - bar - 4:.1f}" font-size="11" fill="{INK}" '
+                f'text-anchor="middle">{count}</text>'
+            )
+        parts.append(
+            f'<text x="{x + slot * 0.38:.1f}" y="{top + height + 16}" font-size="10" fill="{MUTED}" '
+            f'text-anchor="middle">{escape(label)}</text>'
+        )
+    parts.append("</svg>")
+    return mark_safe("".join(parts))
+
+
+def bars(rows, title):
+    """Horizontal bars on a 0 to 100 scale: `rows` is [(label, value, note)], the note printed after the bar."""
+    row_height, left, width = 28, 210, 380
+    height = row_height * len(rows) + 26
+    parts = [
+        f'<svg viewBox="0 0 {left + width + 110} {height}" role="img" aria-label="{escape(title)}" '
+        f'class="w-full" style="max-width:{left + width + 110}px" xmlns="http://www.w3.org/2000/svg">',
+        f"<title>{escape(title)}</title>",
+    ]
+    for tick in (0, 50, 100):
+        x = left + width * tick / 100
+        parts.append(f'<line x1="{x:.1f}" y1="4" x2="{x:.1f}" y2="{height - 18}" stroke="{GRID}"/>')
+        parts.append(
+            f'<text x="{x:.1f}" y="{height - 6}" font-size="10" fill="{MUTED}" text-anchor="middle">{tick}</text>'
+        )
+    for index, (label, value, note) in enumerate(rows):
+        y = 6 + index * row_height
+        parts.append(
+            f'<text x="{left - 8}" y="{y + 14}" font-size="12" fill="{INK}" text-anchor="end">'
+            f"<title>{escape(label)}</title>{escape(_short(label, 30))}</text>"
+        )
+        parts.append(f'<rect x="{left}" y="{y + 3}" width="{width}" height="14" rx="3" fill="#f1f5f9"/>')
+        if _f(value) is not None:
+            parts.append(
+                f'<rect x="{left}" y="{y + 3}" width="{width * min(_f(value), 100) / 100:.1f}" height="14" rx="3" '
+                f'fill="{CHILD}"/>'
+            )
+        parts.append(
+            f'<text x="{left + width + 8}" y="{y + 14}" font-size="11" fill="{INK}">{escape(str(note))}</text>'
+        )
+    parts.append("</svg>")
+    return mark_safe("".join(parts))

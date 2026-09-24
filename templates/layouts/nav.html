@@ -64,6 +64,9 @@
 {% if perms.examinations.view_examseries %}<a href="{% url 'examinations:series_list' %}" class="{{ sub }} {% active request 'series_list' 'series_detail' 'series_results' 'board_registration' %}">{% translate "Exam series" %}</a>{% endif %}
 {% endwith %}
 {% endif %}
+{% if perms.examinations.view_mark %}
+<a href="{% url 'analytics:home' %}" class="{{ base }} {% active request 'analytics' %}"><span class="w-5 text-center">📊</span> {% translate "Analytics" %}</a>
+{% endif %}
 {% if perms.timetable.view_routineslot %}
 <a href="{% url 'timetable:routine' %}" class="{{ base }} {% active request 'timetable' %}"><span class="w-5 text-center">🗓️</span> {% translate "Routine" %}</a>
 {% endif %}

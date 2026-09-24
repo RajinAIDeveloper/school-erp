@@ -1,0 +1,47 @@
+{% extends "layouts/base.html" %}
+{% load erp i18n %}
+{% block header_actions %}
+  <a href="?{{ request.GET.urlencode }}&amp;format=xlsx" class="btn-secondary btn-sm">Excel</a>
+  <a href="?{{ request.GET.urlencode }}&amp;format=csv" class="btn-secondary btn-sm">CSV</a>
+  <a href="{% url 'analytics:home' %}?exam={{ grid.exam.pk }}" class="btn-secondary btn-sm">{% translate "Analytics" %}</a>
+{% endblock %}
+{% block content %}
+<p class="mb-4 text-sm text-slate-600">{% translate "Every student against every subject, as published. Colours run from red (low) to green (high)." %} {% translate "Section average" %} {{ grid.average|default_if_none:"—"|mark }}%.</p>
+<div class="card overflow-x-auto">
+  <table class="table text-sm">
+    <thead>
+      <tr><th>{% translate "Roll" %}</th><th class="sticky left-0 z-10 bg-slate-50">{% translate "Student" %}</th>
+        {% for pk, name in grid.columns %}<th class="text-right" title="{{ name }}">{{ name|truncatechars:14 }}</th>{% endfor %}
+        <th class="text-right">{% translate "Percent" %}</th><th>{% if grid.has_gpa %}{% translate "GPA" %}{% else %}{% translate "Grades" %}{% endif %}</th>{% if grid.show_rank %}<th class="text-right">{% translate "Position" %}</th>{% endif %}</tr>
+    </thead>
+    <tbody>
+      {% for row in grid.rows %}
+        <tr>
+          <td class="text-slate-500">{{ row.fact.enrollment.roll_number }}</td>
+          <td class="sticky left-0 z-10 bg-white font-medium whitespace-nowrap"><a class="link" href="{% url 'analytics:student' row.fact.student_id %}">{{ row.fact.enrollment.student.full_name }}</a></td>
+          {% for cell in row.cells %}
+            <td class="text-right" style="background: {{ cell.percent|shade }}" title="{{ cell.letter }}">{% if cell %}{% if cell.absent %}ABS{% else %}{{ cell.percent|default_if_none:"—"|mark }}{% endif %}{% else %}<span class="text-slate-300">·</span>{% endif %}</td>
+          {% endfor %}
+          <td class="text-right font-semibold">{{ row.fact.percent|default_if_none:"—"|mark }}</td>
+          <td>{% if row.fact.gpa is not None %}{{ row.fact.gpa }}{% else %}{{ row.fact.headline|default:"—" }}{% endif %}{% if row.fact.subjects_failed %} <span class="text-xs text-red-600">({% blocktranslate with n=row.fact.subjects_failed trimmed %}{{ n }} failed{% endblocktranslate %})</span>{% endif %}</td>
+          {% if grid.show_rank %}<td class="text-right">{% if row.fact.show_rank %}{{ row.fact.section_rank|default_if_none:"—" }}{% else %}—{% endif %}</td>{% endif %}
+        </tr>
+      {% empty %}
+        <tr><td colspan="4">{% translate "No published result for this section in this exam." as nothing %}{% include "components/empty.html" with message=nothing %}</td></tr>
+      {% endfor %}
+    </tbody>
+    {% if grid.rows %}
+      <tfoot class="bg-slate-50 font-medium">
+        <tr><td></td><td class="sticky left-0 z-10 bg-slate-50">{% translate "Section average" %}</td>
+          {% for a in grid.averages %}<td class="text-right">{{ a.average|default_if_none:"—"|mark }}</td>{% endfor %}
+          <td class="text-right">{{ grid.average|default_if_none:"—"|mark }}</td><td></td>{% if grid.show_rank %}<td></td>{% endif %}</tr>
+        {% if grid.averages.0.pass_rate is not None %}
+          <tr><td></td><td class="sticky left-0 z-10 bg-slate-50">{% translate "Pass rate" %}</td>
+            {% for a in grid.averages %}<td class="text-right">{% if a.pass_rate is not None %}{{ a.pass_rate|mark }}%{% else %}—{% endif %}</td>{% endfor %}
+            <td></td><td></td>{% if grid.show_rank %}<td></td>{% endif %}</tr>
+        {% endif %}
+      </tfoot>
+    {% endif %}
+  </table>
+</div>
+{% endblock %}

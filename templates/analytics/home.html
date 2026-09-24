@@ -1,0 +1,53 @@
+{% extends "layouts/base.html" %}
+{% load erp i18n %}
+{% block content %}
+<form method="get" class="card card-body mb-4 flex flex-wrap items-end gap-3">
+  <div class="min-w-64 flex-1"><label class="label" for="exam">{% translate "Exam" %}</label>
+    <select id="exam" name="exam" class="input">
+      {% for exam in exams %}<option value="{{ exam.pk }}" {% if chosen.pk == exam.pk %}selected{% endif %}>{{ exam.name }}{% if exam.status != "published" %} · {% translate "being marked" %}{% endif %}</option>{% endfor %}
+    </select></div>
+  <button class="btn-secondary">{% translate "Show" %}</button>
+</form>
+
+{% if not chosen %}
+  {% translate "There is no exam in the current year yet." as nothing %}{% include "components/empty.html" with message=nothing %}
+{% else %}
+  {% if chosen.status != "published" %}
+    <p class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">{% translate "This exam is not published yet: subject figures are worked out from the marks entered so far." %}</p>
+  {% endif %}
+  <div class="grid gap-6 lg:grid-cols-2">
+    <section class="card">
+      <div class="card-header"><h2 class="font-semibold">{% translate "Subjects" %}</h2>
+        <span class="text-xs text-slate-500">{% if whole_school %}{% translate "Every subject in the school" %}{% else %}{% translate "The subjects you teach" %}{% endif %}</span></div>
+      <ul class="divide-y divide-slate-100 text-sm">
+        {% for item in papers %}
+          <li class="flex flex-wrap items-center justify-between gap-2 px-5 py-2.5">
+            <span><span class="font-medium">{{ item.subject.name }}</span> <span class="text-xs text-slate-500">{{ item.level }}</span></span>
+            <span class="flex flex-wrap gap-1">
+              <a class="btn-secondary btn-sm" href="{% url 'analytics:paper' %}?exam={{ chosen.pk }}&amp;subject={{ item.subject.pk }}">{% if item.sections|length > 1 %}{% if whole_school %}{% translate "All sections" %}{% else %}{% translate "All my sections" %}{% endif %}{% else %}{% translate "Section" %} {{ item.sections.0.name }}{% endif %}</a>
+              {% if item.sections|length > 1 %}{% for s in item.sections %}<a class="btn-secondary btn-sm" href="{% url 'analytics:paper' %}?exam={{ chosen.pk }}&amp;subject={{ item.subject.pk }}&amp;section={{ s.pk }}">{{ s.name }}</a>{% endfor %}{% endif %}
+            </span>
+          </li>
+        {% empty %}
+          <li class="px-5 py-6 text-center text-slate-500">{% translate "You teach no subject in this exam." %}</li>
+        {% endfor %}
+      </ul>
+    </section>
+    <section class="card">
+      <div class="card-header"><h2 class="font-semibold">{% translate "Sections" %}</h2>
+        <span class="text-xs text-slate-500">{% translate "Every student against every subject" %}</span></div>
+      <ul class="divide-y divide-slate-100 text-sm">
+        {% for s in sections %}
+          <li class="flex items-center justify-between px-5 py-2.5">
+            <span class="font-medium">{{ s }}</span>
+            {% if chosen.status == "published" %}<a class="link text-xs" href="{% url 'analytics:section' %}?exam={{ chosen.pk }}&amp;section={{ s.pk }}">{% translate "Open" %}</a>
+            {% else %}<span class="text-xs text-slate-400">{% translate "After publishing" %}</span>{% endif %}
+          </li>
+        {% empty %}
+          <li class="px-5 py-6 text-center text-slate-500">{% translate "Section grids are for class teachers and the school's managers." %}</li>
+        {% endfor %}
+      </ul>
+    </section>
+  </div>
+{% endif %}
+{% endblock %}

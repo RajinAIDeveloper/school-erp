@@ -248,7 +248,7 @@ quizzes, chat) are not being built.
 | P5 | Full homework (module) | Later round |
 | P6a | Analytics foundation: Vice Principal role (the Principal's access); the platform page where only the platform administrator gives a school a module; the analytics tables, written on every publication and rebuildable; one access check for all analytics | Done: test_analytics_foundation.py |
 | P6b | Student and family progress (portal, English and Bangla), with a printable progress report | Done: test_progress.py. Charts are server-drawn SVG; staff open the same view from a student's record |
-| P6c | Teacher and class teacher analytics | |
+| P6c | Teacher and class teacher analytics | Done: test_teacher_analytics.py. A paper's spread, averages, parts, sections and each student's change; drafts analysed live; the class teacher's grid |
 | P6d | School analytics for the Principal, Vice Principal and Administrator | |
 | P6e | Homework analytics, with Phase 5 and only for schools given homework | |
 

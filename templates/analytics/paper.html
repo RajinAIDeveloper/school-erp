@@ -1,0 +1,74 @@
+{% extends "layouts/base.html" %}
+{% load erp i18n %}
+{% block header_actions %}
+  <a href="?{{ request.GET.urlencode }}&amp;format=xlsx" class="btn-secondary btn-sm">Excel</a>
+  <a href="?{{ request.GET.urlencode }}&amp;format=csv" class="btn-secondary btn-sm">CSV</a>
+  <a href="{% url 'analytics:home' %}?exam={{ data.exam.pk }}" class="btn-secondary btn-sm">{% translate "Analytics" %}</a>
+{% endblock %}
+{% block content %}
+{% if all_sections|length > 1 %}
+  <div class="mb-4 flex flex-wrap items-center gap-2 text-sm">
+    <span class="text-slate-500">{% translate "Sections:" %}</span>
+    <a class="btn-sm {% if not wanted %}btn-primary{% else %}btn-secondary{% endif %}" href="?exam={{ data.exam.pk }}&amp;subject={{ data.subject.pk }}">{% translate "All my sections" %}</a>
+    {% for s in all_sections %}<a class="btn-sm {% if wanted == s.pk|stringformat:'s' %}btn-primary{% else %}btn-secondary{% endif %}" href="?exam={{ data.exam.pk }}&amp;subject={{ data.subject.pk }}&amp;section={{ s.pk }}">{{ s }}</a>{% endfor %}
+  </div>
+{% endif %}
+{% if data.draft %}
+  <p class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">
+    {% blocktranslate with entered=data.entered total=data.students trimmed %}Draft: this exam is not published. Figures come from the marks entered so far ({{ entered }} of {{ total }}).{% endblocktranslate %}
+  </p>
+{% endif %}
+
+<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+  <div class="stat"><p class="text-sm text-slate-500">{% translate "Average" %}</p><p class="mt-1 text-3xl font-bold">{{ data.average|default_if_none:"—"|mark }}{% if data.average is not None %}%{% endif %}</p>
+    <p class="mt-1 text-xs text-slate-500">{% translate "Middle mark" %} {{ data.median|default_if_none:"—"|mark }}</p></div>
+  <div class="stat"><p class="text-sm text-slate-500">{% translate "Highest" %} / {% translate "lowest" %}</p><p class="mt-1 text-3xl font-bold">{{ data.highest|default_if_none:"—"|mark }}</p>
+    <p class="mt-1 text-xs text-slate-500">{% translate "lowest" %} {{ data.lowest|default_if_none:"—"|mark }}</p></div>
+  <div class="stat"><p class="text-sm text-slate-500">{% translate "Pass rate" %}</p><p class="mt-1 text-3xl font-bold">{% if data.pass_rate is not None %}{{ data.pass_rate|mark }}%{% else %}—{% endif %}</p>
+    <p class="mt-1 text-xs text-slate-500">{% if data.pass_mark is not None %}{% blocktranslate with mark=data.pass_mark|mark trimmed %}pass mark {{ mark }}{% endblocktranslate %}{% else %}{% translate "graded, not passed or failed" %}{% endif %}</p></div>
+  <div class="stat"><p class="text-sm text-slate-500">{% translate "Sat" %}</p><p class="mt-1 text-3xl font-bold">{{ data.sat }}</p>
+    <p class="mt-1 text-xs text-slate-500">{% blocktranslate with absent=data.absent missing=data.missing trimmed %}{{ absent }} absent · {{ missing }} without a mark{% endblocktranslate %}</p></div>
+  <div class="stat"><p class="text-sm text-slate-500">{% translate "To follow up" %}</p><p class="mt-1 text-3xl font-bold {% if data.flagged %}text-amber-600{% endif %}">{{ data.flagged }}</p>
+    <p class="mt-1 text-xs text-slate-500">{% translate "students flagged below" %}</p></div>
+</div>
+
+<div class="mt-6 grid gap-6 lg:grid-cols-2">
+  <section class="card"><div class="card-header"><h2 class="font-semibold">{% translate "How the marks spread" %}</h2><span class="text-xs text-slate-500">{% translate "Students in each band of percentage" %}</span></div>
+    <div class="card-body">{{ histogram }}</div></section>
+  <section class="card"><div class="card-header"><h2 class="font-semibold">{% translate "Grades" %}</h2></div>
+    <div class="card-body">
+      <div class="flex flex-wrap gap-2">{% for letter, count in data.grades %}<div class="rounded-md border border-slate-200 px-3 py-2 text-center"><p class="text-lg font-bold">{{ count }}</p><p class="text-xs text-slate-500">{{ letter }}</p></div>{% empty %}<p class="text-sm text-slate-500">—</p>{% endfor %}</div>
+      {% if data.spread is not None %}<p class="mt-3 text-xs text-slate-500">{% blocktranslate with spread=data.spread|mark trimmed %}Typical distance from the average: {{ spread }} percentage points.{% endblocktranslate %}</p>{% endif %}
+    </div></section>
+</div>
+
+{% if sections_chart or parts_chart %}
+  <div class="mt-6 grid gap-6 lg:grid-cols-2">
+    {% if sections_chart %}<section class="card"><div class="card-header"><h2 class="font-semibold">{% translate "Section by section" %}</h2><span class="text-xs text-slate-500">{% translate "Average percent · students" %}</span></div><div class="card-body">{{ sections_chart }}</div></section>{% endif %}
+    {% if parts_chart %}<section class="card"><div class="card-header"><h2 class="font-semibold">{% translate "Part by part" %}</h2><span class="text-xs text-slate-500">{% translate "Average as a percentage of each part's full marks" %}</span></div><div class="card-body">{{ parts_chart }}</div></section>{% endif %}
+  </div>
+{% endif %}
+
+<section class="card mt-6 overflow-x-auto">
+  <div class="card-header"><h2 class="font-semibold">{% translate "Every student" %}</h2><span class="text-xs text-slate-500">{% translate "Change is against the student's last published exam in this subject" %}</span></div>
+  <table class="table table-stack">
+    <thead><tr><th>{% translate "Section" %}</th><th>{% translate "Roll" %}</th><th>{% translate "Student" %}</th><th class="text-right">{% translate "Marks" %}</th><th class="text-right">{% translate "Percent" %}</th><th>{% translate "Grade" %}</th><th class="text-right">{% translate "Change" %}</th><th>{% translate "Follow up" %}</th></tr></thead>
+    <tbody>
+      {% for r in data.rows %}
+        <tr class="{% if r.flags %}bg-amber-50/40{% endif %}">
+          <td data-label="{% translate "Section" %}" class="text-slate-500">{{ r.section.name }}</td>
+          <td data-label="{% translate "Roll" %}" class="text-slate-500">{{ r.enrollment.roll_number }}</td>
+          <td data-label="{% translate "Student" %}" class="font-medium"><a class="link" href="{% url 'analytics:student' r.enrollment.student_id %}">{{ r.enrollment.student.full_name }}</a></td>
+          <td data-label="{% translate "Marks" %}" class="sm:text-right">{% if r.absent %}ABS{% elif r.score is None %}—{% else %}{{ r.score|mark }} / {{ r.full|mark }}{% endif %}</td>
+          <td data-label="{% translate "Percent" %}" class="sm:text-right" style="background: {{ r.percent|shade }}">{{ r.percent|default_if_none:"—"|mark }}</td>
+          <td data-label="{% translate "Grade" %}">{{ r.letter|default:"—" }}</td>
+          <td data-label="{% translate "Change" %}" class="sm:text-right {% if r.change is not None and r.change < 0 %}text-red-600{% elif r.change %}text-emerald-700{% endif %}">{% if r.change is None %}—{% elif r.change > 0 %}+{{ r.change|mark }}{% else %}{{ r.change|mark }}{% endif %}</td>
+          <td data-label="{% translate "Follow up" %}" class="text-sm">{% for flag in r.flags %}<span class="mr-1 inline-block rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-900">{% translate flag %}</span>{% endfor %}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="8">{% translate "No student sits this subject in these sections." as nothing %}{% include "components/empty.html" with message=nothing %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

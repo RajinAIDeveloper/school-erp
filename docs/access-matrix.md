@@ -24,6 +24,9 @@ quietly join it.
 | / | dashboard | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
 | /academics/sections.json | academics:sections_json | `academics.view_section` | - | Y | Y | Y | Y | Y | . | . | . |
 | /academics/subject-plan/ | academics:subject_plan | `academics.view_classsubject` | - | Y | Y | Y | . | . | . | . | . |
+| /analytics/ | analytics:home | `(sign-in only)` | what the viewer's analytics reach: their school, sections or subjects | o | o | o | o | o | o | o | o |
+| /analytics/paper/ | analytics:paper | `(sign-in only)` | the subject's teachers for their sections, class teachers, and managers | o | o | o | o | o | o | o | o |
+| /analytics/section/ | analytics:section | `(sign-in only)` | the section's class teacher, and managers | o | o | o | o | o | o | o | o |
 | /analytics/student/<int:pk>/ | analytics:student | `(sign-in only)` | within the viewer's analytics: the whole school, their sections or subjects, or their own child | o | o | o | o | o | o | o | o |
 | /attendance/ | attendance:student_take | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
 | /attendance/leave/ | attendance:leave_list | `attendance.view_leaverequest` | own requests unless a manager | Y | Y | Y | . | Y | Y | . | . |
