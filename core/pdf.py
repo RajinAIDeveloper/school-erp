@@ -47,6 +47,10 @@ def styles():
     base = getSampleStyleSheet()
     font = bangla_font()
     body_font = font or "Helvetica"
+    # Bangla needs shaping: a vowel sign such as ি is typed after its consonant but drawn
+    # before it, and conjuncts such as দ্দ join into one shape. Without it a name prints in
+    # the right font but spelled wrong. ReportLab shapes through HarfBuzz (uharfbuzz).
+    shaping = 1 if font else 0
     return {
         "title": ParagraphStyle(
             "erp-title",
@@ -55,6 +59,7 @@ def styles():
             fontSize=16,
             spaceAfter=2,
             textColor=INK,
+            shaping=shaping,
         ),
         "school": ParagraphStyle(
             "erp-school",
@@ -63,14 +68,31 @@ def styles():
             fontSize=13,
             alignment=1,
             textColor=INK,
+            shaping=shaping,
         ),
         "muted": ParagraphStyle(
-            "erp-muted", parent=base["Normal"], fontName=body_font, fontSize=8.5, alignment=1, textColor=MUTED
+            "erp-muted",
+            parent=base["Normal"],
+            fontName=body_font,
+            fontSize=8.5,
+            alignment=1,
+            textColor=MUTED,
+            shaping=shaping,
         ),
-        "normal": ParagraphStyle("erp-normal", parent=base["Normal"], fontName=body_font, fontSize=9, textColor=INK),
-        "cell": ParagraphStyle("erp-cell", parent=base["Normal"], fontName=body_font, fontSize=8.5, textColor=INK),
+        "normal": ParagraphStyle(
+            "erp-normal", parent=base["Normal"], fontName=body_font, fontSize=9, textColor=INK, shaping=shaping
+        ),
+        "cell": ParagraphStyle(
+            "erp-cell", parent=base["Normal"], fontName=body_font, fontSize=8.5, textColor=INK, shaping=shaping
+        ),
         "right": ParagraphStyle(
-            "erp-right", parent=base["Normal"], fontName=body_font, fontSize=9, alignment=2, textColor=INK
+            "erp-right",
+            parent=base["Normal"],
+            fontName=body_font,
+            fontSize=9,
+            alignment=2,
+            textColor=INK,
+            shaping=shaping,
         ),
     }
 

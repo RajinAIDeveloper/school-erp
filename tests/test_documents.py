@@ -45,6 +45,30 @@ def test_bangla_text_measures_as_text_not_as_missing_glyphs():
     assert width > 20, "the string measured as nothing, which means no glyphs were found"
 
 
+def test_bangla_is_shaped_so_names_are_spelled_right():
+    """
+    ি is typed after its consonant but drawn before it, and দ্দ joins into one shape. Without
+    shaping "সিদ্দিকা" prints as "সদ্দিকা" with the vowel sign stranded: the right font, spelled
+    wrong. ReportLab shapes only when the font is shapable (uharfbuzz is installed) and the
+    paragraph style asks for it.
+    """
+    import uharfbuzz
+
+    from core.pdf import styles
+
+    name = bangla_font()
+    assert pdfmetrics.getFont(name).shapable, "uharfbuzz is missing, so Bangla prints unshaped"
+    assert all(style.shaping for style in styles().values())
+
+    font = uharfbuzz.Font(uharfbuzz.Face(uharfbuzz.Blob.from_file_path(pdfmetrics.getFont(name).face.filename)))
+    buffer = uharfbuzz.Buffer()
+    buffer.add_str("সি")
+    buffer.guess_segment_properties()
+    uharfbuzz.shape(font, buffer)
+    first = buffer.glyph_infos[0].codepoint
+    assert first != font.get_nominal_glyph(ord("স")), "the vowel sign should be drawn before স"
+
+
 def test_a_report_card_embeds_the_bengali_face_when_the_name_needs_it(erp):
     erp.student.name_bn = BANGLA_NAME
     erp.student.save()
