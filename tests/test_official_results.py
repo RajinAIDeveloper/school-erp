@@ -35,7 +35,7 @@ def login(user):
 @pytest.fixture
 def series(erp):
     return ExamSeries.objects.create(
-        school=erp.school, body="cambridge", name="June 2027", centre_number="BD123", results_date=date(2027, 8, 12)
+        school=erp.school, body="cambridge", name="June 2026", centre_number="BD123", results_date=date(2026, 8, 12)
     )
 
 

@@ -313,5 +313,11 @@ def official_results_for(student, *, confirmed_only):
         .order_by("-candidate__series__results_date", "candidate__series__name", "syllabus_code")
     )
     if confirmed_only:
-        results = results.filter(checked_at__isnull=False)
+        # Families see a result once it is confirmed and the body's release date has come.
+        from django.db.models import Q
+
+        today = timezone.localdate()
+        results = results.filter(checked_at__isnull=False).filter(
+            Q(candidate__series__results_date__isnull=True) | Q(candidate__series__results_date__lte=today)
+        )
     return list(results)

@@ -65,6 +65,23 @@ class ExamScheduleForm(SchoolModelForm):
             exam_ids.append(ExamSchedule.objects.get(pk=self.instance.pk).exam_id)
         if exam_ids and Exam.objects.filter(pk__in=exam_ids, publication_version__gt=0).exists():
             raise ValidationError("Schedules of published exams cannot be changed.")
+        exam, level, subject = cleaned.get("exam"), cleaned.get("class_level"), cleaned.get("subject")
+        if exam and level and subject and cleaned.get("date"):
+            from .clashes import clashes_for
+
+            draft = ExamSchedule(
+                pk=self.instance.pk,
+                exam=exam,
+                class_level=level,
+                subject=subject,
+                date=cleaned.get("date"),
+                start_time=cleaned.get("start_time"),
+                end_time=cleaned.get("end_time"),
+            )
+            others = exam.schedules.filter(class_level=level).select_related("subject", "class_level")
+            clashes = clashes_for(draft, others)
+            if clashes:
+                self.add_error("start_time", " ".join(clashes) + " Move one of them.")
         if self.instance.pk:
             before = ExamSchedule.objects.get(pk=self.instance.pk)
             has_marks = Mark.objects.filter(schedule=before).exists()

@@ -26,6 +26,12 @@
       </div>
     </div>
 
+    {% if clashes %}
+      <div class="mt-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+        <p class="font-semibold">Timetable clashes</p>
+        <ul class="mt-1 list-inside list-disc">{% for c in clashes %}<li>{{ c }}</li>{% endfor %}</ul>
+      </div>
+    {% endif %}
     {% if checklist is not None %}
       <div class="mt-5 border-t border-slate-200 pt-4">
         <p class="text-sm font-semibold">Before publishing</p>

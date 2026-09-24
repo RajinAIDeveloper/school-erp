@@ -102,8 +102,18 @@ def exam_detail(request, pk):
             "page_title": str(exam),
             "can_publish": is_manager(request.user) and request.user.has_perm("examinations.change_exam"),
             "checklist": _checklist_for(request.user, exam),
+            "clashes": _clashes_for(exam),
         },
     )
+
+
+def _clashes_for(exam):
+    """Timetable clashes, while there is still time to move a paper."""
+    if exam.status == "published":
+        return []
+    from .clashes import timetable_clashes
+
+    return timetable_clashes(exam)
 
 
 def _checklist_for(user, exam):
