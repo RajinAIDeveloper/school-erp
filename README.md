@@ -1,6 +1,9 @@
 # School ERP
 
-A school management system for Bangladeshi schools, built with Django 5.2 and Tailwind CSS.
+A school management system for schools in Bangladesh, built with Django 5.2 and Tailwind CSS.
+It is made for English-medium schools teaching Cambridge, Pearson Edexcel and IB programmes, and
+works equally for national-curriculum (Bangla-medium and English-version) classes: each class
+follows the rules of its own programme.
 It covers students, staff, both attendance registers, fees, double-entry accounts, exams and
 results, the class routine, notices and downloads, SMS, the school calendar, settings and user
 accounts — with a portal for students and guardians.
@@ -15,16 +18,20 @@ hosted multi-school one without reshaping the database.
 | Students | One-screen admission (student, guardian and class together), roster with class/section/status filters, enrollment history, promotion, leaving records, CSV import with a preview step, ID cards, fee statements |
 | Teachers & staff | Personal file with assignments, attendance, leave balance, documents and payslips; roster filters; salary hidden from roles that do not run payroll |
 | Student attendance | Section register with mark-all, per-student history, daily "which registers are missing" summary, monthly grids and exports, optional absence SMS |
-| Fees | Fee heads and class structures, concessions, monthly or whole-school invoice runs, one-off invoices, partial payments, receipts with the amount in words, reversals, outstanding-fee chasing, late fees |
+| Fees | Fee heads and class structures, concessions, monthly or whole-school invoice runs, one-off invoices, partial payments, receipts with the amount in words, reversals, outstanding-fee chasing, late fees, VAT per fee head (off unless set), online payment through the school's SSLCommerz account with gateway-confirmed receipts |
 | Accounts | Multi-line journals, quick expense and income entry, account ledgers, trial balance, income and expenditure, balance sheet, cash book, opening balances, payroll, period lock |
 | Staff attendance | Register with check-in and out, optional self check-in, leave requests that mark the register when approved, entitlement and overlap checks |
-| Results | Grade scales, exams and papers, grid mark entry for a whole class, publication with versioned snapshots and a database-level lock, scoped corrections, ranks, subject analysis, report cards, admit cards, progress reports, public verification |
+| Results | Rules per programme: the school's own, Bangladesh national (GPA, groups, 4th subject, combined papers), Cambridge and Edexcel grades, IB MYP criteria, IB Diploma estimates with the core and all eight conditions. Subject plans and per-student choices; papers in parts with weights, tier caps and presets; grid mark entry with absent and exempt; a pre-publish checklist; publication with frozen, versioned, fingerprinted results; comments, effort and approved predicted grades; combined term results; grade distribution, tabulation and merit exports; report cards that say they are the school's assessment; QR verification; promotion from results; a public lookup by result code (off by default) |
+| Exam officer | Exam series for Cambridge, Pearson, the IB or a board; candidates, entries, options, tiers and HL/SL; an entries file with checks; access arrangements (managers only); official results imported from the statement of results, amended without losing history, and shown to families only after a second person confirms them; national board registration (eSIF) data with its gaps |
+| Certificates | Transfer, leaving and character certificates in English or Bangla, numbered and frozen when issued, revoked or reissued with a trail, with a public QR check |
 | Routine | The week as a grid per class or teacher, a bulk week editor with clash detection, free-teacher lookup, room and teacher-load reports |
 | Notices & downloads | A noticeboard with audiences and expiry, and files behind the same audience rules |
 | SMS | Templates rendered per recipient, preview with recipient count and SMS-part cost, batches with delivery counts, retries, a gateway test, and five optional event notifications |
 | Calendar | Holidays and events, a month grid, working-day counts, national-holiday import, iCalendar export |
 | Settings | A hub with a readiness check, one-press defaults, school profile, academic setup, notifications, policy and the audit log |
 | Users | Create a login straight from a student, guardian or staff record, or for a whole class; temporary passwords that must be changed; role and activity filters |
+| Language | Bangla and English: the school switches Bangla on, each person chooses in the header; the family portal, navigation and report card are translated |
+| Privacy | Guardian consent per purpose (also given and withdrawn by families in the portal), identity numbers for managers only, logged views of restricted data, and erasure of former students' personal data after the school's retention period; see [docs/PRIVACY.md](docs/PRIVACY.md) |
 
 Temporary passwords are shown once, on the page that creates them, and are not written to the
 session or anywhere else on the server. The CSV of a bulk run is assembled in the browser from
@@ -37,9 +44,11 @@ Seven roles: Administrator, Principal, Accountant, Teacher, Staff, Student, Guar
 declares, and names the further limit where a screen applies one of its own — a teacher holding
 `attendance.view_leaverequest` opens the leave list and sees only their own requests. It is
 generated by `python manage.py role_matrix` from the URLs and the groups, and a test compares
-the committed file with a fresh run, so it cannot drift from the code. Three endpoints are
-reachable without signing in — a Public download, report-card verification, and the health probe
-— and a test asserts that list stays exactly that.
+the committed file with a fresh run, so it cannot drift from the code. A short, fixed list of
+pages is reachable without signing in: a Public download, the health probe, the verification
+pages for report cards, combined results and certificates, the public result lookup (off unless
+the school turns it on), and the payment gateway's return, notification and demonstration pages.
+A test asserts that list stays exactly that.
 
 Access is by ownership wherever a blanket permission would be too much. A teacher reaches the
 children currently on the roll of a section they currently teach, and their own staff file, but
@@ -171,14 +180,42 @@ A salary paid by mistake is undone from **Payroll**, not from the ledger. The re
 mirrored entry, leaves both on the record and returns the row to unpaid so it can be paid
 correctly.
 
+## Demonstration
+
+`python manage.py seed_demo` builds a demonstration school with one login per role
+(`demo_admin`, `demo_principal`, `demo_accountant`, `demo_teacher`, `demo_staff`,
+`demo_student`, `demo_guardian`; password `DemoPass!2026` unless `--demo-password` is given).
+Besides Class 1 with fees and attendance, it creates:
+
+- **Year 10 (IGCSE)** under Cambridge rules: option subjects, a weighted Physics paper, comments,
+  approved predicted grades and a published mock; exam series June 2027 with entries, and an
+  official result from November 2025 already confirmed.
+- **DP1 (IB Diploma)**: one student who meets the diploma conditions and one who does not.
+- **Class 9 (national)** from the national plan: Science, Humanities and Business students,
+  religion papers, 4th subjects and a creative/MCQ Bangla paper, with GPA.
+
+`demo_guardian` has a child in Class 1 and one in Year 10, to show a family across classes.
+Running the seed again changes nothing. To show online payment without moving money, set
+`ALLOW_DEMO_PAYMENTS=1` on the server and choose the demonstration gateway under
+Settings → Online payments. [docs/demo-role-walkthrough.md](docs/demo-role-walkthrough.md)
+walks each role through the system.
+
+### Before a school uses it for real
+
+1. Print a report card, class sheet, admit card and certificate on the school's own printer.
+2. Enter a past term's marks and compare the results with the ones the school published.
+3. Replace the grade thresholds with the school's own internal ones.
+4. Record guardian consent, set the retention period, and have counsel review hosting
+   ([docs/PRIVACY.md](docs/PRIVACY.md)).
+5. Never describe the system as certified by Cambridge, Pearson, the IB or a board.
+
 ## Not built
 
-Online fee gateways (bKash, Nagad, SSLCommerz) and biometric attendance devices are not
-implemented. Both need provider contracts and credentials, and guessing their contracts in
-advance would produce code nobody can trust. The seams are ready: a gateway becomes a payment
-intent plus a signed callback that calls the existing `collect_payment`, and a device becomes
-a log import that feeds the existing attendance service. A mobile app is likewise absent; the
-web UI is responsive and works on a phone.
+Biometric attendance devices are not implemented; a device becomes a log import that feeds the
+existing attendance service. A mobile app is likewise absent; the web UI is responsive and works
+on a phone. Results do not cover IB PYP narrative reports, the IB Career-related Programme,
+Edexcel modular UMS and cash-in, or moderation, and entries are never submitted to an awarding
+body from here: the exam officer uploads the checked file to the body's own system.
 
 [STATUS.md](docs/STATUS.md) records what was built and the decisions behind it;
 [the original audit](docs/AUDIT_AND_UPDATE_PLAN.md) is the state the work started from.

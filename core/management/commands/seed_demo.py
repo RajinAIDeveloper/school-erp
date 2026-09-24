@@ -71,6 +71,11 @@ class Command(BaseCommand):
         parser.add_argument("--admin-username", default=None)
         parser.add_argument("--demo-password", default="DemoPass!2026")
         parser.add_argument(
+            "--no-programmes",
+            action="store_true",
+            help="Skip the Cambridge IGCSE, IB Diploma and national Class 9 demonstration classes.",
+        )
+        parser.add_argument(
             "--reset-demo-password",
             action="store_true",
             help="Reset passwords for the demo_* accounts (never changes other users).",
@@ -288,6 +293,17 @@ class Command(BaseCommand):
                 "uploaded_by": demo_admin,
             },
         )
+        if not opts["no_programmes"]:
+            from core.demo_programmes import seed_programmes
+
+            seed_programmes(
+                school=school,
+                year=year,
+                admin=demo_admin,
+                principal=demo_users["demo_principal"],
+                teacher=teacher,
+                demo_guardian=demo_guardian,
+            )
         if opts["admin_username"]:
             user = User.objects.filter(username=opts["admin_username"]).first()
             if user is None:
@@ -299,6 +315,6 @@ class Command(BaseCommand):
             user.groups.add(Group.objects.get(name="Administrator"))
         self.stdout.write(
             self.style.SUCCESS(
-                f"Demo school ready: {school.name}. Five students, seven role accounts, fees, attendance, marks, leave, and a download seeded; no messages sent."
+                f"Demo school ready: {school.name}. Seven role accounts; Class 1 with fees, attendance, marks, leave and a download; Cambridge IGCSE, IB Diploma and national Class 9 classes with published results; no messages sent."
             )
         )

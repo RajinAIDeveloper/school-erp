@@ -1,6 +1,6 @@
 # Build status
 
-Last updated: 23 September 2026. This records what was built against
+Last updated: 24 September 2026. This records what was built against
 [the audit and plan](AUDIT_AND_UPDATE_PLAN.md), what a later re-audit found and fixed, and what
 deliberately was not built.
 
@@ -8,7 +8,7 @@ deliberately was not built.
 
 | Measure | Before | Now |
 |---|---:|---:|
-| Tests passing | 148 | 548 (+1 browser) |
+| Tests passing | 148 | 858 (+1 browser) |
 | Python line coverage | 87 % | 92 % |
 | Lint / format | none configured | ruff clean, 186 files |
 | `check --deploy` | 2 warnings | clean at `--fail-level WARNING` |
@@ -20,6 +20,35 @@ Verified by: `manage.py check`, `makemigrations --check --dry-run`, `check --dep
 `ruff check`, `ruff format --check`, the full suite with coverage, a fresh-build comparison
 of the committed stylesheet, and a smoke pass that signs in and opens every major screen
 against a database created from scratch.
+
+## Exam, results and English-medium programme (September 2026)
+
+Built in stages on the branch `feature/exam-results`, each with its own tests and a full gate
+(check, migrations, ruff, the whole suite, `check --deploy`, a regenerated access matrix).
+The plan, its evaluation of Codex's plans and reviews, and every decision are in
+[IMPLEMENTATION_STAGES.md](IMPLEMENTATION_STAGES.md).
+
+| Stage | What it delivered |
+|---|---|
+| S0–S1 | Rulebook schema; safe mark entry (section checks, one version per batch, change-only notifications); frozen, fingerprinted results |
+| S2 | Rulebooks for Cambridge, Edexcel, IB MYP and IB Diploma beside the school's own and the national rules; grade scale presets |
+| S3 | Subject plans and per-student choices used everywhere |
+| S4 | Paper parts with presets, weights, tier caps and locks |
+| S5 | Comments, effort or ATL, and approved predicted, forecast and target grades |
+| S6 | Grade distribution, tabulation and merit exports |
+| S6b | Exam series, entries and the official results register |
+| S7 | Transfer, leaving and character certificates |
+| S8 | Pre-publish checklist, exempt papers, combined results, promotion from results |
+| S9 | Bangla and English toggle |
+| S10 | Entries file, access arrangements, national board registration data |
+| S11 | Public result lookup by result code |
+| S12 | VAT per fee head; online payments through SSLCommerz |
+| S12c | Privacy baseline: consent, restricted identity numbers, retention and erasure |
+| S13 | Demonstration classes for each programme; documentation |
+
+Three independent reviews by Codex were checked against the code; every confirmed finding was
+fixed with a regression test (see sections 1, 1b and 1c of the stages document). Worked
+examples still need a school's sign-off before the results are relied on (section 4 there).
 
 ## Work packages
 
