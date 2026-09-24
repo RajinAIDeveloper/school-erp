@@ -231,7 +231,12 @@ class ClassSubject(SchoolScopedModel):
 
 
 class SubjectTeacher(SchoolScopedModel):
-    """Which teacher teaches which subject in which section, per academic year."""
+    """
+    Which teacher teaches which subject in which section, per academic year.
+
+    A subject may have more than one teacher in a section (co-teaching, a practical
+    assistant); each can enter its marks and comments.
+    """
 
     academic_year = models.ForeignKey(AcademicYear, on_delete=models.CASCADE, related_name="subject_teachers")
     section = models.ForeignKey(Section, on_delete=models.CASCADE, related_name="subject_teachers")
@@ -242,9 +247,29 @@ class SubjectTeacher(SchoolScopedModel):
         ordering = ["section__class_level__order", "section__name", "subject__name"]
         constraints = [
             models.UniqueConstraint(
-                fields=["academic_year", "section", "subject"], name="unique_subject_teacher_per_section"
+                fields=["academic_year", "section", "subject", "teacher"], name="unique_subject_teacher_per_section"
             ),
         ]
 
     def __str__(self):
         return f"{self.subject} / {self.section} - {self.teacher}"
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        super().clean()
+        errors = {}
+        teacher = self.teacher if self.teacher_id else None
+        if teacher is not None and teacher.employee_type != teacher.Type.TEACHER:
+            errors["teacher"] = f"{teacher} is on the staff, not the teaching staff; subjects are taught by teachers."
+        if self.subject_id and self.section_id:
+            level = self.section.class_level
+            listed = self.subject.class_levels.all()
+            if listed.exists() and level not in listed:
+                errors["subject"] = f"{self.subject} is not taught in {level}."
+            elif self.academic_year_id:
+                plan = ClassSubject.objects.filter(academic_year=self.academic_year, class_level=level)
+                if plan.exists() and not plan.filter(subject=self.subject).exists():
+                    errors["subject"] = f"{self.subject} is not in {level}'s subject plan for {self.academic_year}."
+        if errors:
+            raise ValidationError(errors)

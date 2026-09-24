@@ -165,6 +165,29 @@ Each stage closes only when its tests pass and the full gate passes:
 
 **Deferred by the owner:** the parent app.
 
+### Codex's review of curriculum, teachers and attendance (24 September 2026)
+
+Checked against the code and against what competitors offer (ManageBac, Fedena, Toddle and the
+Bangladeshi ERPs' public pages). The owner's rule: build what competitors provide, or what is a
+genuine upgrade worth the extra steps; otherwise keep the system simple.
+
+| # | Finding | Competitors | Decision |
+|---|---|---|---|
+| 1–3 | No separate programme record; sections share a class's plan; rules not per year | ManageBac groups classes by programme; here a class (or an exam) carries its rulebook, and published results freeze the rules and version used | Not built: a school with two streams sets them up as two classes |
+| 4 | A missing subject plan does not stop an exam | — | Built as a pre-publish warning (T2) |
+| 5 | Choices lean on the national curriculum | IGCSE options already work as ordinary choice subjects | Not built |
+| 6 | Assignments not checked | Fedena shows subject teachers only their assigned subjects | Built (T1): a teacher, not office staff; a subject the class takes |
+| 7 | One teacher per subject and section | ManageBac and Fedena allow several | Built (T1): co-teachers |
+| 8 | Class teacher not per year | — | Not built: the audit log records changes |
+| 9, 11 | Any teacher of the section takes the register; no cover workflow | Fedena: only the batch tutor takes daily attendance; ManageBac: homeroom advisor, with optional "substitute recording" by the class's other teachers | Built (T2): a school setting, class teacher only or class teacher plus the section's teachers as cover |
+| 10 | No "who took this register" report | — | Built (T2): shown in the daily summary |
+| 12 | Corrections not reviewed | Fedena: optional lock after a set time, then admins only; no approval step | Built (T2): an optional edit window, then managers only |
+
+**The remaining phases were re-scoped by the same rule:** R3 keeps paper timetable clashes and
+holding official results until the release date. R2 (Bangla on staff screens), R4 (Edexcel
+UMS), R5 (PYP narratives), R6 (moderation), R7 (national administration returns) and R8
+(multi-school hosting) wait until a school needs them.
+
 ### Remaining phases (after S13)
 
 Built one at a time after the planned stages, each with tests and the full gate:
