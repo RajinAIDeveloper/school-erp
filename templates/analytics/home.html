@@ -9,6 +9,9 @@
   <button class="btn-secondary">{% translate "Show" %}</button>
 </form>
 
+{% if whole_school %}
+  <p class="mb-4"><a class="btn-primary" href="{% url 'analytics:school' %}{% if chosen.status == "published" %}?exam={{ chosen.pk }}{% endif %}">{% translate "School analytics" %}</a></p>
+{% endif %}
 {% if not chosen %}
   {% translate "There is no exam in the current year yet." as nothing %}{% include "components/empty.html" with message=nothing %}
 {% else %}

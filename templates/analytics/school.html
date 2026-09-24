@@ -1,0 +1,101 @@
+{% extends "layouts/base.html" %}
+{% load erp i18n %}
+{% block header_actions %}
+  {% if data %}<a href="?exam={{ data.exam.pk }}&amp;format=xlsx" class="btn-secondary btn-sm">Excel</a>{% endif %}
+  <a href="{% url 'analytics:home' %}{% if data %}?exam={{ data.exam.pk }}{% endif %}" class="btn-secondary btn-sm">{% translate "Subjects and sections" %}</a>
+  <a href="{% url 'reports:early_warning' %}" class="btn-secondary btn-sm">{% translate "Early warning" %}</a>
+{% endblock %}
+{% block content %}
+<form method="get" class="card card-body mb-4 flex flex-wrap items-end gap-3">
+  <div class="min-w-64 flex-1"><label class="label" for="exam">{% translate "Published exam" %}</label>
+    <select id="exam" name="exam" class="input">{% for e in exams %}<option value="{{ e.pk }}" {% if data.exam.pk == e.pk %}selected{% endif %}>{{ e.name }}</option>{% endfor %}</select></div>
+  <button class="btn-secondary">{% translate "Show" %}</button>
+</form>
+
+{% if not data %}
+  {% translate "No exam has been published this year yet." as nothing %}{% include "components/empty.html" with message=nothing %}
+{% else %}
+  <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="stat"><p class="text-sm text-slate-500">{% translate "Students" %}</p><p class="mt-1 text-3xl font-bold">{{ data.students }}</p>
+      <p class="mt-1 text-xs text-slate-500">{% translate "with a published result" %}</p></div>
+    <div class="stat"><p class="text-sm text-slate-500">{% translate "School average" %}</p><p class="mt-1 text-3xl font-bold">{{ data.average|default_if_none:"—"|mark }}{% if data.average is not None %}%{% endif %}</p>
+      <p class="mt-1 text-xs text-slate-500">{% if data.gpa is not None %}{% translate "Average GPA" %} {{ data.gpa|mark }}{% else %}&nbsp;{% endif %}</p></div>
+    <div class="stat"><p class="text-sm text-slate-500">{% translate "Pass rate" %}</p><p class="mt-1 text-3xl font-bold">{% if data.pass_rate is not None %}{{ data.pass_rate|mark }}%{% else %}—{% endif %}</p>
+      <p class="mt-1 text-xs text-slate-500">{% translate "where results are pass or fail" %}</p></div>
+    <div class="stat"><p class="text-sm text-slate-500">{% translate "At risk" %}</p><p class="mt-1 text-3xl font-bold {% if data.failing %}text-red-600{% endif %}">{{ data.failing }}</p>
+      <p class="mt-1 text-xs text-slate-500"><a class="link" href="{% url 'reports:early_warning' %}">{% translate "failed at least one subject" %}</a></p></div>
+  </div>
+
+  <section class="card mt-6 overflow-x-auto">
+    <div class="card-header"><h2 class="font-semibold">{% translate "Class by class" %}</h2></div>
+    {% if classes_chart %}<div class="card-body">{{ classes_chart }}</div>{% endif %}
+    <table class="table table-stack">
+      <thead><tr><th>{% translate "Class" %}</th><th class="text-right">{% translate "Students" %}</th><th class="text-right">{% translate "Average" %}</th><th class="text-right">{% translate "Highest" %}</th><th class="text-right">{% translate "GPA" %}</th><th class="text-right">{% translate "Pass rate" %}</th><th class="text-right">{% translate "At risk" %}</th><th>{% translate "Sections" %}</th></tr></thead>
+      <tbody>
+        {% for c in data.classes %}
+          <tr>
+            <td data-label="{% translate "Class" %}" class="font-medium">{{ c.level }}</td>
+            <td data-label="{% translate "Students" %}" class="sm:text-right">{{ c.students }}</td>
+            <td data-label="{% translate "Average" %}" class="sm:text-right" style="background: {{ c.average|shade }}">{{ c.average|default_if_none:"—"|mark }}</td>
+            <td data-label="{% translate "Highest" %}" class="sm:text-right">{{ c.highest|default_if_none:"—"|mark }}</td>
+            <td data-label="{% translate "GPA" %}" class="sm:text-right">{{ c.gpa|default_if_none:"—"|mark }}</td>
+            <td data-label="{% translate "Pass rate" %}" class="sm:text-right">{% if c.pass_rate is not None %}{{ c.pass_rate|mark }}%{% else %}—{% endif %}</td>
+            <td data-label="{% translate "At risk" %}" class="sm:text-right {% if c.failing %}text-red-600{% endif %}">{{ c.failing }}</td>
+            <td data-label="{% translate "Sections" %}">{% for s in c.sections %}<a class="link mr-2 whitespace-nowrap" href="{% url 'analytics:section' %}?exam={{ data.exam.pk }}&amp;section={{ s.section_id }}">{{ s.name }} · {{ s.average|default_if_none:"—"|mark }}%</a>{% endfor %}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  {% if data.subjects %}
+    <section class="card mt-6">
+      <div class="card-header"><h2 class="font-semibold">{% translate "Every subject in every class" %}</h2><span class="text-xs text-slate-500">{% translate "Average percentage; open a subject for its full analysis" %}</span></div>
+      <div class="overflow-x-auto">
+        <table class="table text-sm">
+          <thead><tr><th class="sticky left-0 z-10 bg-slate-50">{% translate "Class" %}</th>{% for pk, name in data.subjects %}<th class="text-right" title="{{ name }}">{{ name|truncatechars:14 }}</th>{% endfor %}</tr></thead>
+          <tbody>
+            {% for row in data.grid %}
+              <tr>
+                <td class="sticky left-0 z-10 bg-white font-medium whitespace-nowrap">{{ row.level }}</td>
+                {% for subject_id, cell in row.cells %}
+                  <td class="text-right" style="background: {{ cell.average|shade }}">{% if cell %}<a class="hover:underline" href="{% url 'analytics:paper' %}?exam={{ data.exam.pk }}&amp;subject={{ subject_id }}" title="{% if cell.pass_rate is not None %}{% translate "Pass rate" %} {{ cell.pass_rate|mark }}%{% endif %}">{{ cell.average|default_if_none:"—"|mark }}</a>{% else %}<span class="text-slate-300">·</span>{% endif %}</td>
+                {% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  {% endif %}
+
+  {% if trend_chart %}
+    <section class="card mt-6"><div class="card-header"><h2 class="font-semibold">{% translate "Across the year" %}</h2><span class="text-xs text-slate-500">{% translate "Average percentage in each published exam" %}</span></div>
+      <div class="card-body">{{ trend_chart }}</div></section>
+  {% endif %}
+
+  <div class="mt-6 grid gap-6 lg:grid-cols-2">
+    {% if data.groups %}
+      <section class="card"><div class="card-header"><h2 class="font-semibold">{% translate "By group" %}</h2></div>
+        <table class="table"><tbody>{% for g in data.groups %}<tr><td>{% translate g.name %}</td><td class="text-right">{{ g.students }}</td><td class="text-right font-medium">{{ g.average|default_if_none:"—"|mark }}%</td></tr>{% endfor %}</tbody></table></section>
+    {% endif %}
+    <section class="card"><div class="card-header"><h2 class="font-semibold">{% translate "Boys and girls" %}</h2></div>
+      <table class="table"><tbody>{% for g in data.genders %}<tr><td>{% translate g.name %}</td><td class="text-right">{{ g.students }}</td><td class="text-right font-medium">{{ g.average|default_if_none:"—"|mark }}%</td></tr>{% endfor %}</tbody></table></section>
+  </div>
+
+  <div class="mt-6 grid gap-6 lg:grid-cols-3">
+    <section class="card"><div class="card-header"><h2 class="font-semibold">{% translate "Top of each class" %}</h2></div>
+      <div class="card-body space-y-4 text-sm">
+        {% for c in data.classes %}
+          <div><p class="font-medium text-slate-700">{{ c.level }}</p>
+            <ol class="mt-1 list-inside list-decimal">{% for f in c.top %}<li><a class="link" href="{% url 'analytics:student' f.student_id %}">{{ f.student.full_name }}</a> <span class="text-slate-500">{{ f.shown|mark }}%</span></li>{% endfor %}</ol></div>
+        {% endfor %}
+      </div></section>
+    <section class="card"><div class="card-header"><h2 class="font-semibold text-emerald-700">{% translate "Most improved" %}</h2><span class="text-xs text-slate-500">{% translate "since their last exam" %}</span></div>
+      <ul class="divide-y divide-slate-100 text-sm">{% for m in data.improved %}<li class="flex justify-between px-5 py-2"><a class="link" href="{% url 'analytics:student' m.fact.student_id %}">{{ m.fact.student.full_name }}</a><span class="font-medium text-emerald-700">+{{ m.change|mark }}</span></li>{% empty %}<li class="px-5 py-4 text-slate-500">{% translate "No earlier exam to compare with." %}</li>{% endfor %}</ul></section>
+    <section class="card"><div class="card-header"><h2 class="font-semibold text-red-700">{% translate "Biggest drops" %}</h2><span class="text-xs text-slate-500">{% translate "since their last exam" %}</span></div>
+      <ul class="divide-y divide-slate-100 text-sm">{% for m in data.slipped %}<li class="flex justify-between px-5 py-2"><a class="link" href="{% url 'analytics:student' m.fact.student_id %}">{{ m.fact.student.full_name }}</a><span class="font-medium text-red-600">{{ m.change|mark }}</span></li>{% empty %}<li class="px-5 py-4 text-slate-500">{% translate "Nobody's result has fallen since their last exam." %}</li>{% endfor %}</ul></section>
+  </div>
+  <p class="mt-4 text-xs text-slate-500">{% translate "From the published results. Averages are of students' percentages; percentages from different programmes are compared only within a class." %}</p>
+{% endif %}
+{% endblock %}

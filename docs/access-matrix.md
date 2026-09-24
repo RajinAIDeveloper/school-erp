@@ -26,6 +26,7 @@ quietly join it.
 | /academics/subject-plan/ | academics:subject_plan | `academics.view_classsubject` | - | Y | Y | Y | . | . | . | . | . |
 | /analytics/ | analytics:home | `(sign-in only)` | what the viewer's analytics reach: their school, sections or subjects | o | o | o | o | o | o | o | o |
 | /analytics/paper/ | analytics:paper | `(sign-in only)` | the subject's teachers for their sections, class teachers, and managers | o | o | o | o | o | o | o | o |
+| /analytics/school/ | analytics:school | `(sign-in only)` | the school's managers: Administrator, Principal, Vice Principal | o | o | o | o | o | o | o | o |
 | /analytics/section/ | analytics:section | `(sign-in only)` | the section's class teacher, and managers | o | o | o | o | o | o | o | o |
 | /analytics/student/<int:pk>/ | analytics:student | `(sign-in only)` | within the viewer's analytics: the whole school, their sections or subjects, or their own child | o | o | o | o | o | o | o | o |
 | /attendance/ | attendance:student_take | `(sign-in only)` | - | o | o | o | o | o | o | o | o |

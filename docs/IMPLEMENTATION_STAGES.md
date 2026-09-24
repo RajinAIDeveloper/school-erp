@@ -249,7 +249,7 @@ quizzes, chat) are not being built.
 | P6a | Analytics foundation: Vice Principal role (the Principal's access); the platform page where only the platform administrator gives a school a module; the analytics tables, written on every publication and rebuildable; one access check for all analytics | Done: test_analytics_foundation.py |
 | P6b | Student and family progress (portal, English and Bangla), with a printable progress report | Done: test_progress.py. Charts are server-drawn SVG; staff open the same view from a student's record |
 | P6c | Teacher and class teacher analytics | Done: test_teacher_analytics.py. A paper's spread, averages, parts, sections and each student's change; drafts analysed live; the class teacher's grid |
-| P6d | School analytics for the Principal, Vice Principal and Administrator | |
+| P6d | School analytics for the Principal, Vice Principal and Administrator | Done: test_school_analytics.py. Class against class, every subject in every class, groups, boys and girls, the top of each class, the most improved and biggest drops, the year's trend, and an Excel export. Pass rates only where the rulebook has pass marks; a school line in the trend only when every exam had the same classes |
 | P6e | Homework analytics, with Phase 5 and only for schools given homework | |
 
 Class-highest marks are worked out when a card is shown, from the class's current published

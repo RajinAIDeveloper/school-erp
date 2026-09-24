@@ -1207,3 +1207,96 @@ msgstr "অল্পের জন্য পাস"
 
 msgid "All sections"
 msgstr "সব শাখা"
+
+msgid "School analytics"
+msgstr "বিদ্যালয়ের বিশ্লেষণ"
+
+msgid "Subjects and sections"
+msgstr "বিষয় ও শাখা"
+
+msgid "Early warning"
+msgstr "আগাম সতর্কতা"
+
+msgid "Published exam"
+msgstr "প্রকাশিত পরীক্ষা"
+
+msgid "No exam has been published this year yet."
+msgstr "এ বছর এখনো কোনো পরীক্ষা প্রকাশিত হয়নি।"
+
+msgid "with a published result"
+msgstr "যাদের ফলাফল প্রকাশিত"
+
+msgid "School average"
+msgstr "বিদ্যালয়ের গড়"
+
+msgid "Average GPA"
+msgstr "গড় জিপিএ"
+
+msgid "where results are pass or fail"
+msgstr "যেখানে ফলাফল পাস বা ফেল"
+
+msgid "At risk"
+msgstr "ঝুঁকিতে"
+
+msgid "failed at least one subject"
+msgstr "অন্তত একটি বিষয়ে অকৃতকার্য"
+
+msgid "Class by class"
+msgstr "শ্রেণি অনুযায়ী"
+
+msgid "Every subject in every class"
+msgstr "প্রতিটি শ্রেণির প্রতিটি বিষয়"
+
+msgid "Average percentage; open a subject for its full analysis"
+msgstr "গড় শতাংশ; পূর্ণ বিশ্লেষণের জন্য একটি বিষয় খুলুন"
+
+msgid "Across the year"
+msgstr "সারা বছর জুড়ে"
+
+msgid "Average percentage in each published exam"
+msgstr "প্রতিটি প্রকাশিত পরীক্ষার গড় শতাংশ"
+
+msgid "By group"
+msgstr "বিভাগ অনুযায়ী"
+
+msgid "Boys and girls"
+msgstr "ছেলে ও মেয়ে"
+
+msgid "Top of each class"
+msgstr "প্রতিটি শ্রেণির শীর্ষে"
+
+msgid "Most improved"
+msgstr "সবচেয়ে বেশি উন্নতি"
+
+msgid "since their last exam"
+msgstr "আগের পরীক্ষার পর থেকে"
+
+msgid "No earlier exam to compare with."
+msgstr "তুলনা করার মতো আগের কোনো পরীক্ষা নেই।"
+
+msgid "Biggest drops"
+msgstr "সবচেয়ে বেশি অবনতি"
+
+msgid "Nobody's result has fallen since their last exam."
+msgstr "আগের পরীক্ষার পর থেকে কারও ফলাফল কমেনি।"
+
+msgid "From the published results. Averages are of students' percentages; percentages from different programmes are compared only within a class."
+msgstr "প্রকাশিত ফলাফল থেকে। গড় হলো শিক্ষার্থীদের শতাংশের গড়; ভিন্ন কার্যক্রমের শতাংশ কেবল একই শ্রেণির মধ্যে তুলনা করা হয়।"
+
+msgid "Average percentage in each class"
+msgstr "প্রতিটি শ্রেণির গড় শতাংশ"
+
+msgid "Average percentage in each exam this year"
+msgstr "এ বছরের প্রতিটি পরীক্ষার গড় শতাংশ"
+
+msgid "School"
+msgstr "বিদ্যালয়"
+
+msgid "Boys"
+msgstr "ছেলে"
+
+msgid "Girls"
+msgstr "মেয়ে"
+
+msgid "Other"
+msgstr "অন্যান্য"

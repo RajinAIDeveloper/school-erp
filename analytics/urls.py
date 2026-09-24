@@ -11,3 +11,4 @@ urlpatterns += [
     path("paper/", views.paper, name="paper"),
     path("section/", views.section, name="section"),
 ]
+urlpatterns += [path("school/", views.school, name="school")]

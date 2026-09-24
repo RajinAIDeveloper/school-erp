@@ -38,6 +38,7 @@ TRANSLATED_TEMPLATES = [
     "templates/analytics/home.html",
     "templates/analytics/paper.html",
     "templates/analytics/section.html",
+    "templates/analytics/school.html",
 ]
 
 
