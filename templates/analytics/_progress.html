@@ -1,7 +1,9 @@
 {% load erp i18n %}
 {% if not progress %}
-  {% translate "No published results yet. Progress appears here once the school publishes an exam." as nothing %}
-  {% include "components/empty.html" with message=nothing %}
+  {% if not homework %}
+    {% translate "No published results yet. Progress appears here once the school publishes an exam." as nothing %}
+    {% include "components/empty.html" with message=nothing %}
+  {% endif %}
 {% else %}
   {% with latest=progress.latest %}
   <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -128,3 +130,4 @@
   <p class="mt-4 text-xs text-slate-500">{% translate "From the published results only. Class figures are for the whole class in each exam; no other student is named." %}</p>
   {% endwith %}
 {% endif %}
+{% if homework %}{% include "homework/_student_analytics.html" %}{% endif %}

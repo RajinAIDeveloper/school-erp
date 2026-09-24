@@ -1,0 +1,112 @@
+{% extends "layouts/base.html" %}
+{% load erp i18n %}
+{% block header_actions %}
+  {% if school %}<a href="?period={{ period }}&amp;format=xlsx" class="btn-secondary btn-sm">Excel</a>{% endif %}
+  <a href="{% url 'homework:list' %}" class="btn-secondary btn-sm">{% translate "Homework" %}</a>
+{% endblock %}
+{% block content %}
+<div class="mb-4 flex flex-wrap gap-1 border-b border-slate-200">
+  <a href="?period=4w" class="px-3 py-2 text-sm {% if period == '4w' %}border-b-2 border-indigo-600 font-semibold text-indigo-700{% else %}text-slate-600{% endif %}">{% translate "Last four weeks" %}</a>
+  <a href="?period=term" class="px-3 py-2 text-sm {% if period == 'term' %}border-b-2 border-indigo-600 font-semibold text-indigo-700{% else %}text-slate-600{% endif %}">{% translate "This term" %}</a>
+  <a href="?period=year" class="px-3 py-2 text-sm {% if period == 'year' %}border-b-2 border-indigo-600 font-semibold text-indigo-700{% else %}text-slate-600{% endif %}">{% translate "This year" %}</a>
+</div>
+
+{% if school %}
+  {% with o=school.overall %}
+  <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="stat"><p class="text-sm text-slate-500">{% translate "Handed in" %}</p><p class="mt-1 text-3xl font-bold">{% if o.rate is not None %}{{ o.rate }}%{% else %}—{% endif %}</p><p class="mt-1 text-xs text-slate-500">{{ o.handed }}/{{ o.known }}</p></div>
+    <div class="stat"><p class="text-sm text-slate-500">{% translate "On time" %}</p><p class="mt-1 text-3xl font-bold">{% if o.on_time_rate is not None %}{{ o.on_time_rate }}%{% else %}—{% endif %}</p></div>
+    <div class="stat"><p class="text-sm text-slate-500">{% translate "Average mark" %}</p><p class="mt-1 text-3xl font-bold">{% if o.mark is not None %}{{ o.mark|mark }}%{% else %}—{% endif %}</p><p class="mt-1 text-xs text-slate-500">{% translate "on marked work returned" %}</p></div>
+    <div class="stat"><p class="text-sm text-slate-500">{% translate "Not checked yet" %}</p><p class="mt-1 text-3xl font-bold text-slate-500">{{ o.unchecked }}</p><p class="mt-1 text-xs text-slate-500">{% translate "checked-in-class work past its due time" %}</p></div>
+  </div>
+  {% endwith %}
+
+  <div class="mt-6 grid gap-6 lg:grid-cols-2">
+    <section class="card overflow-x-auto">
+      <div class="card-header"><h2 class="font-semibold">{% translate "By class" %}</h2></div>
+      <table class="table">
+        <thead><tr><th>{% translate "Class" %}</th><th class="text-right">{% translate "Handed in" %}</th><th class="text-right">{% translate "On time" %}</th><th class="text-right">{% translate "Average mark" %}</th></tr></thead>
+        <tbody>{% for row in school.classes %}<tr><td class="font-medium">{{ row.target__section__class_level__name }}</td><td class="text-right" style="background: {{ row.rate|shade }}">{{ row.rate|default_if_none:"—" }}{% if row.rate is not None %}%{% endif %}</td><td class="text-right">{{ row.on_time_rate|default_if_none:"—" }}{% if row.on_time_rate is not None %}%{% endif %}</td><td class="text-right">{{ row.mark|default_if_none:"—"|mark }}</td></tr>{% empty %}<tr><td colspan="4" class="text-center text-slate-500">{% translate "No homework was due in this period." %}</td></tr>{% endfor %}</tbody>
+      </table>
+    </section>
+    <section class="card overflow-x-auto">
+      <div class="card-header"><h2 class="font-semibold">{% translate "By subject" %}</h2></div>
+      <table class="table">
+        <thead><tr><th>{% translate "Subject" %}</th><th class="text-right">{% translate "Handed in" %}</th><th class="text-right">{% translate "On time" %}</th><th class="text-right">{% translate "Average mark" %}</th></tr></thead>
+        <tbody>{% for row in school.subjects %}<tr><td class="font-medium">{{ row.task__subject__name }}</td><td class="text-right" style="background: {{ row.rate|shade }}">{{ row.rate|default_if_none:"—" }}{% if row.rate is not None %}%{% endif %}</td><td class="text-right">{{ row.on_time_rate|default_if_none:"—" }}{% if row.on_time_rate is not None %}%{% endif %}</td><td class="text-right">{{ row.mark|default_if_none:"—"|mark }}</td></tr>{% endfor %}</tbody>
+      </table>
+    </section>
+  </div>
+
+  <section class="card mt-6 overflow-x-auto">
+    <div class="card-header"><h2 class="font-semibold">{% translate "Sections" %}</h2></div>
+    <table class="table table-stack">
+      <thead><tr><th>{% translate "Section" %}</th><th class="text-right">{% translate "Handed in" %}</th><th class="text-right">{% translate "On time" %}</th><th class="text-right">{% translate "Missing" %}</th><th class="text-right">{% translate "Not checked yet" %}</th><th></th></tr></thead>
+      <tbody>{% for row in school.sections %}<tr>
+        <td data-label="{% translate "Section" %}" class="font-medium">{{ row.target__section__class_level__name }} - {{ row.target__section__name }}</td>
+        <td data-label="{% translate "Handed in" %}" class="sm:text-right" style="background: {{ row.rate|shade }}">{{ row.rate|default_if_none:"—" }}{% if row.rate is not None %}%{% endif %}</td>
+        <td data-label="{% translate "On time" %}" class="sm:text-right">{{ row.on_time_rate|default_if_none:"—" }}{% if row.on_time_rate is not None %}%{% endif %}</td>
+        <td data-label="{% translate "Missing" %}" class="sm:text-right">{{ row.missing }}</td>
+        <td data-label="{% translate "Not checked yet" %}" class="sm:text-right text-slate-500">{{ row.unchecked }}</td>
+        <td class="sm:text-right"><a class="link text-xs" href="{% url 'homework:insights_section' %}?section={{ row.target__section_id }}&amp;period={{ period }}">{% translate "Open" %}</a></td></tr>{% endfor %}</tbody>
+    </table>
+  </section>
+
+  <section class="card mt-6 overflow-x-auto">
+    <div class="card-header"><h2 class="font-semibold">{% translate "Teachers" %}</h2><span class="text-xs text-slate-500">{% translate "Homework set, what came back, and how soon it was checked" %}</span></div>
+    <table class="table table-stack">
+      <thead><tr><th>{% translate "Teacher" %}</th><th class="text-right">{% translate "Homework set" %}</th><th class="text-right">{% translate "Handed in" %}</th><th class="text-right">{% translate "Checked within a week" %}</th><th class="text-right">{% translate "Not checked yet" %}</th></tr></thead>
+      <tbody>{% for row in school.teachers %}<tr>
+        <td data-label="{% translate "Teacher" %}" class="font-medium">{{ row.teacher }}</td>
+        <td data-label="{% translate "Homework set" %}" class="sm:text-right">{{ row.tasks }}</td>
+        <td data-label="{% translate "Handed in" %}" class="sm:text-right">{{ row.rate|default_if_none:"—" }}{% if row.rate is not None %}%{% endif %}</td>
+        <td data-label="{% translate "Checked within a week" %}" class="sm:text-right">{{ row.prompt_rate|default_if_none:"—" }}{% if row.prompt_rate is not None %}%{% endif %}</td>
+        <td data-label="{% translate "Not checked yet" %}" class="sm:text-right {% if row.unchecked %}text-amber-700{% endif %}">{{ row.unchecked }}</td></tr>{% endfor %}</tbody>
+    </table>
+  </section>
+
+  {% if school.load %}
+    <section class="card mt-6 overflow-x-auto">
+      <div class="card-header"><h2 class="font-semibold">{% translate "How much is due each school day" %}</h2><span class="text-xs text-slate-500">{{ school.school_days }} {% translate "school days in the period" %}</span></div>
+      <table class="table">
+        <thead><tr><th>{% translate "Class" %}</th><th class="text-right">{% translate "Average minutes a day" %}</th><th class="text-right">{% translate "Heaviest day" %}</th><th class="text-right">{% translate "Daily limit" %}</th><th class="text-right">{% translate "Days over the limit" %}</th></tr></thead>
+        <tbody>{% for row in school.load %}<tr><td class="font-medium">{{ row.level }}</td><td class="text-right">{{ row.average|default_if_none:"—" }}</td><td class="text-right">{{ row.heaviest }}</td><td class="text-right">{{ row.limit|default_if_none:"—" }}</td><td class="text-right {% if row.over %}font-semibold text-red-700{% endif %}">{{ row.over }}</td></tr>{% endfor %}</tbody>
+      </table>
+    </section>
+  {% endif %}
+
+  {% if school.months|length > 1 %}
+    <section class="card card-body mt-6 text-sm"><span class="font-semibold">{% translate "By month" %}:</span>
+      {% for m in school.months %}<span class="ml-3 whitespace-nowrap">{{ m.month|date:"M" }} <b>{{ m.rate|default_if_none:"—" }}{% if m.rate is not None %}%{% endif %}</b></span>{% endfor %}</section>
+  {% endif %}
+{% endif %}
+
+{% if pairs %}
+  <section class="card mt-6 overflow-x-auto">
+    <div class="card-header"><h2 class="font-semibold">{% translate "The subjects you teach" %}</h2></div>
+    <table class="table table-stack">
+      <thead><tr><th>{% translate "Subject" %}</th><th>{% translate "Section" %}</th><th class="text-right">{% translate "Handed in" %}</th><th class="text-right">{% translate "On time" %}</th><th class="text-right">{% translate "Average mark" %}</th><th class="text-right">{% translate "Not checked yet" %}</th><th></th></tr></thead>
+      <tbody>{% for row in pairs %}<tr>
+        <td data-label="{% translate "Subject" %}" class="font-medium">{{ row.subject.name }}</td>
+        <td data-label="{% translate "Section" %}">{{ row.section }}</td>
+        <td data-label="{% translate "Handed in" %}" class="sm:text-right" style="background: {{ row.figures.rate|shade }}">{{ row.figures.rate|default_if_none:"—" }}{% if row.figures.rate is not None %}%{% endif %}</td>
+        <td data-label="{% translate "On time" %}" class="sm:text-right">{{ row.figures.on_time_rate|default_if_none:"—" }}{% if row.figures.on_time_rate is not None %}%{% endif %}</td>
+        <td data-label="{% translate "Average mark" %}" class="sm:text-right">{{ row.figures.mark|default_if_none:"—"|mark }}</td>
+        <td data-label="{% translate "Not checked yet" %}" class="sm:text-right text-slate-500">{{ row.figures.unchecked|default:0 }}</td>
+        <td class="sm:text-right"><a class="link text-xs" href="{% url 'homework:insights_subject' %}?section={{ row.section.pk }}&amp;subject={{ row.subject.pk }}&amp;period={{ period }}">{% translate "Open" %}</a></td></tr>{% endfor %}</tbody>
+    </table>
+  </section>
+{% endif %}
+
+{% if class_sections %}
+  <section class="card mt-6">
+    <div class="card-header"><h2 class="font-semibold">{% translate "Your sections as class teacher" %}</h2></div>
+    <ul class="divide-y divide-slate-100 text-sm">{% for s in class_sections %}<li class="flex items-center justify-between px-5 py-2.5"><span class="font-medium">{{ s }}</span><a class="link text-xs" href="{% url 'homework:insights_section' %}?section={{ s.pk }}&amp;period={{ period }}">{% translate "Open" %}</a></li>{% endfor %}</ul>
+  </section>
+{% endif %}
+
+{% if not school and not pairs and not class_sections %}
+  {% translate "There is no homework of yours to analyse yet." as nothing %}{% include "components/empty.html" with message=nothing %}
+{% endif %}
+<p class="mt-4 text-xs text-slate-500">{% translate "Counts work whose outcome is known: absent and excused are left out, and work checked in class that the teacher has not checked yet is shown apart." %}</p>
+{% endblock %}

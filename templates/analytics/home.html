@@ -9,6 +9,9 @@
   <button class="btn-secondary">{% translate "Show" %}</button>
 </form>
 
+{% if current_school|has_module:"homework" and perms.homework.view_task %}
+  <p class="mb-4"><a class="btn-secondary" href="{% url 'homework:insights' %}">{% translate "Homework analytics" %}</a></p>
+{% endif %}
 {% if whole_school %}
   <p class="mb-4"><a class="btn-primary" href="{% url 'analytics:school' %}{% if chosen.status == "published" %}?exam={{ chosen.pk }}{% endif %}">{% translate "School analytics" %}</a></p>
 {% endif %}

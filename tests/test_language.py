@@ -53,6 +53,9 @@ TRANSLATED_TEMPLATES = [
     "templates/homework/calendar.html",
     "templates/homework/missing.html",
     "templates/homework/export.html",
+    "templates/homework/insights.html",
+    "templates/homework/insights_grid.html",
+    "templates/homework/_student_analytics.html",
 ]
 
 

@@ -1,0 +1,48 @@
+{% load erp i18n %}
+<section class="card mt-6 overflow-x-auto" id="homework">
+  <div class="card-header"><h2 class="font-semibold">{% translate "Homework" %}</h2>
+    <span class="text-xs text-slate-500">{% if homework.period == "year" %}{% translate "this year" %}{% elif homework.period == "term" %}{% translate "this term" %}{% else %}{% translate "the last four weeks" %}{% endif %}</span></div>
+  <div class="card-body">
+    {% with o=homework.overall %}
+    <div class="grid gap-4 sm:grid-cols-4">
+      <div><p class="text-sm text-slate-500">{% translate "Handed in" %}</p>
+        <p class="mt-1 text-2xl font-bold {% if o.rate is not None and o.rate < 70 %}text-red-600{% elif o.rate is not None and o.rate < 85 %}text-amber-600{% else %}text-emerald-700{% endif %}">{% if o.rate is not None %}{{ o.rate }}%{% else %}—{% endif %}</p>
+        <p class="text-xs text-slate-500">{{ o.handed }}/{{ o.known }}</p></div>
+      <div><p class="text-sm text-slate-500">{% translate "On time" %}</p><p class="mt-1 text-2xl font-bold">{% if o.on_time_rate is not None %}{{ o.on_time_rate }}%{% else %}—{% endif %}</p></div>
+      <div><p class="text-sm text-slate-500">{% translate "Average mark" %}</p><p class="mt-1 text-2xl font-bold">{% if o.mark is not None %}{{ o.mark|mark }}%{% else %}—{% endif %}</p>
+        <p class="text-xs text-slate-500">{% translate "on marked work returned" %}</p></div>
+      <div><p class="text-sm text-slate-500">{% translate "Not checked yet" %}</p><p class="mt-1 text-2xl font-bold text-slate-500">{{ o.unchecked }}</p></div>
+    </div>
+    {% endwith %}
+  </div>
+  {% if homework.subjects %}
+    <table class="table table-stack">
+      <thead><tr><th>{% translate "Subject" %}</th><th class="text-right">{% translate "Handed in" %}</th><th class="text-right">{% translate "Section" %}</th><th class="text-right">{% translate "On time" %}</th><th class="text-right">{% translate "Average mark" %}</th><th class="text-right">{% translate "Missing" %}</th></tr></thead>
+      <tbody>
+        {% for row in homework.subjects %}
+          <tr>
+            <td data-label="{% translate "Subject" %}" class="font-medium">{{ row.subject }}</td>
+            <td data-label="{% translate "Handed in" %}" class="sm:text-right" style="background: {{ row.rate|shade }}">{% if row.rate is not None %}{{ row.rate }}%{% else %}—{% endif %}</td>
+            <td data-label="{% translate "Section" %}" class="sm:text-right text-slate-500">{% if row.section_rate is not None %}{{ row.section_rate }}%{% else %}—{% endif %}</td>
+            <td data-label="{% translate "On time" %}" class="sm:text-right">{% if row.on_time_rate is not None %}{{ row.on_time_rate }}%{% else %}—{% endif %}</td>
+            <td data-label="{% translate "Average mark" %}" class="sm:text-right">{% if row.mark is not None %}{{ row.mark|mark }}%{% else %}—{% endif %}</td>
+            <td data-label="{% translate "Missing" %}" class="sm:text-right {% if row.missing %}font-semibold text-red-700{% endif %}">{{ row.missing }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+  {% if homework.months|length > 1 %}
+    <div class="border-t border-slate-100 px-5 py-3 text-sm">
+      <span class="text-slate-500">{% translate "By month" %}:</span>
+      {% for m in homework.months %}<span class="ml-3 whitespace-nowrap">{{ m.month|date:"M" }} <b>{% if m.rate is not None %}{{ m.rate }}%{% else %}—{% endif %}</b></span>{% endfor %}
+    </div>
+  {% endif %}
+  {% if homework.missing %}
+    <div class="border-t border-slate-100 px-5 py-3">
+      <p class="text-sm font-medium text-red-700">{% translate "Not handed in" %}</p>
+      <ul class="mt-1 space-y-0.5 text-sm">{% for row in homework.missing %}<li>{{ row.task.subject.name }}: {{ row.task.title }} <span class="text-xs text-slate-500">· {{ row.due|date:"d M" }}</span></li>{% endfor %}</ul>
+    </div>
+  {% endif %}
+  <p class="px-5 pb-4 text-xs text-slate-500">{% translate "Counts work whose outcome is known: absent and excused are left out, and work checked in class that the teacher has not checked yet is shown apart. The section figure is the whole section's; no other student is named." %}</p>
+</section>

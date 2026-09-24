@@ -1050,3 +1050,201 @@ def export(request, pk, section):
             "page_title": gettext("Homework marks for an exam"),
         },
     )
+
+
+# ------------------------------------------------------------------ homework analytics
+
+
+def _period(request):
+    from .analytics import PERIODS
+
+    raw = request.GET.get("period", "")
+    return raw if raw in PERIODS else "4w"
+
+
+def _period_tabs():
+    return [("4w", gettext("Last four weeks")), ("term", gettext("This term")), ("year", gettext("This year"))]
+
+
+@homework_view("homework.view_task", also="own subjects and sections; managers the whole school")
+def insights(request):
+    """Homework analytics: the school for its managers, and each teacher's own subjects and sections."""
+    from academics.models import Section, Subject
+    from analytics.access import scope_for
+    from core.exports import spreadsheet
+
+    from .analytics import base_rows, period_bounds, school_overview, summarise
+
+    year = _year(request.school)
+    if year is None:
+        raise Http404
+    scope = scope_for(request.user, request.school)
+    start, end, period = period_bounds(request.school, year, _period(request))
+    school = school_overview(request.school, year, start, end) if scope.whole_school else None
+    if school and request.GET.get("format") == "xlsx":
+
+        def line(row, *first):
+            return [
+                *first,
+                row["known"],
+                row["handed"],
+                row["rate"],
+                row["on_time_rate"],
+                row["mark"],
+                row["unchecked"],
+            ]
+
+        figures = ["Expected", "Handed in", "Handed in %", "On time %", "Average mark %", "Not checked yet"]
+        return spreadsheet(
+            f"homework-{period}",
+            ["Class", *figures],
+            [line(row, row["target__section__class_level__name"]) for row in school["classes"]],
+            "xlsx",
+            extra_sheets=[
+                (
+                    "Sections",
+                    ["Class", "Section", *figures],
+                    [
+                        line(row, row["target__section__class_level__name"], row["target__section__name"])
+                        for row in school["sections"]
+                    ],
+                ),
+                (
+                    "Subjects",
+                    ["Subject", *figures],
+                    [line(row, row["task__subject__name"]) for row in school["subjects"]],
+                ),
+                (
+                    "Teachers",
+                    ["Teacher", "Homework set", *figures, "Checked within a week %"],
+                    [[*line(row, row["teacher"], row["tasks"]), row["prompt_rate"]] for row in school["teachers"]],
+                ),
+                (
+                    "Load",
+                    ["Class", "Average minutes a day", "Heaviest day", "Daily limit", "Days over the limit"],
+                    [[str(r["level"]), r["average"], r["heaviest"], r["limit"], r["over"]] for r in school["load"]],
+                ),
+            ],
+        )
+    pairs = []
+    mine = teaching_pairs(request.user, request.school, year)
+    if mine:
+        rows = base_rows(request.school, year, start, end)
+        wanted = Q(pk__in=[])
+        for section_id, subject_id in mine:
+            wanted |= Q(target__section_id=section_id, task__subject_id=subject_id)
+        figures = {
+            (row["target__section_id"], row["task__subject_id"]): row
+            for row in summarise(rows.filter(wanted), "target__section_id", "task__subject_id")
+        }
+        sections = Section.objects.in_bulk({s for s, _ in mine})
+        subjects = Subject.objects.in_bulk({t for _, t in mine})
+        # Only the pairs that had homework in the period, so a paper and its subject are not both listed empty.
+        pairs = sorted(
+            (
+                {"section": sections[s], "subject": subjects[t], "figures": figures[(s, t)]}
+                for s, t in mine
+                if (s, t) in figures and s in sections and t in subjects
+            ),
+            key=lambda row: (row["subject"].name, str(row["section"])),
+        )
+    class_sections = [] if scope.whole_school else _class_teacher_sections(request.user, request.school)
+    return render(
+        request,
+        "homework/insights.html",
+        {
+            "school": school,
+            "pairs": pairs,
+            "class_sections": class_sections,
+            "period": period,
+            "page_title": gettext("Homework analytics"),
+        },
+    )
+
+
+def _grid_response(request, grid, columns, kind, title, period, base_query):
+    from core.exports import spreadsheet
+
+    if request.GET.get("format") == "xlsx":
+        headers = ["Roll", "Student", *[name for name, _f in columns], "Handed in %", "Average mark %"]
+        body = []
+        for enrollment, cells, figures in grid["students"]:
+            if kind == "subject":
+                shown = [
+                    (cell.get_status_display() + (" (late)" if cell.late else "")) if cell else "" for cell in cells
+                ]
+            else:
+                shown = [cell["rate"] if cell else "" for cell in cells]
+            body.append(
+                [
+                    enrollment.roll_number,
+                    enrollment.student.full_name,
+                    *shown,
+                    figures["rate"] if figures else "",
+                    figures["mark"] if figures else "",
+                ]
+            )
+        return spreadsheet(f"homework-{title}", headers, body, "xlsx")
+    return render(
+        request,
+        "homework/insights_grid.html",
+        {
+            "grid": grid,
+            "columns": columns,
+            "kind": kind,
+            "period": period,
+            "periods": _period_tabs(),
+            "base_query": base_query,
+            "page_title": title,
+        },
+    )
+
+
+@homework_view("homework.view_submission", also="teachers of the subject there, or a manager")
+def insights_subject(request):
+    """One subject in one section: each student against each piece of homework."""
+    from academics.models import Section, Subject
+    from core.access import is_manager
+
+    from .analytics import period_bounds, subject_grid
+
+    year = _year(request.school)
+    section = get_object_or_404(Section, school=request.school, pk=_id(request, "section"))
+    subject = get_object_or_404(Subject, school=request.school, pk=_id(request, "subject"))
+    if year is None or not (
+        is_manager(request.user) or (section.pk, subject.pk) in teaching_pairs(request.user, request.school, year)
+    ):
+        raise PermissionDenied
+    start, end, period = period_bounds(request.school, year, _period(request))
+    grid = subject_grid(section, subject, year, start, end)
+    columns = [(task.title, figures) for task, figures in grid["tasks"]]
+    return _grid_response(
+        request,
+        grid,
+        columns,
+        "subject",
+        f"{subject.name} · {section}",
+        period,
+        f"section={section.pk}&subject={subject.pk}",
+    )
+
+
+@homework_view("homework.view_submission", also="the class teacher of the section, or a manager")
+def insights_section(request):
+    """A section across its subjects: each student's homework in each subject."""
+    from academics.models import Section
+
+    from .analytics import period_bounds, section_grid
+
+    year = _year(request.school)
+    section = get_object_or_404(Section, school=request.school, pk=_id(request, "section"))
+    if year is None or section not in _class_teacher_sections(request.user, request.school):
+        raise PermissionDenied
+    start, end, period = period_bounds(request.school, year, _period(request))
+    grid = section_grid(section, year, start, end)
+    return _grid_response(request, grid, grid["subjects"], "section", str(section), period, f"section={section.pk}")
+
+
+def _id(request, name):
+    value = request.GET.get(name, "")
+    return int(value) if value.isdigit() else 0

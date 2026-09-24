@@ -188,7 +188,10 @@ def progress(request):
             )
         )
         student = next((s for s in students if s.pk in with_results), student)
-    data = student_progress(student, scope_for(request.user, request.school)) if student else None
+    from analytics.views import homework_for
+
+    scope = scope_for(request.user, request.school)
+    data = student_progress(student, scope) if student else None
     if data is not None and request.GET.get("format") == "pdf":
         return progress_pdf(request.school, data)
     return render(
@@ -197,6 +200,7 @@ def progress(request):
         {
             "students": students,
             "selected": student,
+            "homework": homework_for(request, student, scope),
             **progress_context(data, student.first_name if student else ""),
             "page_title": gettext("Progress"),
         },

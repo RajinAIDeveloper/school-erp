@@ -220,12 +220,22 @@ class EarlyWarningForm(TailwindFormMixin, forms.Form):
         label="Only just passed: within (marks)",
         help_text="5 if left blank.",
     )
+    homework_below = forms.IntegerField(
+        min_value=1,
+        max_value=100,
+        required=False,
+        label="Homework handed in below (%)",
+        help_text="Over the last four weeks, with at least four pieces of work. 70 if left blank.",
+    )
 
     def __init__(self, *args, user, school, **kwargs):
         from core.access import sections_for
+        from core.modules import has_module
 
         super().__init__(*args, **kwargs)
         self.fields["section"].queryset = sections_for(user, school).select_related("class_level")
+        if not has_module(school, "homework"):
+            del self.fields["homework_below"]
 
 
 @require_permission("examinations.view_mark", also="own sections unless a manager")
@@ -247,6 +257,7 @@ def early_warning(request):
             attendance_below=data.get("attendance_below") or 75,
             drop_by=data.get("drop_by") or 10,
             margin=data.get("margin") or 5,
+            homework_below=(data.get("homework_below") or 70) if "homework_below" in form.fields else None,
         )
     headers = ["Roll", "Student", "Attendance", "Latest result", "Change", "Concerns"]
     rows = [

@@ -253,7 +253,7 @@ quizzes, chat) are not being built.
 | P6b | Student and family progress (portal, English and Bangla), with a printable progress report | Done: test_progress.py. Charts are server-drawn SVG; staff open the same view from a student's record |
 | P6c | Teacher and class teacher analytics | Done: test_teacher_analytics.py. A paper's spread, averages, parts, sections and each student's change; drafts analysed live; the class teacher's grid |
 | P6d | School analytics for the Principal, Vice Principal and Administrator | Done: test_school_analytics.py. Class against class, every subject in every class, groups, boys and girls, the top of each class, the most improved and biggest drops, the year's trend, and an Excel export. Pass rates only where the rulebook has pass marks; a school line in the trend only when every exam had the same classes |
-| P6e | Homework analytics, with Phase 5 and only for schools given homework | |
+| P6e | Homework analytics, with Phase 5 and only for schools given homework | Done: test_homework_analytics.py. Rates count only work whose outcome is known (absent and excused left out, unchecked class work shown apart). A student's homework on their progress page, even before any exam; each teacher's subjects and sections; the class teacher's section across subjects; the school by class, section, subject and teacher, with daily load against the limits and an Excel export; early warning flags homework handed in below a threshold |
 
 Class-highest marks are worked out when a card is shown, from the class's current published
 results, and never stored in a result: storing them would change every card's fingerprint

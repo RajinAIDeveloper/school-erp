@@ -15,6 +15,18 @@ from .access import scope_for
 from .progress import student_progress
 
 
+def homework_for(request, student, scope):
+    """The student's homework figures, for a school given the homework module."""
+    from core.modules import has_module
+
+    if student is None or not has_module(request.school, "homework"):
+        return None
+    from homework.analytics import student_homework
+
+    period = request.GET.get("period", "4w")
+    return student_homework(student, request.user, request.school, scope, period=period)
+
+
 def progress_context(data, student_label):
     """The charts and figures a progress page shows, for the family portal and for staff alike."""
     if data is None:
@@ -56,15 +68,17 @@ def student(request, pk):
     if scope.empty:
         raise PermissionDenied
     data = student_progress(student, scope)
-    if data is None:
+    homework = homework_for(request, student, scope)
+    if data is None and homework is None:
         raise Http404("No published result of this student is within what you may see.")
-    if request.GET.get("format") == "pdf":
+    if data is not None and request.GET.get("format") == "pdf":
         return progress_pdf(request.school, data)
     return render(
         request,
         "analytics/student.html",
         {
             **progress_context(data, student.first_name),
+            "homework": homework,
             "student": student,
             "page_title": gettext("Progress · %(name)s") % {"name": student.full_name},
         },

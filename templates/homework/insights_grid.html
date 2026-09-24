@@ -1,0 +1,53 @@
+{% extends "layouts/base.html" %}
+{% load erp i18n %}
+{% block header_actions %}
+  <a href="?{{ request.GET.urlencode }}&amp;format=xlsx" class="btn-secondary btn-sm">Excel</a>
+  <a href="{% url 'homework:insights' %}?period={{ period }}" class="btn-secondary btn-sm">{% translate "Homework analytics" %}</a>
+{% endblock %}
+{% block content %}
+<div class="mb-4 flex flex-wrap gap-1 border-b border-slate-200">
+  {% for key, label in periods %}<a href="?{{ base_query }}&amp;period={{ key }}" class="px-3 py-2 text-sm {% if period == key %}border-b-2 border-indigo-600 font-semibold text-indigo-700{% else %}text-slate-600{% endif %}">{{ label }}</a>{% endfor %}
+</div>
+{% with o=grid.overall %}
+<div class="mb-4 grid gap-4 sm:grid-cols-4">
+  <div class="stat"><p class="text-sm text-slate-500">{% translate "Handed in" %}</p><p class="mt-1 text-2xl font-bold">{% if o.rate is not None %}{{ o.rate }}%{% else %}—{% endif %}</p><p class="mt-1 text-xs text-slate-500">{{ o.handed }}/{{ o.known }}</p></div>
+  <div class="stat"><p class="text-sm text-slate-500">{% translate "On time" %}</p><p class="mt-1 text-2xl font-bold">{% if o.on_time_rate is not None %}{{ o.on_time_rate }}%{% else %}—{% endif %}</p></div>
+  <div class="stat"><p class="text-sm text-slate-500">{% translate "Average mark" %}</p><p class="mt-1 text-2xl font-bold">{% if o.mark is not None %}{{ o.mark|mark }}%{% else %}—{% endif %}</p></div>
+  <div class="stat"><p class="text-sm text-slate-500">{% translate "Not checked yet" %}</p><p class="mt-1 text-2xl font-bold text-slate-500">{{ o.unchecked }}</p></div>
+</div>
+{% endwith %}
+<div class="card overflow-x-auto">
+  <table class="table text-sm">
+    <thead><tr>
+      <th class="sticky left-0 z-10 bg-slate-50">{% translate "Student" %}</th>
+      {% for title, figures in columns %}<th class="text-center" title="{{ title }}">{{ title|truncatechars:16 }}<span class="block text-xs font-normal text-slate-500">{% if figures.rate is not None %}{{ figures.rate }}%{% else %}—{% endif %}</span></th>{% endfor %}
+      <th class="text-right">{% translate "Handed in" %}</th><th class="text-right">{% translate "Average mark" %}</th>
+    </tr></thead>
+    <tbody>
+      {% for enrollment, cells, figures in grid.students %}
+        <tr>
+          <td class="sticky left-0 z-10 bg-white whitespace-nowrap"><span class="text-slate-500">{{ enrollment.roll_number }}</span> <a class="link" href="{% url 'analytics:student' enrollment.student_id %}#homework">{{ enrollment.student.full_name }}</a></td>
+          {% for cell in cells %}
+            {% if kind == "subject" %}
+              <td class="text-center">{% if not cell %}<span class="text-slate-300">·</span>
+                {% elif cell.status == "done" %}<span class="text-emerald-700" title="{% translate "Done" %}">✓{% if cell.late %}<sup class="text-amber-600">L</sup>{% endif %}</span>{% if cell.mark is not None %}<span class="block text-xs text-slate-500">{{ cell.mark|mark }}</span>{% endif %}
+                {% elif cell.status == "partial" %}<span class="text-amber-700" title="{% translate "Partly done" %}">½</span>
+                {% elif cell.status == "not_done" %}<span class="font-semibold text-red-700" title="{% translate "Not done" %}">✗</span>
+                {% elif cell.status == "absent" %}<span class="text-sky-700" title="{% translate "Absent" %}">A</span>
+                {% elif cell.status == "excused" %}<span class="text-slate-500" title="{% translate "Excused" %}">E</span>
+                {% else %}<span class="text-slate-400" title="{% translate "Not checked yet" %}">?</span>{% endif %}</td>
+            {% else %}
+              <td class="text-center" style="background: {{ cell.rate|shade }}">{% if cell %}{% if cell.rate is not None %}{{ cell.rate }}%{% else %}—{% endif %}{% if cell.missing %}<span class="block text-xs text-red-700">{{ cell.missing }} {% translate "missing" %}</span>{% endif %}{% else %}<span class="text-slate-300">·</span>{% endif %}</td>
+            {% endif %}
+          {% endfor %}
+          <td class="text-right font-medium {% if figures.rate is not None and figures.rate < 70 %}text-red-700{% endif %}">{% if figures.rate is not None %}{{ figures.rate }}%{% else %}—{% endif %}</td>
+          <td class="text-right">{{ figures.mark|default_if_none:"—"|mark }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="3">{% translate "No homework was due in this period." as nothing %}{% include "components/empty.html" with message=nothing %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="mt-3 text-xs text-slate-500">{% if kind == "subject" %}{% translate "✓ done (L late) · ½ partly · ✗ not done · A absent · E excused · ? not checked yet." %} {% endif %}{% translate "Counts work whose outcome is known: absent and excused are left out, and work checked in class that the teacher has not checked yet is shown apart." %}</p>
+{% endblock %}

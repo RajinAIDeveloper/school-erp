@@ -21,11 +21,16 @@ from examinations.rulebooks import rulebook
 from examinations.services import class_attendance
 from students.models import Enrollment
 
+HOMEWORK_WEEKS = 4
+HOMEWORK_AT_LEAST = 4  # pieces of known work before a rate says anything
 
-def early_warnings(section, year, *, attendance_below=75, drop_by=10, margin=5):
+
+def early_warnings(section, year, *, attendance_below=75, drop_by=10, margin=5, homework_below=None):
     """
     ([{enrollment, attendance, latest, change, concerns}], students) for one section this year,
-    listing only the students with at least one concern.
+    listing only the students with at least one concern. With `homework_below`, and a school
+    given the homework module, a student who handed in less than that share of their homework
+    over the last four weeks is listed too.
     """
     enrollments = list(
         Enrollment.objects.filter(
@@ -50,6 +55,7 @@ def early_warnings(section, year, *, attendance_below=75, drop_by=10, margin=5):
     )
     for snapshot in snapshots:
         results[snapshot.enrollment_id].append(snapshot)
+    homework = _homework(section, year, homework_below)
 
     flagged = []
     for enrollment in enrollments:
@@ -73,6 +79,12 @@ def early_warnings(section, year, *, attendance_below=75, drop_by=10, margin=5):
             only_just = [f"{line[0]} ({line[6].lower()})" for line in near if line[6].startswith("Passed by")]
             if only_just:
                 concerns.append("Only just passed: " + ", ".join(only_just))
+        figures_hw = homework.get(enrollment.pk)
+        if figures_hw and figures_hw["known"] >= HOMEWORK_AT_LEAST and figures_hw["rate"] < homework_below:
+            concerns.append(
+                f"Homework: {figures_hw['handed']} of {figures_hw['known']} handed in over the last "
+                f"{HOMEWORK_WEEKS} weeks"
+            )
         if concerns:
             flagged.append(
                 {
@@ -84,3 +96,18 @@ def early_warnings(section, year, *, attendance_below=75, drop_by=10, margin=5):
                 }
             )
     return flagged, len(enrollments)
+
+
+def _homework(section, year, below):
+    """Each student's homework over the last few weeks, for a school given the homework module."""
+    from core.modules import has_module
+
+    if below is None or not has_module(section.school, "homework"):
+        return {}
+    from datetime import timedelta
+
+    from homework.analytics import base_rows, summarise
+
+    now = timezone.now()
+    rows = base_rows(section.school, year, now - timedelta(weeks=HOMEWORK_WEEKS), now).filter(target__section=section)
+    return {row["enrollment_id"]: row for row in summarise(rows, "enrollment_id")}

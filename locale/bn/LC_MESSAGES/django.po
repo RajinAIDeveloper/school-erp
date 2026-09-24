@@ -2179,3 +2179,98 @@ msgstr "অন্তত একটি বাড়ির কাজ বেছে �
 
 msgid "Homework marks for an exam"
 msgstr "পরীক্ষার জন্য বাড়ির কাজের নম্বর"
+
+# ---- homework analytics
+
+msgid "Homework analytics"
+msgstr "বাড়ির কাজের বিশ্লেষণ"
+
+msgid "Last four weeks"
+msgstr "গত চার সপ্তাহ"
+
+msgid "This term"
+msgstr "এই টার্ম"
+
+msgid "This year"
+msgstr "এই বছর"
+
+msgid "On time"
+msgstr "সময়মতো"
+
+msgid "Average mark"
+msgstr "গড় নম্বর"
+
+msgid "on marked work returned"
+msgstr "ফেরত দেওয়া নম্বরযুক্ত কাজে"
+
+msgid "checked-in-class work past its due time"
+msgstr "জমার সময় পেরোনো, ক্লাসে দেখার কাজ"
+
+msgid "By class"
+msgstr "শ্রেণি অনুযায়ী"
+
+msgid "By subject"
+msgstr "বিষয় অনুযায়ী"
+
+msgid "Teachers"
+msgstr "শিক্ষকগণ"
+
+msgid "Homework set, what came back, and how soon it was checked"
+msgstr "দেওয়া বাড়ির কাজ, কতটা ফিরে এসেছে, আর কত তাড়াতাড়ি দেখা হয়েছে"
+
+msgid "Homework set"
+msgstr "দেওয়া বাড়ির কাজ"
+
+msgid "Checked within a week"
+msgstr "এক সপ্তাহের মধ্যে দেখা"
+
+msgid "How much is due each school day"
+msgstr "প্রতিটি স্কুল-দিনে কত কাজ জমা"
+
+msgid "school days in the period"
+msgstr "টি স্কুল-দিন এই সময়ে"
+
+msgid "Average minutes a day"
+msgstr "দিনে গড় মিনিট"
+
+msgid "Heaviest day"
+msgstr "সবচেয়ে ভারী দিন"
+
+msgid "Daily limit"
+msgstr "দৈনিক সীমা"
+
+msgid "Days over the limit"
+msgstr "সীমা ছাড়ানো দিন"
+
+msgid "By month"
+msgstr "মাস অনুযায়ী"
+
+msgid "Your sections as class teacher"
+msgstr "শ্রেণিশিক্ষক হিসেবে আপনার শাখা"
+
+msgid "There is no homework of yours to analyse yet."
+msgstr "বিশ্লেষণ করার মতো আপনার কোনো বাড়ির কাজ এখনো নেই।"
+
+msgid "Counts work whose outcome is known: absent and excused are left out, and work checked in class that the teacher has not checked yet is shown apart."
+msgstr "যে কাজের ফলাফল জানা, শুধু সেগুলো গোনা হয়েছে: অনুপস্থিত ও অব্যাহতি বাদ, আর ক্লাসে দেখার যে কাজ শিক্ষক এখনো দেখেননি তা আলাদা দেখানো হয়েছে।"
+
+msgid "missing"
+msgstr "জমা পড়েনি"
+
+msgid "✓ done (L late) · ½ partly · ✗ not done · A absent · E excused · ? not checked yet."
+msgstr "✓ করা হয়েছে (L দেরিতে) · ½ আংশিক · ✗ করা হয়নি · A অনুপস্থিত · E অব্যাহতি · ? এখনো দেখা হয়নি।"
+
+msgid "this year"
+msgstr "এই বছর"
+
+msgid "this term"
+msgstr "এই টার্ম"
+
+msgid "the last four weeks"
+msgstr "গত চার সপ্তাহ"
+
+msgid "Not handed in"
+msgstr "জমা পড়েনি"
+
+msgid "Counts work whose outcome is known: absent and excused are left out, and work checked in class that the teacher has not checked yet is shown apart. The section figure is the whole section's; no other student is named."
+msgstr "যে কাজের ফলাফল জানা, শুধু সেগুলো গোনা হয়েছে: অনুপস্থিত ও অব্যাহতি বাদ, আর ক্লাসে দেখার যে কাজ শিক্ষক এখনো দেখেননি তা আলাদা দেখানো হয়েছে। শাখার হিসাব পুরো শাখার; অন্য কোনো শিক্ষার্থীর নাম দেখানো হয় না।"
