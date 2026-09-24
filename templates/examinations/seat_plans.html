@@ -1,0 +1,31 @@
+{% extends "layouts/base.html" %}
+{% block header_actions %}
+  <a href="{% url 'examinations:exam_detail' exam.pk %}" class="btn-secondary btn-sm">Back to the exam</a>
+  <a href="{% url 'timetable:room_list' %}" class="btn-secondary btn-sm">Rooms</a>
+{% endblock %}
+{% block content %}
+<p class="mb-4 text-sm text-slate-600">
+  A sitting is every paper that starts at the same time. Each sitting gets its own seat plan, with
+  only the students who sit one of its papers.
+  {% if undated %}<span class="text-amber-700">{{ undated }} paper{{ undated|pluralize }} without a date and start time {{ undated|pluralize:"is,are" }} left out until the routine is complete.</span>{% endif %}
+</p>
+<div class="card overflow-x-auto">
+  <table class="table">
+    <thead><tr><th>Date</th><th>Starts</th><th>Papers</th><th class="text-right">Students</th><th>Seat plan</th><th></th></tr></thead>
+    <tbody>
+      {% for row in rows %}
+        <tr>
+          <td>{{ row.date|date:"d M Y" }}</td>
+          <td>{{ row.start|time:"H:i" }}</td>
+          <td class="text-sm">{% for p in row.papers %}{{ p.class_level }}: {{ p.subject.name }}{% if not forloop.last %}<br>{% endif %}{% endfor %}</td>
+          <td class="text-right">{{ row.students }}</td>
+          <td>{% if row.plan and row.plan.seated %}{{ row.plan.seated }} seated{% if row.plan.locked_at %} &middot; <span class="text-emerald-700">locked</span>{% endif %}{% else %}<span class="text-slate-400">Not seated</span>{% endif %}</td>
+          <td><a class="link" href="{% url 'examinations:seat_plan' exam.pk %}?date={{ row.date|date:'Y-m-d' }}&time={{ row.start|time:'H:i' }}">Open</a></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="6">{% include "components/empty.html" with message="No paper has a date and start time yet. Set them in the exam routine first." %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -212,3 +212,48 @@ def test_the_certificates_screen_issues_and_keeps_typed_values_on_error(family):
     revoke = client.post(url, {"action": "revoke", "certificate": certificate.pk, "reason": "Wrong date"})
     assert revoke.status_code == 302
     assert Certificate.objects.get().is_revoked
+
+
+# ============================================================ studentship
+
+
+def test_a_studentship_certificate_says_the_child_is_studying_here_now(family):
+    certificate = issue_certificate(
+        school=family.school, user=family.admin, student=family.student, kind="study", reason="Passport application"
+    )
+    assert certificate.serial.startswith(f"SC-{timezone.localdate().year}-")
+    title, paragraphs, _closing = certificate_text(certificate.payload)
+    text = " ".join(paragraphs)
+    assert title == "Studentship Certificate"
+    assert "is a regular student of this school, now studying in Class 1" in text
+    assert "Issued for: Passport application." in text
+    # Printable and verifiable like every other certificate.
+    assert login(family.admin).get(f"/students/certificates/{certificate.pk}/").status_code == 200
+    verify = Client().get(f"/students/certificates/verify/{certificate.verification_code}/").content.decode()
+    assert certificate.serial in verify
+
+
+def test_a_studentship_certificate_reads_in_bangla(family):
+    family.school.bangla_enabled = True
+    family.school.save()
+    family.student.name_bn = "আয়েশা রহমান"
+    family.student.save()
+    certificate = issue_certificate(
+        school=family.school, user=family.admin, student=family.student, kind="study", language="bn"
+    )
+    title, paragraphs, _closing = certificate_text(certificate.payload)
+    assert title == "অধ্যয়ন প্রত্যয়নপত্র"
+    assert "বর্তমানে এই বিদ্যালয়ের" in paragraphs[0] and "আয়েশা রহমান" in paragraphs[0]
+
+
+def test_a_studentship_certificate_is_only_for_a_current_student(family):
+    family.student.status = family.student.Status.TRANSFERRED
+    family.student.save()
+    with pytest.raises(ValidationError, match="studying here now"):
+        issue_certificate(school=family.school, user=family.admin, student=family.student, kind="study")
+
+
+def test_a_studentship_certificate_does_not_wait_for_fees(family, invoice):
+    assert invoice.balance > 0
+    certificate = issue_certificate(school=family.school, user=family.admin, student=family.student, kind="study")
+    assert certificate.kind == Certificate.Kind.STUDY

@@ -8,6 +8,7 @@ from urllib.parse import urlencode
 from django import forms
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -18,6 +19,7 @@ from core.forms import TailwindFormMixin
 from students.models import Enrollment
 
 from ..models import Exam, ExamSchedule, Mark
+from ..parts import plain
 from ..services import (
     MarkEntryError,
     active_unlock,
@@ -44,6 +46,42 @@ class MarkFilter(TailwindFormMixin, forms.Form):
         if d.get("schedule") and d.get("section") and d["schedule"].class_level_id != d["section"].class_level_id:
             raise forms.ValidationError("Select a section belonging to this exam paper's class.")
         return d
+
+
+def _students_sitting(request, schedule, section):
+    """The section's students who sit this paper in the exam's year, in roll order."""
+    return enrollments_taking(
+        schedule,
+        list(
+            Enrollment.objects.filter(school=request.school, academic_year=schedule.exam.academic_year, section=section)
+            .select_related("student")
+            .prefetch_related("chosen_subjects")
+            .order_by("roll_number")
+        ),
+        subject_plan(schedule.exam.academic_year, schedule.class_level),
+    )
+
+
+def _paper_and_class(request, data):
+    """
+    The paper and section named in `data`, checked exactly as the mark grid checks them, with
+    the students who sit it and the marks already entered.
+    """
+    selector = MarkFilter(data, user=request.user, school=request.school)
+    if not selector.is_valid():
+        raise Http404("Choose an exam paper and a section.")
+    schedule, section = selector.cleaned_data["schedule"], selector.cleaned_data["section"]
+    assert_can_mark(request.user, schedule, section=section)
+    students = _students_sitting(request, schedule, section)
+    existing = {mark.enrollment_id: mark for mark in Mark.objects.filter(schedule=schedule, enrollment__in=students)}
+    return schedule, section, students, existing
+
+
+def _draft_base(rows):
+    import hashlib
+
+    state = ",".join(f"{row['enrollment'].pk}:{row['version']}" for row in rows)
+    return hashlib.sha256(state.encode()).hexdigest()[:16]
 
 
 class MarkForm(TailwindFormMixin, forms.Form):
@@ -76,18 +114,7 @@ def marks(request):
         assert_can_mark(request.user, schedule, section=section)
         locked = schedule.exam.status == "published" and not active_unlock(request.user, schedule)
         components = list(schedule.components.all())
-        enrollments = enrollments_taking(
-            schedule,
-            list(
-                Enrollment.objects.filter(
-                    school=request.school, academic_year=schedule.exam.academic_year, section=section
-                )
-                .select_related("student")
-                .prefetch_related("chosen_subjects")
-                .order_by("roll_number")
-            ),
-            subject_plan(schedule.exam.academic_year, schedule.class_level),
-        )
+        enrollments = _students_sitting(request, schedule, section)
         existing = {
             mark.enrollment_id: mark for mark in Mark.objects.filter(schedule=schedule, enrollment__in=enrollments)
         }
@@ -211,6 +238,8 @@ def marks(request):
             ),
             "sat": len(scored),
             "passed": passed,
+            # Changes whenever a stored mark does, so a draft typed over older marks is dropped.
+            "draft_base": _draft_base(rows),
             "page_title": "Mark entry",
         },
     )
@@ -253,6 +282,105 @@ def mark_save(request):
         + "?"
         + urlencode({"schedule": request.POST.get("schedule", ""), "section": request.POST.get("section", "")})
     )
+
+
+@require_permission("examinations.view_mark", also="assigned subjects and sections only")
+def mark_sheet(request):
+    """The exam-hall sheet for a paper and section: blank to fill by hand, or the marks register."""
+    from ..documents import mark_sheet_pdf
+
+    schedule, section, students, existing = _paper_and_class(request, request.GET)
+    filled = request.GET.get("kind") == "register"
+    return mark_sheet_pdf(request.school, schedule, section, students, existing if filled else None)
+
+
+@require_permission("examinations.change_mark", also="assigned subjects and sections only")
+def marks_import(request):
+    """
+    Marks from a spreadsheet: download the class template, fill it in, upload it, see what it
+    would change, then save. Nothing is saved before the teacher confirms.
+    """
+    from collections import Counter
+
+    from core.exports import spreadsheet
+
+    from ..mark_import import apply, check, headers_for, read_rows, template_rows
+
+    data = request.POST if request.method == "POST" else request.GET
+    schedule, section, students, existing = _paper_and_class(request, data)
+    if schedule.exam.status == "published" and not active_unlock(request.user, schedule):
+        raise PermissionDenied("Results are published. Request an unlock before importing marks.")
+    parts = list(schedule.components.all())
+    session_key = f"mark_import:{schedule.pk}:{section.pk}"
+    grid = reverse("examinations:marks") + "?" + urlencode({"schedule": schedule.pk, "section": section.pk})
+
+    fmt = request.GET.get("download")
+    if fmt in ("xlsx", "csv"):
+        return spreadsheet(
+            f"marks-{schedule.subject.code or schedule.pk}-{section.name}",
+            headers_for(schedule, parts),
+            template_rows(parts, students, existing),
+            fmt,
+            preamble=[
+                ("Paper", f"{schedule.exam.name}: {schedule.subject.name}"),
+                ("Section", str(section)),
+                ("Full marks", plain(schedule.full_marks)),
+                ("How to fill it", "Write ABS for an absent student. A blank row leaves that mark as it is."),
+            ],
+        )
+
+    context = {
+        "schedule": schedule,
+        "section": section,
+        "parts": parts,
+        "grid": grid,
+        "students": len(students),
+        "page_title": "Import marks",
+    }
+    if request.method == "POST" and request.POST.get("action") == "check":
+        upload = request.FILES.get("file")
+        request.session.pop(session_key, None)
+        if upload is None:
+            messages.error(request, "Choose the filled-in template to upload.")
+        else:
+            try:
+                prepared, problems, skipped = check(schedule, parts, students, existing, read_rows(upload))
+            except ValidationError as exc:
+                messages.error(request, " ".join(exc.messages))
+            else:
+                counts = Counter(entry["action"] for entry in prepared)
+                if not problems and (counts["new"] or counts["changed"]):
+                    request.session[session_key] = prepared
+                context.update(
+                    prepared=prepared,
+                    problems=problems,
+                    skipped=skipped,
+                    counts=counts,
+                    to_save=counts["new"] + counts["changed"],
+                    filename=upload.name,
+                )
+    elif request.method == "POST" and request.POST.get("action") == "confirm":
+        prepared = request.session.pop(session_key, None)
+        if prepared is None:
+            messages.error(request, "Nothing was waiting to be saved. Upload the file again.")
+        else:
+            try:
+                saved = apply(
+                    user=request.user, schedule=schedule, section=section, prepared=prepared, students=students
+                )
+            except MarkEntryError as exc:
+                names = {e.pk: e.student.full_name for e in students}
+                messages.error(
+                    request,
+                    "Nothing was saved. "
+                    + "; ".join(f"{names.get(pk, pk)}: {message}" for pk, message in exc.errors.items()),
+                )
+            except ValidationError as exc:
+                messages.error(request, " ".join(exc.messages))
+            else:
+                messages.success(request, f"Imported {len(saved)} change(s) from the file.")
+                return redirect(grid)
+    return render(request, "examinations/marks_import.html", context)
 
 
 class OverallCommentFilter(TailwindFormMixin, forms.Form):

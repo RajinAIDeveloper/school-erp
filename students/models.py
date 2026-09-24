@@ -291,6 +291,7 @@ class Certificate(SchoolScopedModel):
         TRANSFER = "transfer", "Transfer certificate"
         LEAVING = "leaving", "School leaving certificate"
         CHARACTER = "character", "Character certificate (testimonial)"
+        STUDY = "study", "Studentship certificate"
 
     class Language(models.TextChoices):
         ENGLISH = "en", "English"

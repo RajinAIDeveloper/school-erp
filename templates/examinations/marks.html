@@ -33,6 +33,13 @@
     </div>
   </div>
 
+  <div class="mb-4 flex flex-wrap items-center gap-2 text-sm">
+    <span class="text-slate-500">Exam hall:</span>
+    <a class="btn-secondary btn-sm" href="{% url 'examinations:mark_sheet' %}?schedule={{ schedule.pk }}&section={{ section.pk }}">Blank mark sheet (PDF)</a>
+    <a class="btn-secondary btn-sm" href="{% url 'examinations:mark_sheet' %}?schedule={{ schedule.pk }}&section={{ section.pk }}&kind=register">Marks register (PDF)</a>
+    {% if not locked and perms.examinations.change_mark %}<a class="btn-secondary btn-sm" href="{% url 'examinations:marks_import' %}?schedule={{ schedule.pk }}&section={{ section.pk }}">Import from Excel</a>{% endif %}
+  </div>
+
   {% if locked %}
     <div class="card mb-4">
       <div class="card-body">
@@ -51,11 +58,16 @@
     </div>
   {% endif %}
 
-  <form method="post" class="card">
+  <form method="post" class="card"{% if not locked %} data-draft-key="marks:{{ schedule.pk }}:{{ section.pk }}:{{ user.pk }}" data-draft-base="{{ draft_base }}"{% endif %}>
     {% csrf_token %}
     <input type="hidden" name="schedule" value="{{ schedule.pk }}">
     <input type="hidden" name="section" value="{{ section.pk }}">
     {% if not locked %}
+      <div class="hidden border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-900" data-draft-banner>
+        <span>Marks typed on this computer at <span data-draft-time></span> were never saved.</span>
+        <button type="button" class="btn-secondary btn-sm ml-2" data-draft-restore>Put them back</button>
+        <button type="button" class="btn-secondary btn-sm ml-1" data-draft-discard>Discard them</button>
+      </div>
       <div class="flex flex-wrap items-center gap-2 border-b border-slate-200 px-5 py-3">
         <span class="text-sm text-slate-500">For the whole class:</span>
         <button type="button" class="btn-secondary btn-sm" data-check-all="absent">Mark all absent</button>

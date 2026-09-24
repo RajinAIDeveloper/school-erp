@@ -5,6 +5,7 @@
   {% if perms.examinations.change_exam and exam.publication_version == 0 %}
     <a href="{% url 'examinations:exam_update' exam.pk %}" class="btn-secondary btn-sm">Edit</a>
   {% endif %}
+  {% if perms.examinations.change_exam %}<a href="{% url 'examinations:seat_plans' exam.pk %}" class="btn-secondary btn-sm">Seat plans</a>{% endif %}
   <a href="{% url 'examinations:results' %}?exam={{ exam.pk }}" class="btn-secondary btn-sm">Results</a>
 {% endblock %}
 {% block content %}

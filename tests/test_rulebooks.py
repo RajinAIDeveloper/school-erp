@@ -169,66 +169,6 @@ def test_only_the_national_rulebook_has_the_fourth_subject_and_paper_combining()
 # ================================================================ end to end: a Cambridge class
 
 
-@pytest.fixture
-def igcse(erp):
-    """A Year 10 IGCSE class under Cambridge rules, with a weighted Physics paper."""
-    scale, _ = install_preset(erp.school, "cambridge-igcse")
-    level = ClassLevel.objects.create(
-        school=erp.school, name="Year 10", order=10, assessment_system=AssessmentSystem.CAMBRIDGE
-    )
-    section = Section.objects.create(school=erp.school, class_level=level, name="Blue")
-    exam = Exam.objects.create(school=erp.school, academic_year=erp.year, name="Mock", grade_scale=scale)
-    physics = Subject.objects.create(school=erp.school, name="Physics", code="0625")
-    english = Subject.objects.create(school=erp.school, name="English as a Second Language", code="0510")
-    papers = {}
-    for subject in (physics, english):
-        papers[subject.code] = ExamSchedule.objects.create(
-            school=erp.school, exam=exam, class_level=level, subject=subject, full_marks=100, pass_marks=33
-        )
-        SubjectTeacher.objects.create(
-            school=erp.school, academic_year=erp.year, section=section, subject=subject, teacher=erp.employee
-        )
-    # A weighted paper, as Cambridge IGCSE Physics 0625 is (June 2025 threshold table): Paper 2
-    # multiple choice 40 raw at 30%, Paper 4 theory 80 raw at 50%, Paper 6 alternative to
-    # practical 40 raw at 20%. Parts are scaled to their share, not added.
-    for order, (code, name, full, weight) in enumerate(
-        [("mcq", "Multiple choice", 40, 30), ("theory", "Theory", 80, 50), ("practical", "Practical", 40, 20)]
-    ):
-        PaperComponent.objects.create(
-            school=erp.school,
-            schedule=papers["0625"],
-            code=code,
-            name=name,
-            full_marks=full,
-            pass_marks=0,
-            weight=weight,
-            order=order,
-        )
-    pupils = []
-    for roll, name in ((1, "Zara"), (2, "Imran")):
-        student = Student.objects.create(
-            school=erp.school,
-            student_id=f"Y10-{roll}",
-            first_name=name,
-            gender="F",
-            date_of_birth=date(2010, 5, 1),
-            admission_date=date(2026, 1, 1),
-        )
-        pupils.append(
-            Enrollment.objects.create(
-                school=erp.school,
-                student=student,
-                academic_year=erp.year,
-                class_level=level,
-                section=section,
-                roll_number=roll,
-            )
-        )
-    from types import SimpleNamespace
-
-    return SimpleNamespace(level=level, section=section, exam=exam, papers=papers, pupils=pupils, scale=scale)
-
-
 def test_a_weighted_paper_is_scaled_not_added(erp, igcse):
     """
     32/40, 60/80 and 36/40 add to 128 of 160, which is 80% (an A). Scaled by weight it is

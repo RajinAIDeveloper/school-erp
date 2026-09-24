@@ -71,8 +71,8 @@
         <div><label class="label" for="leaving_date">Date left</label>
           <input id="leaving_date" type="date" name="leaving_date" value="{{ typed.leaving_date }}" max="{{ today }}" class="input">
           <p class="mt-1 text-xs text-slate-500">Needed for transfer and leaving certificates.</p></div>
-        <div class="sm:col-span-2"><label class="label" for="reason">Reason for leaving</label>
-          <input id="reason" name="reason" value="{{ typed.reason }}" maxlength="200" class="input"></div>
+        <div class="sm:col-span-2"><label class="label" for="reason">Reason for leaving, or what a studentship certificate is for</label>
+          <input id="reason" name="reason" value="{{ typed.reason }}" maxlength="200" class="input" placeholder="e.g. passport application"></div>
         <div class="sm:col-span-3"><label class="label" for="remarks">Remarks</label>
           <input id="remarks" name="remarks" value="{{ typed.remarks }}" maxlength="300" class="input"></div>
       </div>

@@ -231,6 +231,26 @@ Still to do before a real school, and not code: one sandbox payment end to end w
 school's own SSLCommerz store, a restore rehearsed from a backup, and printing on the
 school's printer.
 
+### After the Codex competitor re-audit (24 September 2026)
+
+Decided with the owner: build what national result processors (PRS, Gradrix) sell and what
+repays the effort; homework and online admissions later, as per-school modules that a school
+without them never sees. The re-audit's learning-platform gaps (curriculum maps, portfolios,
+quizzes, chat) are not being built.
+
+| # | Phase | Status |
+|---|---|---|
+| P0 | Bangla shaped in PDFs (uharfbuzz; every PDF style shapes) | Done: test_documents.py, checked by eye |
+| P1 | Result-day pack: seat plans (door list, stickers, invigilator sheet); blank mark sheet and marks register; marks import from Excel/CSV with a check step; typed marks kept in the browser until saved; failed-subjects and near-pass lists; class-highest marks on cards that show positions; studentship certificate | Done: test_seating.py, test_mark_import.py, test_result_lists.py, test_certificates.py; drafts checked in a browser |
+| P2 | Bangla on the teacher's screens and on the card, tabulation and exam-hall PDFs | |
+| P3 | Recompute-and-compare for pilots; early-warning report | |
+| P4 | Transcript; online admissions (module) | Later round |
+| P5 | Full homework (module) | Later round |
+
+Class-highest marks are worked out when a card is shown, from the class's current published
+results, and never stored in a result: storing them would change every card's fingerprint
+whenever one mark was corrected.
+
 ### Remaining phases (after S13)
 
 Built one at a time after the planned stages, each with tests and the full gate:

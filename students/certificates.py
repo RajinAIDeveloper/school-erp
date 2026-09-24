@@ -1,5 +1,6 @@
 """
-Transfer, leaving and character certificates: issued once, numbered, frozen and verifiable.
+Transfer, leaving, character and studentship certificates: issued once, numbered, frozen and
+verifiable.
 
 These are the school's own documents. They are never an examination board's certificate, and
 the printed page and the verification page both say so.
@@ -18,11 +19,13 @@ from core.models import AuditLog, School
 
 from .models import Certificate, Enrollment
 
-PREFIX = {"transfer": "TC", "leaving": "LC", "character": "CC"}
+PREFIX = {"transfer": "TC", "leaving": "LC", "character": "CC", "study": "SC"}
 TITLES = {
     "transfer": ("Transfer Certificate", "ছাড়পত্র"),
     "leaving": ("School Leaving Certificate", "বিদ্যালয় ত্যাগের সনদপত্র"),
     "character": ("Character Certificate", "প্রশংসাপত্র"),
+    # Proof that a child is studying here now: for a passport, visa, bank account or scholarship.
+    "study": ("Studentship Certificate", "অধ্যয়ন প্রত্যয়নপত্র"),
 }
 CONDUCT = {
     "excellent": ("excellent", "চমৎকার"),
@@ -93,7 +96,7 @@ def _next_serial(school, kind, year):
 
 def _check_details(school, student, kind, language, leaving_date, reason, conduct, remarks):
     if kind not in PREFIX:
-        raise ValidationError("Choose a transfer, leaving or character certificate.")
+        raise ValidationError("Choose a transfer, leaving, character or studentship certificate.")
     if language not in Certificate.Language.values:
         raise ValidationError("Choose English or Bangla.")
     if language == "bn" and not school.bangla_enabled:
@@ -102,6 +105,8 @@ def _check_details(school, student, kind, language, leaving_date, reason, conduc
         raise ValidationError("Choose how the student's conduct is described.")
     if len(reason) > REASON_LIMIT or len(remarks) > REMARKS_LIMIT:
         raise ValidationError(f"Keep the reason to {REASON_LIMIT} and the remarks to {REMARKS_LIMIT} characters.")
+    if kind == "study" and student.status != student.Status.ACTIVE:
+        raise ValidationError("A studentship certificate is only for a student who is studying here now.")
     if kind in ("transfer", "leaving"):
         if leaving_date is None:
             raise ValidationError("Give the date the student left.")
@@ -336,7 +341,16 @@ def certificate_text(payload):
     born_bn = f", জন্ম তারিখ: {date_text(p['date_of_birth'], 'bn')}" if p.get("date_of_birth") else ""
     name_bn = p.get("student_bn") or p["student"]
     if language == "bn":
-        if kind == "character":
+        if kind == "study":
+            paragraphs = [
+                f"এই মর্মে প্রত্যয়ন করা যাচ্ছে যে, {name_bn}{_parents_bn(p)}{born_bn}, বর্তমানে এই বিদ্যালয়ের "
+                f"{_place_bn(p)}-এর একজন নিয়মিত শিক্ষার্থী।",
+            ]
+            if p.get("reason"):
+                paragraphs.append(f"উদ্দেশ্য: {p['reason']}।")
+            paragraphs.append(f"আমার জানামতে তার স্বভাব ও চরিত্র {conduct_bn}।")
+            closing = "আমি তার উজ্জ্বল ভবিষ্যৎ কামনা করি।"
+        elif kind == "character":
             status = "একজন নিয়মিত শিক্ষার্থী।" if p.get("still_enrolled") else "একজন নিয়মিত শিক্ষার্থী ছিল।"
             paragraphs = [
                 f"এই মর্মে প্রত্যয়ন করা যাচ্ছে যে, {name_bn}{_parents_bn(p)}{born_bn}, এই বিদ্যালয়ের "
@@ -361,7 +375,16 @@ def certificate_text(payload):
         return title_bn, paragraphs, closing
 
     first = p.get("student_first") or p["student"]
-    if kind == "character":
+    if kind == "study":
+        paragraphs = [
+            f"This is to certify that {p['student']}{_parents_en(p)}{born_en}, is a regular student of this school, "
+            f"now studying in {_place_en(p)}.",
+        ]
+        if p.get("reason"):
+            paragraphs.append(f"Issued for: {p['reason']}.")
+        paragraphs.append(f"To the best of our knowledge, {first}'s conduct and character are {conduct_en}.")
+        closing = f"We wish {first} every success."
+    elif kind == "character":
         verb = "is" if p.get("still_enrolled") else "was"
         paragraphs = [
             f"This is to certify that {p['student']}{_parents_en(p)}{born_en}, {verb} a regular student of this "

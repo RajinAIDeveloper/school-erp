@@ -70,6 +70,79 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+  // Unsaved work survives a dropped connection. A form with data-draft-key keeps what was
+  // typed in this browser until the server has it. data-draft-base names the saved state the
+  // draft was typed over: once that changes (the save went through, or someone else saved) the
+  // draft is dropped, never replayed over newer marks. Storage can be unavailable (a private
+  // window), so every use of it is guarded.
+  document.querySelectorAll("form[data-draft-key]").forEach((form) => {
+    const key = "draft:" + form.dataset.draftKey;
+    const base = form.dataset.draftBase || "";
+    const store = {
+      read() { try { return JSON.parse(localStorage.getItem(key) || "null"); } catch (e) { return null; } },
+      write(value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* no storage */ } },
+      clear() { try { localStorage.removeItem(key); } catch (e) { /* no storage */ } },
+    };
+    const values = () => {
+      const out = {};
+      Array.from(form.elements).forEach((el) => {
+        if (!el.name || el.disabled || ["hidden", "submit", "button", "file"].includes(el.type)) return;
+        if (el.type === "checkbox") out[el.name] = el.checked;
+        else if (el.type === "radio") { if (el.checked) out[el.name] = el.value; }
+        else out[el.name] = el.value;
+      });
+      return out;
+    };
+    const put = (name, value) => {
+      const el = form.elements[name];
+      if (!el || el.disabled) return;
+      if (el.type === "checkbox") el.checked = value; else el.value = value;
+    };
+    const initial = JSON.stringify(values());
+    let dirty = false;
+    let submitting = false;
+    const remember = () => {
+      const now = values();
+      dirty = JSON.stringify(now) !== initial;
+      if (dirty) store.write({ base, saved: Date.now(), values: now }); else store.clear();
+    };
+    form.addEventListener("input", remember);
+    form.addEventListener("change", remember);
+    form.addEventListener("submit", () => { submitting = true; });
+    window.addEventListener("beforeunload", (e) => {
+      if (dirty && !submitting) { e.preventDefault(); e.returnValue = ""; }
+    });
+
+    const draft = store.read();
+    if (!draft || !draft.values) return;
+    const current = values();
+    const differs = Object.keys(draft.values).some((name) => name in current && current[name] !== draft.values[name]);
+    if (draft.base !== base || !differs) { store.clear(); return; }
+    const banner = form.querySelector("[data-draft-banner]");
+    if (!banner) return;
+    const when = banner.querySelector("[data-draft-time]");
+    if (when) when.textContent = new Date(draft.saved).toLocaleString();
+    banner.classList.remove("hidden");
+    banner.querySelector("[data-draft-restore]")?.addEventListener("click", () => {
+      Object.entries(draft.values).forEach(([name, value]) => put(name, value));
+      banner.classList.add("hidden");
+      remember();
+    });
+    banner.querySelector("[data-draft-discard]")?.addEventListener("click", () => {
+      store.clear();
+      banner.classList.add("hidden");
+    });
+  });
+
+  // Signing out leaves no unsaved marks behind on a shared computer.
+  document.querySelectorAll("form[data-clear-drafts]").forEach((f) => {
+    f.addEventListener("submit", () => {
+      try {
+        Object.keys(localStorage).filter((k) => k.startsWith("draft:")).forEach((k) => localStorage.removeItem(k));
+      } catch (e) { /* no storage */ }
+    });
+  });
+
   // Confirm dialogs
   document.querySelectorAll("form[data-confirm]").forEach((f) => {
     f.addEventListener("submit", (e) => { if (!confirm(f.dataset.confirm)) e.preventDefault(); });

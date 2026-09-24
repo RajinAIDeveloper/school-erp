@@ -1,0 +1,82 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block header_actions %}
+  <a href="{{ grid }}" class="btn-secondary btn-sm">Back to the mark grid</a>
+{% endblock %}
+{% block content %}
+<div class="mb-4 rounded-lg border border-slate-200 bg-white px-5 py-3">
+  <p class="font-semibold">{{ schedule.subject }} &middot; {{ section }}</p>
+  <p class="text-sm text-slate-500">{{ schedule.exam }} &middot; full marks {{ schedule.full_marks|mark }}{% if parts %} in {{ parts|length }} parts{% endif %} &middot; {{ students }} student{{ students|pluralize }} sit this paper</p>
+</div>
+
+<div class="grid gap-4 lg:grid-cols-2">
+  <div class="card card-body">
+    <h2 class="font-semibold">1. Download the class template</h2>
+    <p class="mt-1 text-sm text-slate-600">
+      One row per student, with any marks already entered. Type the marks in Excel, write ABS for an
+      absent student, and leave a row blank to keep that student's mark as it is. Keep the Roll and
+      Student ID columns: rows are matched by them, never by name.
+    </p>
+    <div class="mt-3 flex gap-2">
+      <a class="btn-secondary btn-sm" href="?schedule={{ schedule.pk }}&section={{ section.pk }}&download=xlsx">Excel template</a>
+      <a class="btn-secondary btn-sm" href="?schedule={{ schedule.pk }}&section={{ section.pk }}&download=csv">CSV template</a>
+    </div>
+  </div>
+  <form method="post" enctype="multipart/form-data" class="card card-body">
+    {% csrf_token %}
+    <input type="hidden" name="schedule" value="{{ schedule.pk }}">
+    <input type="hidden" name="section" value="{{ section.pk }}">
+    <input type="hidden" name="action" value="check">
+    <h2 class="font-semibold">2. Upload it and check</h2>
+    <p class="mt-1 text-sm text-slate-600">Nothing is saved yet: you will see every change first.</p>
+    <input type="file" name="file" accept=".xlsx,.csv" required class="input mt-3">
+    <div class="mt-3"><button class="btn-primary btn-sm">Check the file</button></div>
+  </form>
+</div>
+
+{% if prepared is not None %}
+  <div class="card mt-5">
+    <div class="card-header">
+      <h2 class="font-semibold">3. What {{ filename }} would change</h2>
+      <p class="text-sm text-slate-600">{{ counts.new }} new &middot; {{ counts.changed }} changed &middot; {{ counts.unchanged }} unchanged</p>
+    </div>
+    {% if problems %}
+      <div class="border-b border-red-200 bg-red-50 px-5 py-3 text-sm text-red-800">
+        <p class="font-medium">Fix these in the file and upload it again. Nothing will be saved while any remain.</p>
+        <ul class="mt-1 list-inside list-disc">{% for problem in problems %}<li>{{ problem }}</li>{% endfor %}</ul>
+      </div>
+    {% endif %}
+    {% if skipped %}
+      <div class="border-b border-slate-200 px-5 py-3 text-sm text-slate-600">
+        <ul class="list-inside list-disc">{% for line in skipped %}<li>{{ line }}</li>{% endfor %}</ul>
+      </div>
+    {% endif %}
+    <div class="overflow-x-auto">
+      <table class="table">
+        <thead><tr><th>Row</th><th>Roll</th><th>Student</th><th>Now</th><th>In the file</th><th>Change</th></tr></thead>
+        <tbody>
+          {% for entry in prepared %}
+            <tr class="{% if entry.action == 'unchanged' %}text-slate-400{% endif %}">
+              <td>{{ entry.row }}</td><td>{{ entry.roll }}</td><td>{{ entry.student }}</td>
+              <td>{{ entry.before|default:"—" }}</td><td class="font-medium">{{ entry.after }}</td>
+              <td>{% if entry.action == "new" %}New{% elif entry.action == "changed" %}<span class="text-amber-700">Changed</span>{% else %}Unchanged{% endif %}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="6">{% include "components/empty.html" with message="The file has no marks in it." %}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if not problems and to_save %}
+      <form method="post" class="flex items-center justify-between border-t border-slate-200 px-5 py-4">
+        {% csrf_token %}
+        <input type="hidden" name="schedule" value="{{ schedule.pk }}">
+        <input type="hidden" name="section" value="{{ section.pk }}">
+        <input type="hidden" name="action" value="confirm">
+        <p class="text-xs text-slate-500">Saved all together, as on the mark grid: if any row is refused, none is saved.</p>
+        <button class="btn-primary">Save {{ to_save }} mark{{ to_save|pluralize }}</button>
+      </form>
+    {% endif %}
+  </div>
+{% endif %}
+{% endblock %}

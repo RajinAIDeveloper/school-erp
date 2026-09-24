@@ -466,3 +466,6 @@ msgstr "সমন্বিত ফলাফল"
 
 msgid "Exam series"
 msgstr "পরীক্ষা সিরিজ"
+
+msgid "Highest"
+msgstr "সর্বোচ্চ"

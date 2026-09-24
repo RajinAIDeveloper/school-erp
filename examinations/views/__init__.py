@@ -38,7 +38,9 @@ from .marks import (  # noqa: F401
     comments,
     forecasts,
     mark_save,
+    mark_sheet,
     marks,
+    marks_import,
 )
 from .results import (  # noqa: F401
     ResultsFilter,
@@ -50,6 +52,10 @@ from .results import (  # noqa: F401
     report_cards,
     results,
     verify,
+)
+from .seating import (  # noqa: F401
+    seat_plan,
+    seat_plans,
 )
 from .series import (  # noqa: F401
     OFFICIAL_IMPORT_KEY,

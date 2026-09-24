@@ -679,3 +679,50 @@ class AccessArrangement(SchoolScopedModel):
 
     def __str__(self):
         return f"{self.candidate} {self.get_kind_display()}"
+
+
+class SeatPlan(SchoolScopedModel):
+    """
+    Where each candidate sits for one sitting of an exam: the papers that start at the same
+    date and time, whichever classes they belong to.
+
+    Stored rather than worked out on the fly, so the door lists, seat stickers and invigilator
+    sheets printed for a room always agree. Once printed it is locked; unlocking allows a new
+    allocation.
+    """
+
+    exam = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name="seat_plans")
+    date = models.DateField()
+    start_time = models.TimeField()
+    mix_classes = models.BooleanField(
+        default=True, help_text="Seat students of different classes side by side, so neighbours sit different papers."
+    )
+    seats_per_room = models.PositiveSmallIntegerField(
+        null=True, blank=True, help_text="At most this many in any room, when exam seating is sparser than lessons."
+    )
+    locked_at = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
+
+    class Meta:
+        ordering = ["date", "start_time"]
+        constraints = [models.UniqueConstraint(fields=["exam", "date", "start_time"], name="one_seat_plan_per_sitting")]
+
+    def __str__(self):
+        return f"{self.exam} {self.date:%d %b %Y} {self.start_time:%H:%M}"
+
+
+class Seat(SchoolScopedModel):
+    plan = models.ForeignKey(SeatPlan, on_delete=models.CASCADE, related_name="seats")
+    room = models.ForeignKey("timetable.Room", on_delete=models.PROTECT, related_name="exam_seats")
+    number = models.PositiveSmallIntegerField()
+    enrollment = models.ForeignKey(Enrollment, on_delete=models.CASCADE, related_name="exam_seats")
+
+    class Meta:
+        ordering = ["room__name", "number"]
+        constraints = [
+            models.UniqueConstraint(fields=["plan", "enrollment"], name="one_seat_per_candidate_per_sitting"),
+            models.UniqueConstraint(fields=["plan", "room", "number"], name="one_candidate_per_seat"),
+        ]
+
+    def __str__(self):
+        return f"{self.room} seat {self.number}"

@@ -209,7 +209,13 @@ class Command(BaseCommand):
             exam=exam,
             class_level=level,
             subject=subject,
-            defaults={"date": date(2026, 10, 1), "full_marks": 100, "pass_marks": 33},
+            defaults={
+                "date": date(2026, 10, 1),
+                "start_time": time(10),
+                "end_time": time(12),
+                "full_marks": 100,
+                "pass_marks": 33,
+            },
         )
         period, _ = Period.objects.get_or_create(
             school=school, order=1, defaults={"name": "Period 1", "start_time": time(9), "end_time": time(9, 45)}

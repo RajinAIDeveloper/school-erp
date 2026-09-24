@@ -25,15 +25,40 @@ from ..services import (
 from .common import _cell_text, card_enrollment, mask_name, verification_url
 
 
-def _class_report(request, sheet, kind, filters, show_rank):
+def _class_report(request, sheet, kind, filters, show_rank, margin=5):
     """
     One of the class reports as a title, headers and rows, or None with a message saying why
     it does not apply to this class.
     """
-    from ..exports import grade_distribution, merit_list, merit_table, tabulation
+    from ..exports import failed_subjects, grade_distribution, merit_list, merit_table, near_pass_mark, tabulation
 
     book, rows = sheet["rulebook"], sheet["rows"]
     preamble = about(sheet, filters)
+    if kind in ("fails", "nearfail") and not book.pass_marks:
+        messages.info(request, f"{book.label} has no pass marks, so there is no list of fails or near fails.")
+        return None
+    if kind == "fails":
+        headers, body, counts = failed_subjects(rows)
+        spread = ", ".join(f"{counts[n]} in {n} subject{'s' if n > 1 else ''}" for n in sorted(counts))
+        note = f"{len(body)} of {len(rows)} student(s) failed at least one subject" + (f" ({spread})" if spread else "")
+        return {
+            "title": "Failed subjects",
+            "headers": headers,
+            "rows": body,
+            "about": preamble,
+            "note": note + ". A subject still without a mark is not counted.",
+            "extra": [],
+        }
+    if kind == "nearfail":
+        headers, body = near_pass_mark(rows, margin)
+        return {
+            "title": "Near the pass mark",
+            "headers": headers,
+            "rows": body,
+            "about": [*preamble, ("Within", f"{margin} marks of the pass mark, above or below")],
+            "note": f"{len(body)} subject score(s) within {margin} marks of the pass mark.",
+            "extra": [],
+        }
     if kind == "distribution":
         letters, lines = grade_distribution(sheet, rows)
         headers = ["Subject", "Sat", "Absent", "No mark yet", *letters]
@@ -117,6 +142,13 @@ class ResultsFilter(TailwindFormMixin, forms.Form):
     group = forms.ChoiceField(choices=(), required=False)
     shift = forms.ChoiceField(choices=(), required=False)
     version = forms.ChoiceField(choices=(), required=False)
+    margin = forms.IntegerField(
+        min_value=1,
+        max_value=50,
+        required=False,
+        label="Near the pass mark: within",
+        help_text="Marks either side of the pass mark, for the near-the-pass-mark list. 5 if left blank.",
+    )
 
     def __init__(self, *args, user, school, **kwargs):
         super().__init__(*args, **kwargs)
@@ -181,7 +213,9 @@ def results(request):
             sheet["columns"] = sheet_columns(sheet["rows"])
         kind = data.get("report") or "sheet"
         if kind != "sheet":
-            report = _class_report(request, sheet, kind, ", ".join(picked.values()), show_rank)
+            report = _class_report(
+                request, sheet, kind, ", ".join(picked.values()), show_rank, margin=data.get("margin") or 5
+            )
             if report and fmt in ("csv", "xlsx", "pdf"):
                 return _report_download(request, sheet, report, fmt)
         elif fmt in ("csv", "xlsx", "pdf"):
@@ -260,12 +294,16 @@ def report_card(request, exam_pk, student_pk):
     student, enr = card_enrollment(request, exam, student_pk)
     if not request.user.has_perm("examinations.view_mark") and exam.status != "published":
         raise PermissionDenied
-    sheet = build_result_sheet(exam, enr.class_level, enr.section)
+    # The whole class, so the card can print the class's highest mark in each subject.
+    sheet = build_result_sheet(exam, enr.class_level)
     row = next((r for r in sheet["rows"] if r["enrollment_id"] == enr.pk), None)
     if row is None:
         from django.http import Http404
 
         raise Http404
+    from ..documents import class_highest, with_class_highest
+
+    row = with_class_highest(row, class_highest(sheet["rows"]))
     snap = ResultSnapshot.objects.filter(exam=exam, enrollment=enr, version=exam.publication_version).first()
     if request.GET.get("format") == "pdf":
         from ..documents import report_card_pdf
@@ -290,6 +328,7 @@ def report_card(request, exam_pk, student_pk):
             "lines": lines,
             "show_parts": any(line["parts"] for line in lines),
             "show_points": shows_points(row),
+            "show_highest": any(line["highest"] for line in lines),
             "attendance": attendance,
             "attendance_until": _date.fromisoformat(attendance["until"])
             if attendance and attendance.get("until")
@@ -298,6 +337,7 @@ def report_card(request, exam_pk, student_pk):
             "official_notice": official_notice(row),
             "comment_span": 4
             + shows_points(row)
+            + any(line["highest"] for line in lines)
             + any(line["parts"] for line in lines)
             + any(line["effort"] for line in lines),
             "effort_label": row.get("effort_label") or "Effort",
@@ -365,7 +405,11 @@ def report_cards(request):
             "These results are not published yet. A whole section can be printed once they are, "
             "or a head can print the drafts."
         )
-    sheet = build_result_sheet(exam, section.class_level, section)
+    from ..documents import class_highest, with_class_highest
+
+    # The whole class, for its highest marks; only this section's cards are printed.
+    sheet = build_result_sheet(exam, section.class_level)
+    highest = class_highest(sheet["rows"])
     enrollments = {
         e.pk: e
         for e in Enrollment.objects.filter(
@@ -376,7 +420,7 @@ def report_cards(request):
     cards = [
         (
             enrollments[row["enrollment_id"]],
-            row,
+            with_class_highest(row, highest),
             snapshots.get(row["enrollment_id"]),
             verification_url(request, snapshots.get(row["enrollment_id"])),
         )

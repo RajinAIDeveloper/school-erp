@@ -41,6 +41,31 @@ def total_text(row):
     return f"{mark_text(row['total'])} / {mark_text(row['full_total'])}"
 
 
+def class_highest(rows):
+    """The highest mark in the class for each paper, and for each subject graded on two papers."""
+    papers, units = {}, {}
+    for row in rows:
+        for cell in row["cells"]:
+            if cell.get("score") is not None and not cell.get("absent") and not cell.get("exempt"):
+                key, value = str(cell["schedule_id"]), Decimal(str(cell["score"]))
+                papers[key] = max(papers.get(key, value), value)
+        for unit in row.get("subjects") or []:
+            if len(unit.get("papers") or []) > 1 and unit.get("score") is not None and not unit.get("absent"):
+                value = Decimal(str(unit["score"]))
+                units[unit["name"]] = max(units.get(unit["name"], value), value)
+    return {"papers": {k: str(v) for k, v in papers.items()}, "units": {k: str(v) for k, v in units.items()}}
+
+
+def with_class_highest(row, highest):
+    """
+    A copy of a card's row carrying the class's highest marks, on cards that show positions.
+
+    Worked out from the class's current results each time a card is shown, and never stored in
+    a published result: a correction to one student's mark must not change every other card.
+    """
+    return {**row, "class_highest": highest} if shows_rank(row) else row
+
+
 def _facts(pairs, style, columns=3, width=178):
     cells = [
         Paragraph(
@@ -107,6 +132,8 @@ def card_rows(row):
     """
     cells = {cell["schedule_id"]: cell for cell in row["cells"]}
     notes = row.get("comments") or {}
+    highest = row.get("class_highest") or {}
+    paper_highest, unit_highest = highest.get("papers") or {}, highest.get("units") or {}
     units = row.get("subjects") or [
         {
             "name": cell["subject"],
@@ -140,6 +167,7 @@ def card_rows(row):
                     "code": paper.get("subject_code", ""),
                     "subject": paper["subject"] + (" (4th subject)" if paper.get("is_fourth") and not combined else ""),
                     "full_marks": mark_text(paper["full_marks"]),
+                    "highest": mark_text(paper_highest.get(str(paper["schedule_id"]), "")),
                     "parts": parts,
                     "obtained": obtained,
                     "letter": "" if combined else ("—" if paper["missing"] else paper["letter"]),
@@ -156,6 +184,7 @@ def card_rows(row):
                     "code": "",
                     "subject": f"{unit['name']} (both papers)" + (" (4th subject)" if unit.get("is_fourth") else ""),
                     "full_marks": mark_text(unit["full_marks"]),
+                    "highest": mark_text(unit_highest.get(unit["name"], "")),
                     "parts": "",
                     "obtained": obtained,
                     "letter": "—" if unit["missing"] else unit["letter"],
@@ -173,6 +202,7 @@ def card_rows(row):
                     "code": cell.get("subject_code", ""),
                     "subject": cell["subject"],
                     "full_marks": "—",
+                    "highest": "",
                     "parts": "",
                     "obtained": "Exempt",
                     "letter": "EX",
@@ -214,25 +244,20 @@ def report_card_flowables(school, exam, enrollment, row, snapshot, style, verify
     show_parts = any(line["parts"] for line in lines)
     show_effort = any(line["effort"] for line in lines)
     show_points = shows_points(row)
-    effort_heading = row.get("effort_label") or "Effort"
-    headers = (
-        ["Code", "Subject", "Full marks"]
-        + (["Parts"] if show_parts else [])
-        + ["Obtained", "Grade"]
-        + (["Points"] if show_points else [])
-        + ([effort_heading] if show_effort else [])
+    show_highest = any(line["highest"] for line in lines)
+    # (heading, line key, right-aligned)
+    columns = [("Code", "code", False), ("Subject", "subject", False), ("Full marks", "full_marks", True)]
+    columns += [("Highest", "highest", True)] if show_highest else []
+    columns += [("Parts", "parts", False)] if show_parts else []
+    columns += [("Obtained", "obtained", True), ("Grade", "letter", False)]
+    columns += [("Points", "grade_point", True)] if show_points else []
+    columns += [(row.get("effort_label") or "Effort", "effort", False)] if show_effort else []
+    table = data_table(
+        [heading for heading, _key, _right in columns],
+        [[line[key] for _heading, key, _right in columns] for line in lines],
+        style,
+        align_right=tuple(i for i, (_heading, _key, right) in enumerate(columns) if right),
     )
-    body = [
-        [line["code"], line["subject"], line["full_marks"]]
-        + ([line["parts"]] if show_parts else [])
-        + [line["obtained"], line["letter"]]
-        + ([line["grade_point"]] if show_points else [])
-        + ([line["effort"]] if show_effort else [])
-        for line in lines
-    ]
-    obtained_at = 4 if show_parts else 3
-    numeric = (2, obtained_at) + ((obtained_at + 2,) if show_points else ())
-    table = data_table(headers, body, style, align_right=numeric)
     words = [
         Paragraph(f"<b>{escape(line['subject'])}</b>: {escape(line['comment'])}", style["cell"])
         for line in lines
@@ -400,6 +425,225 @@ def bulk_report_cards_pdf(school, exam, cards):
     doc.build(flow or [Paragraph("No students to print.", style["normal"])])
     response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
     response["Content-Disposition"] = 'attachment; filename="report-cards.pdf"'
+    return response
+
+
+def mark_sheet_pdf(school, schedule, section, students, marks=None):
+    """
+    The exam-hall sheets for one paper and one section.
+
+    Without `marks`: the blank collection sheet an examiner fills in by hand, a column for each
+    part of the paper. With `marks` ({enrollment id: Mark}): the marks register, the same sheet
+    filled from the marks entered, to check against the answer scripts.
+    """
+    style = styles()
+    exam, filled = schedule.exam, marks is not None
+    parts = list(schedule.components.all())
+    headers = ["Roll", "Student ID", "Student"]
+    if parts:
+        headers += [f"{part.name} ({plain(part.full_marks)})" for part in parts]
+        headers.append(f"Total ({plain(schedule.full_marks)})")
+    else:
+        headers.append(f"Marks ({plain(schedule.full_marks)})")
+    headers.append("Remarks")
+    blanks = len(parts) + 1
+
+    body = []
+    for enrollment in students:
+        line = [enrollment.roll_number, enrollment.student.student_id, enrollment.student.full_name]
+        mark = (marks or {}).get(enrollment.pk) if filled else None
+        if mark is None:
+            line += [""] * blanks + [""]
+        elif mark.is_exempt:
+            line += [""] * (blanks - 1) + ["EX", "Exempt"]
+        elif mark.is_absent:
+            line += [""] * (blanks - 1) + ["ABS", "Absent"]
+        else:
+            stored = mark.component_marks or {}
+            line += [mark_text(stored.get(part.code, "")) for part in parts]
+            line += [mark_text(mark.marks_obtained), ""]
+        body.append(line)
+
+    when = schedule.date.strftime("%d %b %Y") if schedule.date else "Date to be set"
+    if schedule.start_time:
+        when += f", {schedule.start_time:%H:%M}"
+    facts = _facts(
+        [
+            ("Examination", f"{exam.name} ({exam.academic_year})"),
+            ("Class / section", str(section)),
+            ("Subject", f"{schedule.subject.code} {schedule.subject.name}".strip()),
+            ("Full marks", f"{plain(schedule.full_marks)} (pass {plain(schedule.pass_marks)})"),
+            ("Date", when),
+            ("Room", schedule.room or ""),
+        ],
+        style,
+    )
+    table = data_table(headers, body, style, align_right=tuple(range(3, 3 + blanks)))
+    if not filled:
+        # Room to write by hand.
+        table.setStyle(TableStyle([("TOPPADDING", (0, 1), (-1, -1), 8), ("BOTTOMPADDING", (0, 1), (-1, -1), 8)]))
+    signatures = Table(
+        [
+            [
+                Paragraph(f"<font color='#475569' size='7.5'>{label}</font>", style["cell"])
+                for label in ("Examiner", "Checked by", "Date")
+            ]
+        ],
+        colWidths=[55 * mm] * 3,
+        hAlign="LEFT",
+    )
+    signatures.setStyle(
+        TableStyle(
+            [
+                ("LINEABOVE", (0, 0), (0, 0), 0.5, colors.black),
+                ("LINEABOVE", (1, 0), (1, 0), 0.5, colors.black),
+                ("LINEABOVE", (2, 0), (2, 0), 0.5, colors.black),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+            ]
+        )
+    )
+    title = "Marks register" if filled else "Mark collection sheet"
+    note = (
+        "Marks as entered in the system. Check each against the answer script."
+        if filled
+        else "Write ABS for a student who was absent. Enter the marks from this sheet on the mark grid, "
+        "or type them into the Excel template and import it."
+    )
+    return document(
+        school,
+        title,
+        [
+            facts,
+            Spacer(1, 6),
+            table,
+            Spacer(1, 6),
+            Paragraph(f"<font color='#475569' size='8'>{note}</font>", style["cell"]),
+            Spacer(1, 28),
+            signatures,
+        ],
+        subtitle=f"{schedule.subject.name} · {section}",
+        filename=f"{'marks-register' if filled else 'mark-sheet'}-{schedule.subject.code or schedule.pk}-{section.pk}.pdf",
+        landscape_mode=len(headers) > 7,
+    )
+
+
+SEAT_PLAN_PRINTS = {
+    "door": ("Seat plan", "seat-plan"),
+    "attendance": ("Invigilator's attendance sheet", "attendance-sheet"),
+    "stickers": ("Seat stickers", "seat-stickers"),
+}
+
+
+def seat_plan_flowables(school, plan, kind, style):
+    """The printouts of a seat plan: a door list or attendance sheet per room, or seat stickers."""
+    from .seating import room_lists
+
+    exam, rooms = plan.exam, room_lists(plan)
+    when = f"{plan.date:%d %b %Y}, {plan.start_time:%H:%M}"
+    title = SEAT_PLAN_PRINTS[kind][0]
+    if kind == "stickers":
+        labels = []
+        for room, seats in rooms:
+            for seat, papers in seats:
+                enrollment = seat.enrollment
+                labels.append(
+                    Paragraph(
+                        f"<font size='11'>{escape(room.name)} · Seat {seat.number}</font><br/>"
+                        f"{escape(enrollment.student.full_name)}<br/>"
+                        f"{escape(str(enrollment.section))} · Roll {enrollment.roll_number}<br/>"
+                        f"<font size='7' color='#475569'>{escape(exam.name)} · {when}<br/>"
+                        f"{escape(', '.join(p.subject.name for p in papers))}</font>",
+                        style["cell"],
+                    )
+                )
+        flow = []
+        for start in range(0, len(labels), 24):
+            page = labels[start : start + 24]
+            page += [""] * (-len(page) % 3)
+            grid = Table(
+                [page[i : i + 3] for i in range(0, len(page), 3)],
+                colWidths=[60 * mm] * 3,
+                rowHeights=[32 * mm] * (len(page) // 3),
+            )
+            grid.setStyle(
+                TableStyle(
+                    [
+                        ("GRID", (0, 0), (-1, -1), 0.3, RULE),
+                        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                    ]
+                )
+            )
+            if flow:
+                flow.append(PageBreak())
+            flow.append(grid)
+        return flow or [Paragraph("No seats allocated yet.", style["normal"])]
+
+    flow = []
+    for index, (room, seats) in enumerate(rooms):
+        if index:
+            flow.append(PageBreak())
+        flow.extend(
+            letterhead(school, f"{title} · {exam.name}", f"{room.name} · {when} · {len(seats)} students", style)
+        )
+        if kind == "door":
+            headers = ["Seat", "Roll", "Student ID", "Student", "Class / section", "Paper"]
+            body = [
+                [
+                    seat.number,
+                    seat.enrollment.roll_number,
+                    seat.enrollment.student.student_id,
+                    seat.enrollment.student.full_name,
+                    str(seat.enrollment.section),
+                    ", ".join(p.subject.name for p in papers),
+                ]
+                for seat, papers in seats
+            ]
+            flow.append(data_table(headers, body, style))
+        else:
+            headers = ["Seat", "Roll", "Student", "Class / section", "Paper", "Script no.", "Signature"]
+            body = [
+                [
+                    seat.number,
+                    seat.enrollment.roll_number,
+                    seat.enrollment.student.full_name,
+                    str(seat.enrollment.section),
+                    ", ".join(p.subject.name for p in papers),
+                    "",
+                    "",
+                ]
+                for seat, papers in seats
+            ]
+            table = data_table(headers, body, style)
+            table.setStyle(TableStyle([("TOPPADDING", (0, 1), (-1, -1), 7), ("BOTTOMPADDING", (0, 1), (-1, -1), 7)]))
+            flow.append(table)
+            flow.append(Spacer(1, 18))
+            flow.append(
+                Paragraph(
+                    "<font color='#475569' size='8'>Present: ______ &nbsp;&nbsp; Absent: ______ &nbsp;&nbsp; "
+                    "Invigilator's signature: ______________________</font>",
+                    style["cell"],
+                )
+            )
+    return flow or [Paragraph("No seats allocated yet.", style["normal"])]
+
+
+def seat_plan_pdf(school, plan, kind):
+    style = styles()
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        leftMargin=12 * mm if kind == "stickers" else 16 * mm,
+        rightMargin=12 * mm if kind == "stickers" else 16 * mm,
+        topMargin=12 * mm,
+        bottomMargin=12 * mm,
+        title=f"{SEAT_PLAN_PRINTS[kind][0]} · {plan.exam.name}",
+    )
+    doc.build(seat_plan_flowables(school, plan, kind, style))
+    response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
+    filename = f"{SEAT_PLAN_PRINTS[kind][1]}-{plan.date:%Y%m%d}-{plan.start_time:%H%M}.pdf"
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response
 
 

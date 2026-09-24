@@ -60,6 +60,8 @@ quietly join it.
 | /exams/<int:pk>/ | examinations:exam_detail | `examinations.view_exam` | - | Y | Y | . | Y | . | . | . |
 | /exams/<int:pk>/publish/ | examinations:publish | `examinations.change_exam` | - | Y | Y | . | . | . | . | . |
 | /exams/<int:pk>/routine/ | examinations:exam_routine | `examinations.view_exam` | - | Y | Y | . | Y | . | . | . |
+| /exams/<int:pk>/seating/ | examinations:seat_plans | `examinations.change_exam` | - | Y | Y | . | . | . | . | . |
+| /exams/<int:pk>/seating/sitting/ | examinations:seat_plan | `examinations.change_exam` | - | Y | Y | . | . | . | . | . |
 | /exams/admit-cards.pdf | examinations:admit_cards | `examinations.view_exam` | own sections only | Y | Y | . | Y | . | . | . |
 | /exams/combined/ | examinations:combined_list | `examinations.view_combinedresult` | - | Y | Y | . | . | . | . | . |
 | /exams/combined/<int:pk>/ | examinations:combined_detail | `examinations.view_combinedresult` | - | Y | Y | . | . | . | . | . |
@@ -71,7 +73,9 @@ quietly join it.
 | /exams/manage/<int:pk>/edit/ | examinations:exam_update | `examinations.change_exam` | - | Y | Y | . | . | . | . | . |
 | /exams/manage/new/ | examinations:exam_create | `examinations.add_exam` | - | Y | Y | . | . | . | . | . |
 | /exams/marks/ | examinations:marks | `examinations.view_mark` | assigned subjects and sections only | Y | Y | . | Y | . | . | . |
+| /exams/marks/import/ | examinations:marks_import | `examinations.change_mark` | assigned subjects and sections only | Y | Y | . | Y | . | . | . |
 | /exams/marks/save/ | examinations:save_mark | `examinations.change_mark` | - | Y | Y | . | Y | . | . | . |
+| /exams/marks/sheet.pdf | examinations:mark_sheet | `examinations.view_mark` | assigned subjects and sections only | Y | Y | . | Y | . | . | . |
 | /exams/progress/<int:student_pk>/ | examinations:progress | `(sign-in only)` | - | o | o | o | o | o | o | o |
 | /exams/registration/ | examinations:board_registration | `students.view_student` | managers only: identity numbers of students and parents | Y | Y | Y | Y | . | . | . |
 | /exams/report-cards.pdf | examinations:report_cards | `examinations.view_mark` | own sections, published only | Y | Y | . | Y | . | . | . |

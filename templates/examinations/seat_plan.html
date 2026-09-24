@@ -1,0 +1,61 @@
+{% extends "layouts/base.html" %}
+{% block header_actions %}
+  <a href="{% url 'examinations:seat_plans' exam.pk %}" class="btn-secondary btn-sm">All sittings</a>
+  <a href="{% url 'timetable:room_list' %}" class="btn-secondary btn-sm">Rooms</a>
+{% endblock %}
+{% block content %}
+<div class="mb-4 rounded-lg border border-slate-200 bg-white px-5 py-3">
+  <p class="font-semibold">{{ exam.name }} &middot; {{ day|date:"d M Y" }}, {{ start|time:"H:i" }}</p>
+  <p class="text-sm text-slate-500">{% for p in papers %}{{ p.class_level }}: {{ p.subject.name }}{% if not forloop.last %} &middot; {% endif %}{% endfor %}</p>
+  <p class="mt-1 text-sm">{{ students }} student{{ students|pluralize }} sit at this time{% if plan %} &middot; {{ seated }} seated{% endif %}{% if plan.locked_at %} &middot; <span class="text-emerald-700">locked {{ plan.locked_at|date:"d M Y H:i" }}</span>{% endif %}</p>
+</div>
+
+{% if plan.locked_at %}
+  <div class="card card-body mb-4">
+    <p class="text-sm text-slate-600">This plan has been printed and locked, so the door lists, stickers and attendance sheets all match. Unlock it only to seat everyone again.</p>
+    <form method="post" action="{{ here }}" class="mt-3">{% csrf_token %}<input type="hidden" name="date" value="{{ day|date:'Y-m-d' }}"><input type="hidden" name="time" value="{{ start|time:'H:i' }}">
+      <button name="action" value="unlock" class="btn-secondary btn-sm">Unlock</button></form>
+  </div>
+{% else %}
+  <form method="post" action="{{ here }}" class="card card-body mb-4 space-y-4">
+    {% csrf_token %}
+    <input type="hidden" name="date" value="{{ day|date:'Y-m-d' }}"><input type="hidden" name="time" value="{{ start|time:'H:i' }}">
+    <div>
+      <p class="label">Rooms, filled in this order</p>
+      <div class="mt-2 grid gap-2 sm:grid-cols-3">
+        {% for room in rooms %}
+          <label class="inline-flex items-center gap-2 text-sm"><input type="checkbox" name="rooms" value="{{ room.pk }}" {% if room.pk in chosen %}checked{% endif %} class="h-4 w-4 rounded border-slate-300"> {{ room.name }} <span class="text-slate-500">({{ room.capacity }} seats)</span></label>
+        {% empty %}
+          <p class="text-sm text-amber-700">No rooms yet. Add the exam rooms and their capacities under <a class="link" href="{% url 'timetable:room_list' %}">Rooms</a>.</p>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div><label class="label" for="seats_per_room">At most this many per room</label>
+        <input id="seats_per_room" name="seats_per_room" inputmode="numeric" value="{{ plan.seats_per_room|default_if_none:'' }}" class="input" placeholder="Leave blank to use each room's capacity"></div>
+      <label class="mt-6 inline-flex items-center gap-2 text-sm"><input type="checkbox" name="mix_classes" {% if not plan or plan.mix_classes %}checked{% endif %} class="h-4 w-4 rounded border-slate-300"> Seat classes alternately, so neighbours sit different papers</label>
+    </div>
+    <div class="flex flex-wrap items-center gap-3">
+      <button name="action" value="seat" class="btn-primary">{% if plan %}Seat everyone again{% else %}Seat the students{% endif %}</button>
+      {% if plan and seated %}<button name="action" value="lock" class="btn-secondary">Lock after printing</button>{% endif %}
+    </div>
+  </form>
+{% endif %}
+
+{% if plan and seated %}
+  <div class="card">
+    <div class="card-header">
+      <h2 class="font-semibold">Rooms</h2>
+      <div class="flex flex-wrap gap-2">
+        {% for key, names in prints.items %}<a class="btn-secondary btn-sm" href="{{ here }}&print={{ key }}">{{ names.0 }} (PDF)</a>{% endfor %}
+      </div>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="table">
+        <thead><tr><th>Room</th><th class="text-right">Seated</th><th>Classes</th></tr></thead>
+        <tbody>{% for room, count, classes in summary %}<tr><td>{{ room.name }}</td><td class="text-right">{{ count }}</td><td>{{ classes|join:", " }}</td></tr>{% endfor %}</tbody>
+      </table>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

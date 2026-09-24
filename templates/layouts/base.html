@@ -59,7 +59,7 @@
             <p class="px-4 py-2 text-xs text-slate-500">{{ user.role_names|default:"Superuser" }}</p>
             <a href="{% url 'users:profile' %}" class="block px-4 py-2 text-sm hover:bg-slate-50">{% translate "My profile" %}</a>
             <a href="{% url 'password_change' %}" class="block px-4 py-2 text-sm hover:bg-slate-50">{% translate "Change password" %}</a>
-            <form method="post" action="{% url 'logout' %}">{% csrf_token %}
+            <form method="post" action="{% url 'logout' %}" data-clear-drafts>{% csrf_token %}
               <button class="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-slate-50">{% translate "Sign out" %}</button>
             </form>
           </div>

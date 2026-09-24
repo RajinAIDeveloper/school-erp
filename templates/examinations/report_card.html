@@ -46,6 +46,7 @@
       <thead>
         <tr>
           <th>{% translate "Code" %}</th><th>{% translate "Subject" %}</th><th class="text-right">{% translate "Full marks" %}</th>
+          {% if show_highest %}<th class="text-right">{% translate "Highest" %}</th>{% endif %}
           {% if show_parts %}<th>{% translate "Parts" %}</th>{% endif %}
           <th class="text-right">{% translate "Obtained" %}</th><th>{% translate "Grade" %}</th>{% if show_points %}<th class="text-right">{% translate "Points" %}</th>{% endif %}
           {% if show_effort %}<th>{% translate effort_label %}</th>{% endif %}
@@ -57,6 +58,7 @@
             <td class="text-slate-500">{{ line.code }}</td>
             <td>{{ line.subject }}</td>
             <td class="text-right">{{ line.full_marks }}</td>
+            {% if show_highest %}<td class="text-right text-slate-500">{{ line.highest }}</td>{% endif %}
             {% if show_parts %}<td class="text-xs text-slate-600">{{ line.parts }}</td>{% endif %}
             <td class="text-right">{{ line.obtained }}</td>
             <td>{{ line.letter }}</td>

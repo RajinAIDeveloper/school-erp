@@ -1,6 +1,6 @@
 """
 Class result exports: the class sheet, grade distribution per subject, the national
-tabulation sheet and merit lists.
+tabulation sheet, merit lists, and the lists of who failed and who is near the pass mark.
 
 Every export is built from the same rows the report cards print: the published snapshot, or
 for an unpublished exam the live results marked as a draft. So a total on an export always
@@ -8,6 +8,7 @@ matches the card. Each export says which exam, which published version, which ru
 which filter it covers, and every percentage says what it is a percentage of.
 """
 
+from collections import Counter
 from decimal import Decimal
 
 from .grading import headline
@@ -19,6 +20,8 @@ REPORTS = [
     ("distribution", "Grade distribution by subject"),
     ("tabulation", "Tabulation sheet (national curriculum)"),
     ("merit", "Merit list"),
+    ("fails", "Failed subjects"),
+    ("nearfail", "Near the pass mark"),
 ]
 
 
@@ -169,6 +172,77 @@ def tabulation(rows):
                 line += [unit["score"], unit["letter"], unit["grade_point"]]
         line += [row.get("gpa") or "", row.get("gpa_without_fourth") or "", row.get("result") or ""]
         body.append(line)
+    return headers, body
+
+
+# ------------------------------------------------------------------ failed and near the pass mark
+
+
+def _counted(unit):
+    return not unit.get("missing") and unit.get("core") != "cas"
+
+
+def _pass_mark(row, unit):
+    """A subject's pass mark: its paper's, or for papers graded together the sum of theirs."""
+    cells = {cell["schedule_id"]: cell for cell in row["cells"]}
+    return sum((Decimal(str(cells[pk]["pass_marks"])) for pk in unit["papers"] if pk in cells), Decimal(0))
+
+
+def failed_subjects(rows):
+    """
+    Students who failed one subject or more, most failures first, with the subjects named.
+
+    An absence fails the subject, as it does on the card. The national 4th subject never fails
+    a student, so it is left out, and a subject still without a mark is not counted yet.
+
+    Returns (headers, body, counts), where counts maps a number of failed subjects to how many
+    students failed that many.
+    """
+    found = []
+    for row in rows:
+        failed = [
+            unit["name"]
+            for unit in row.get("subjects") or []
+            if _counted(unit) and not unit.get("passed") and not unit.get("is_fourth")
+        ]
+        if failed:
+            found.append((len(failed), row, failed))
+    found.sort(key=lambda item: (-item[0], item[1]["section"], item[1]["roll"]))
+    headers = ["Subjects failed", "Section", "Roll", "Student", "Group", "Failed in"]
+    body = [[n, r["section"], r["roll"], r["student"], r.get("group", ""), ", ".join(names)] for n, r, names in found]
+    return headers, body, Counter(n for n, _row, _names in found)
+
+
+def near_pass_mark(rows, margin):
+    """
+    Every subject score within `margin` marks of its pass mark, above or below: the students a
+    little help would move. A score with enough marks overall that still failed on a part (the
+    multiple-choice paper, say) is listed as such.
+    """
+    from .parts import plain
+
+    found = []
+    for row in rows:
+        for unit in row.get("subjects") or []:
+            if not _counted(unit) or unit.get("absent") or unit.get("score") is None:
+                continue
+            gap = Decimal(str(unit["score"])) - _pass_mark(row, unit)
+            if abs(gap) > margin:
+                continue
+            if unit.get("passed"):
+                standing = f"Passed by {plain(gap)}"
+            elif gap >= 0:
+                standing = "Enough marks, but failed a part"
+            else:
+                standing = f"Short by {plain(-gap)}"
+            name = unit["name"] + (" (4th subject)" if unit.get("is_fourth") else "")
+            found.append((name, gap, row, unit, standing))
+    found.sort(key=lambda item: (item[0], item[1], item[2]["section"], item[2]["roll"]))
+    headers = ["Subject", "Section", "Roll", "Student", "Marks", "Pass mark", "Standing"]
+    body = [
+        [name, r["section"], r["roll"], r["student"], plain(u["score"]), plain(_pass_mark(r, u)), standing]
+        for name, _gap, r, u, standing in found
+    ]
     return headers, body
 
 
