@@ -103,6 +103,11 @@ class School(TimeStampedModel):
     notify_due_sms = models.BooleanField("Allow fee reminder SMS", default=False)
     notify_results_sms = models.BooleanField("Announce published results", default=False)
     notify_admission_sms = models.BooleanField("Welcome newly admitted students", default=False)
+    notify_homework_sms = models.BooleanField(
+        "Weekly homework digest",
+        default=False,
+        help_text="Once a week, one message per child with homework not handed in, to the guardian the school would ring.",
+    )
     staff_self_checkin = models.BooleanField(
         default=False, help_text="Let teachers and staff record their own arrival and departure."
     )

@@ -59,7 +59,8 @@
           <td data-label="{% translate "Not done" %}" class="sm:text-right {% if c.not_done %}text-red-700{% endif %}">{{ c.not_done }}</td>
           <td data-label="{% translate "Not checked" %}" class="sm:text-right {% if item.due and c.pending %}font-semibold text-amber-700{% endif %}">{{ c.pending }}</td>
           <td data-label="{% translate "Absent or excused" %}" class="sm:text-right">{{ c.absent|add:c.excused }}</td>
-          <td class="sm:text-right">{% if task.status != "draft" %}<a class="{% if item.can_check %}btn-primary{% else %}btn-secondary{% endif %} btn-sm" href="{% url 'homework:check' task.pk t.section_id %}">{% if item.can_check %}{% translate "Check work" %}{% else %}{% translate "Open" %}{% endif %}</a>{% endif %}</td>
+          <td class="sm:text-right">{% if task.status != "draft" %}<a class="{% if item.can_check %}btn-primary{% else %}btn-secondary{% endif %} btn-sm" href="{% url 'homework:check' task.pk t.section_id %}">{% if item.can_check %}{% translate "Check work" %}{% else %}{% translate "Open" %}{% endif %}</a>
+            {% if item.can_check and task.marking == "marks" %}<a class="btn-secondary btn-sm" href="{% url 'homework:export' task.pk t.section_id %}">{% translate "Marks for an exam" %}</a>{% endif %}{% endif %}</td>
         </tr>
       {% endwith %}{% empty %}
         <tr><td colspan="8">{% translate "No section of yours has this homework." as nothing %}{% include "components/empty.html" with message=nothing %}</td></tr>

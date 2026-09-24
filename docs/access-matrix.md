@@ -167,9 +167,12 @@ quietly join it.
 | /homework/<int:pk>/check/<int:section>/ | homework:check | `homework.view_submission` | teachers of the subject there; the class teacher reads it; homework module only | Y | Y | Y | . | Y | . | . | . |
 | /homework/<int:pk>/delete/ | homework:delete | `homework.delete_task` | the teacher of every section it is set for, or a manager; homework module only | Y | Y | Y | . | Y | . | . | . |
 | /homework/<int:pk>/edit/ | homework:edit | `homework.change_task` | the teacher of every section it is set for, or a manager; homework module only | Y | Y | Y | . | Y | . | . | . |
+| /homework/<int:pk>/export/<int:section>/ | homework:export | `homework.view_submission` | teachers of the subject there, or a manager; homework module only | Y | Y | Y | . | Y | . | . | . |
 | /homework/<int:pk>/withdraw/ | homework:withdraw | `homework.change_task` | the teacher of every section it is set for, or a manager; homework module only | Y | Y | Y | . | Y | . | . | . |
+| /homework/calendar/ | homework:calendar | `homework.view_task` | classes the viewer teaches; managers every class; homework module only | Y | Y | Y | . | Y | . | . | . |
 | /homework/file/<int:pk>/ | homework:file | `(sign-in only)` | the student, their family, the subject's teachers, the class teacher, managers; homework module only | o | o | o | o | o | o | o | o |
 | /homework/limits/ | homework:limits | `homework.change_dailylimit` | the school's managers; homework module only | Y | Y | Y | . | . | . | . | . |
+| /homework/missing/ | homework:missing | `homework.view_submission` | the class teacher of the section, or a manager; homework module only | Y | Y | Y | . | Y | . | . | . |
 | /homework/new/ | homework:create | `homework.add_task` | own sections and subjects; homework module only | Y | Y | Y | . | Y | . | . | . |
 | /homework/resource/<int:pk>/ | homework:resource | `(sign-in only)` | the families the task is set for, and staff who may open the task; homework module only | o | o | o | o | o | o | o | o |
 | /homework/submission/<int:pk>/ | homework:review | `homework.view_submission` | teachers of the subject there; the class teacher reads it; homework module only | Y | Y | Y | . | Y | . | . | . |

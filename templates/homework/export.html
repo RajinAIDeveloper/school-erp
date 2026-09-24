@@ -1,0 +1,39 @@
+{% extends "layouts/base.html" %}
+{% load erp i18n %}
+{% block header_actions %}<a href="{% url 'homework:detail' task.pk %}" class="btn-secondary btn-sm">{% translate "Back to the homework" %}</a>{% endblock %}
+{% block content %}
+<form method="get" class="card max-w-3xl">
+  <div class="card-header"><h2 class="font-semibold">{{ task.subject.name }} · {{ section }}</h2></div>
+  <div class="card-body space-y-5">
+    <p class="text-sm text-slate-600">{% translate "Homework marks stay apart from exam results. This file brings them into an exam part only when you choose: open the exam's mark import for the paper and upload it." %}</p>
+    <fieldset>
+      <legend class="label">{% translate "Which homework" %}</legend>
+      <div class="mt-2 space-y-1">
+        {% for t in candidates %}
+          <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="task" value="{{ t.pk }}" {% if t.pk == task.pk %}checked{% endif %}> {{ t.title }} <span class="text-xs text-slate-500">· {% translate "out of" %} {{ t.max_marks|mark }} · {{ t.publish_at|date:"d M" }}</span></label>
+        {% endfor %}
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend class="label">{% translate "Scale the average to" %}</legend>
+      <div class="mt-2 grid gap-3 sm:grid-cols-2">
+        {% if papers %}
+          <div><label class="label" for="paper">{% translate "An exam paper" %}</label>
+            <select id="paper" name="paper" class="input"><option value="">—</option>{% for p in papers %}<option value="{{ p.pk }}">{{ p.exam.name }}: {{ p.subject.name }} ({{ p.full_marks|mark }})</option>{% endfor %}</select></div>
+        {% endif %}
+        <div><label class="label" for="out_of">{% translate "Or marks out of" %}</label><input class="input w-28" type="number" min="1" step="0.5" id="out_of" name="out_of" value="100"></div>
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend class="label">{% translate "Work not handed in" %}</legend>
+      <label class="mt-2 flex items-center gap-2 text-sm"><input type="radio" name="missing" value="blank" checked> {% translate "Leave it out of the average" %}</label>
+      <label class="flex items-center gap-2 text-sm"><input type="radio" name="missing" value="zero"> {% translate "Count it as 0" %}</label>
+      <p class="mt-1 text-xs text-slate-500">{% translate "Absent and excused work is always left out." %}</p>
+    </fieldset>
+  </div>
+  <div class="flex flex-wrap gap-2 border-t border-slate-200 px-5 py-4">
+    <button class="btn-primary" name="format" value="xlsx">{% translate "Download Excel" %}</button>
+    <button class="btn-secondary" name="format" value="csv">{% translate "Download CSV" %}</button>
+  </div>
+</form>
+{% endblock %}

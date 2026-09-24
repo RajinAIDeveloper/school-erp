@@ -50,6 +50,9 @@ TRANSLATED_TEMPLATES = [
     "templates/homework/_todo_rows.html",
     "templates/homework/todo_task.html",
     "templates/homework/review.html",
+    "templates/homework/calendar.html",
+    "templates/homework/missing.html",
+    "templates/homework/export.html",
 ]
 
 

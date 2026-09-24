@@ -38,13 +38,23 @@ DEFAULT_TEMPLATES = {
         "Admission welcome",
         "Welcome {student} to {school}. Student ID {invoice}, class {class}.",
     ),
+    "homework_digest": (
+        "Homework digest",
+        "Dear guardian, {student} has {count} homework task(s) not handed in this week: {subjects}. - {school}",
+    ),
 }
+# Messages that belong to a module: a school without it never gets their template.
+MODULE_TEMPLATES = {"homework_digest": "homework"}
 
 
 def ensure_default_templates(school):
     """Create the message bodies a school can then edit in its own words."""
+    from core.modules import has_module
+
     created = []
-    for name, body in DEFAULT_TEMPLATES.values():
+    for key, (name, body) in DEFAULT_TEMPLATES.items():
+        if key in MODULE_TEMPLATES and not has_module(school, MODULE_TEMPLATES[key]):
+            continue
         template, was_new = SMSTemplate.objects.get_or_create(school=school, name=name, defaults={"body": body})
         if was_new:
             created.append(template)
@@ -244,3 +254,70 @@ def notify_admission(student, enrollment):
         name=guardian.full_name,
         dedupe_key=f"admission:{student.pk}",
     )
+
+
+def notify_homework_digest(school, now=None):
+    """
+    Once a week, one message per child with homework not handed in over the last seven days,
+    to the guardian the school would ring. Work checked in class counts only once the teacher
+    has recorded it as not done: an exercise book nobody has looked at yet is not missing.
+    Sending twice in one week sends nothing new.
+    """
+    from datetime import timedelta
+
+    from django.db.models import F
+    from django.db.models.functions import Coalesce
+    from django.utils import timezone
+
+    from core.modules import has_module
+    from homework.followup import MISSING
+    from homework.models import Submission, Task
+    from students.models import Enrollment, Student
+
+    if not (has_module(school, "homework") and school.notify_homework_sms):
+        return 0
+    now = now or timezone.now()
+    rows = (
+        Submission.objects.filter(
+            school=school,
+            task__status=Task.Status.PUBLISHED,
+            enrollment__status=Enrollment.Status.ENROLLED,
+            enrollment__student__status=Student.Status.ACTIVE,
+        )
+        .annotate(due=Coalesce(F("extended_to"), F("target__due_at")))
+        .filter(due__gte=now - timedelta(days=7), due__lt=now)
+        .filter(MISSING)
+        .select_related("task__subject", "enrollment__student")
+    )
+    missing = {}
+    for row in rows:
+        entry = missing.setdefault(row.enrollment_id, {"enrollment": row.enrollment, "count": 0, "subjects": set()})
+        entry["count"] += 1
+        entry["subjects"].add(row.task.subject.name)
+    if not missing:
+        return 0
+    body_template = _template_body(school, "homework_digest", "Homework digest")
+    year, week, _day = timezone.localdate(now).isocalendar()
+    queued = 0
+    for entry in missing.values():
+        student = entry["enrollment"].student
+        guardian = student.primary_guardian
+        if guardian is None or not getattr(guardian, "sms_opt_in", True):
+            continue
+        body = _render(
+            body_template,
+            student=student.full_name,
+            count=entry["count"],
+            subjects=", ".join(sorted(entry["subjects"])),
+            school=school.short_name or school.name,
+        )
+        message = queue(
+            school,
+            key="homework",
+            phone=guardian.phone,
+            body=body,
+            name=guardian.full_name,
+            dedupe_key=f"homework_digest:{entry['enrollment'].pk}:{year}-W{week:02d}",
+        )
+        queued += int(message is not None)
+    return queued

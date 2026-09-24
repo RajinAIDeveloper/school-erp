@@ -116,6 +116,7 @@ def manager_dashboard(school, user):
             "leaves": LeaveRequest.objects.filter(school=school, status="pending").count(),
             "unlocks": UnlockRequest.objects.filter(school=school, status="pending").count(),
         },
+        "homework": _homework_handed_in(school),
         "recent_payments": FeePayment.objects.filter(school=school, is_cancelled=False)
         .select_related("invoice__student")
         .order_by("-date", "-id")[:6],
@@ -263,7 +264,31 @@ def teacher_dashboard(school, user):
         "registers": registers,
         "today_slots": today_slots,
         "pending_marks": pending_marks[:8],
+        "homework": _homework_to_check(school, user, year),
     }
+
+
+def _homework_to_check(school, user, year):
+    """Homework waiting on this teacher, for a school that has the module."""
+    from core.modules import has_module
+
+    if year is None or not has_module(school, "homework"):
+        return None
+    from homework.dashboard import to_check
+
+    rows, count = to_check(user, school, year)
+    return {"rows": rows, "count": count}
+
+
+def _homework_handed_in(school):
+    from core.modules import has_module
+
+    if not has_module(school, "homework"):
+        return None
+    from homework.dashboard import handed_in_rate
+
+    rate, expected = handed_in_rate(school)
+    return {"rate": rate, "expected": expected}
 
 
 def accountant_dashboard(school, user):

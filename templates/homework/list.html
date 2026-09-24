@@ -2,6 +2,8 @@
 {% load erp i18n %}
 {% block header_actions %}
   {% if can_set %}<a href="{% url 'homework:create' %}" class="btn-primary btn-sm">{% translate "Set homework" %}</a>{% endif %}
+  <a href="{% url 'homework:calendar' %}" class="btn-secondary btn-sm">{% translate "Calendar" %}</a>
+  {% if class_teacher %}<a href="{% url 'homework:missing' %}" class="btn-secondary btn-sm">{% translate "Missing homework" %}</a>{% endif %}
   {% if perms.homework.change_dailylimit %}<a href="{% url 'homework:limits' %}" class="btn-secondary btn-sm">{% translate "Homework settings" %}</a>{% endif %}
 {% endblock %}
 {% block content %}

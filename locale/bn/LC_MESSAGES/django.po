@@ -2063,3 +2063,119 @@ msgstr "ছবি"
 
 msgid "Word document"
 msgstr "Word ফাইল"
+
+# ---- homework: planning and follow-up
+
+msgid "Homework handed in over the last week"
+msgstr "গত এক সপ্তাহে জমা পড়া বাড়ির কাজ"
+
+msgid "pieces of work checked or due online"
+msgstr "টি কাজ, যা দেখা হয়েছে বা অনলাইনে জমার কথা ছিল"
+
+msgid "nothing checked yet"
+msgstr "এখনো কিছু দেখা হয়নি"
+
+msgid "Homework to check"
+msgstr "দেখার বাকি বাড়ির কাজ"
+
+msgid "not checked"
+msgstr "দেখা হয়নি"
+
+msgid "handed in online to return"
+msgstr "অনলাইনে জমা, ফেরত দেওয়া বাকি"
+
+msgid "Nothing waiting: all homework due is checked."
+msgstr "কিছু বাকি নেই: জমার সময় হওয়া সব বাড়ির কাজ দেখা হয়েছে।"
+
+msgid "Missing homework"
+msgstr "জমা না পড়া বাড়ির কাজ"
+
+msgid "Marks for an exam"
+msgstr "পরীক্ষার জন্য নম্বর"
+
+msgid "Previous week"
+msgstr "আগের সপ্তাহ"
+
+msgid "This week"
+msgstr "এই সপ্তাহ"
+
+msgid "This class has no sections."
+msgstr "এই শ্রেণিতে কোনো শাখা নেই।"
+
+msgid "Days over it are shaded red."
+msgstr "যেসব দিনে সীমা ছাড়িয়েছে সেগুলো লাল রঙে দেখানো হয়েছে।"
+
+msgid "No daily limit is set for this class."
+msgstr "এই শ্রেণির জন্য কোনো দৈনিক সীমা ঠিক করা নেই।"
+
+msgid "Work set for chosen students only is listed but not added to the section's minutes."
+msgstr "শুধু নির্বাচিত শিক্ষার্থীদের জন্য দেওয়া কাজ তালিকায় আছে, কিন্তু শাখার মিনিটে যোগ হয়নি।"
+
+msgid "Over the last"
+msgstr "গত"
+
+msgid "week(s)"
+msgstr "সপ্তাহ"
+
+msgid "Missing"
+msgstr "জমা পড়েনি"
+
+msgid "not done"
+msgstr "করা হয়নি"
+
+msgid "not handed in"
+msgstr "জমা দেয়নি"
+
+msgid "Nothing missing"
+msgstr "কিছু বাকি নেই"
+
+msgid "No homework was due in this period."
+msgstr "এই সময়ে কোনো বাড়ির কাজ জমার কথা ছিল না।"
+
+msgid "Missing is work the teacher recorded as not done, or work to be handed in online that has not arrived. Work checked in class that nobody has checked yet is shown apart. Absent and excused are left out."
+msgstr "জমা পড়েনি মানে শিক্ষক যে কাজকে করা হয়নি বলে লিখেছেন, অথবা অনলাইনে জমার কাজ যা আসেনি। ক্লাসে দেখার কাজ যা এখনো কেউ দেখেননি তা আলাদা দেখানো হয়েছে। অনুপস্থিত ও অব্যাহতি বাদ দেওয়া হয়েছে।"
+
+msgid "Homework marks stay apart from exam results. This file brings them into an exam part only when you choose: open the exam's mark import for the paper and upload it."
+msgstr "বাড়ির কাজের নম্বর পরীক্ষার ফলাফল থেকে আলাদা থাকে। আপনি চাইলে তবেই এই ফাইল সেগুলো পরীক্ষার কোনো অংশে নিয়ে যায়: পত্রটির নম্বর আমদানি খুলে ফাইলটি আপলোড করুন।"
+
+msgid "Which homework"
+msgstr "কোন বাড়ির কাজ"
+
+msgid "Scale the average to"
+msgstr "গড়কে যে মানে রূপান্তর করবেন"
+
+msgid "An exam paper"
+msgstr "একটি পরীক্ষার পত্র"
+
+msgid "Or marks out of"
+msgstr "অথবা যত নম্বরের মধ্যে"
+
+msgid "Work not handed in"
+msgstr "জমা না দেওয়া কাজ"
+
+msgid "Leave it out of the average"
+msgstr "গড় থেকে বাদ রাখুন"
+
+msgid "Count it as 0"
+msgstr "0 হিসেবে ধরুন"
+
+msgid "Absent and excused work is always left out."
+msgstr "অনুপস্থিত ও অব্যাহতির কাজ সবসময় বাদ থাকে।"
+
+msgid "Download Excel"
+msgstr "Excel ডাউনলোড করুন"
+
+msgid "Download CSV"
+msgstr "CSV ডাউনলোড করুন"
+
+msgid "Homework calendar"
+msgstr "বাড়ির কাজের ক্যালেন্ডার"
+
+msgid "No homework in this subject and section is marked out of a number."
+msgstr "এই বিষয় ও শাখায় নম্বর দিয়ে মূল্যায়নের কোনো বাড়ির কাজ নেই।"
+
+msgid "Choose at least one piece of homework."
+msgstr "অন্তত একটি বাড়ির কাজ বেছে নিন।"
+
+msgid "Homework marks for an exam"
+msgstr "পরীক্ষার জন্য বাড়ির কাজের নম্বর"

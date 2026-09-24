@@ -44,6 +44,15 @@
     </div>
   {% endif %}
 
+  {% if panel.homework %}
+    <a href="{% url 'homework:list' %}" class="mt-4 flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm hover:border-slate-300">
+      <span>📚 {% translate "Homework handed in over the last week" %}:</span>
+      {% if panel.homework.rate is not None %}<b class="{% if panel.homework.rate < 70 %}text-red-600{% elif panel.homework.rate < 85 %}text-amber-600{% else %}text-emerald-700{% endif %}">{{ panel.homework.rate }}%</b>
+        <span class="text-slate-500">({{ panel.homework.expected }} {% translate "pieces of work checked or due online" %})</span>
+      {% else %}<span class="text-slate-500">{% translate "nothing checked yet" %}</span>{% endif %}
+    </a>
+  {% endif %}
+
   <div class="mt-6 grid gap-6 lg:grid-cols-3">
     <section class="card lg:col-span-2">
       <div class="card-header"><h2 class="font-semibold">Class strength</h2>
@@ -167,6 +176,28 @@
         {% empty %}<li class="px-5 py-6 text-center text-slate-500">{% translate "Nothing on your routine today." %}</li>{% endfor %}
       </ul>
     </section>
+
+    {% if panel.homework %}
+      <section class="card lg:col-span-2">
+        <div class="card-header"><h2 class="font-semibold">{% translate "Homework to check" %}{% if panel.homework.count %} <span class="ml-1 rounded-full bg-amber-500 px-2 text-xs text-white">{{ panel.homework.count }}</span>{% endif %}</h2>
+          <a href="{% url 'homework:list' %}" class="link text-sm">{% translate "All homework" %}</a></div>
+        <ul class="divide-y divide-slate-100 text-sm">
+          {% for t in panel.homework.rows %}
+            <li class="flex flex-wrap items-center justify-between gap-2 px-5 py-2.5">
+              <div><p class="font-medium">{{ t.task.title }}</p>
+                <p class="text-xs text-slate-500">{{ t.task.subject.name }} · {{ t.section }} · {% translate "due" %} {{ t.due_at|date:"D d M" }}</p></div>
+              <div class="flex items-center gap-3 text-xs">
+                {% if t.unchecked %}<span class="text-amber-700">{{ t.unchecked }} {% translate "not checked" %}</span>{% endif %}
+                {% if t.to_return %}<span class="text-indigo-700">{{ t.to_return }} {% translate "handed in online to return" %}</span>{% endif %}
+                <a href="{% url 'homework:check' t.task_id t.section_id %}" class="btn-primary btn-sm">{% translate "Check work" %}</a>
+              </div>
+            </li>
+          {% empty %}
+            <li class="px-5 py-6 text-center text-slate-500">{% translate "Nothing waiting: all homework due is checked." %}</li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endif %}
 
     <section class="card lg:col-span-2">
       <div class="card-header"><h2 class="font-semibold">{% translate "Marks still to enter" %}</h2>

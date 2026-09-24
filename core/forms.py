@@ -219,7 +219,15 @@ class NotificationSettingsForm(TailwindFormMixin, forms.ModelForm):
             "notify_due_sms",
             "notify_results_sms",
             "notify_admission_sms",
+            "notify_homework_sms",
         ]
+
+    def __init__(self, *args, **kwargs):
+        from core.modules import has_module
+
+        super().__init__(*args, **kwargs)
+        if not has_module(self.instance, "homework"):
+            del self.fields["notify_homework_sms"]
 
 
 class FinancePolicyForm(TailwindFormMixin, forms.ModelForm):

@@ -1,0 +1,44 @@
+{% extends "layouts/base.html" %}
+{% load erp i18n %}
+{% block header_actions %}<a href="{% url 'homework:list' %}" class="btn-secondary btn-sm">{% translate "Homework" %}</a>{% endblock %}
+{% block content %}
+<form method="get" class="card card-body mb-4 flex flex-wrap items-end gap-3">
+  <div><label class="label" for="level">{% translate "Class" %}</label>
+    <select id="level" name="level" class="input">{% for lv in levels %}<option value="{{ lv.pk }}" {% if lv.pk == level.pk %}selected{% endif %}>{{ lv }}</option>{% endfor %}</select></div>
+  <input type="hidden" name="week" value="{{ days.0|date:'Y-m-d' }}">
+  <button class="btn-secondary">{% translate "Show" %}</button>
+  <div class="ml-auto flex gap-2">
+    <a class="btn-secondary btn-sm" href="?level={{ level.pk }}&amp;week={{ previous|date:'Y-m-d' }}">◀ {% translate "Previous week" %}</a>
+    <a class="btn-secondary btn-sm" href="?level={{ level.pk }}">{% translate "This week" %}</a>
+    <a class="btn-secondary btn-sm" href="?level={{ level.pk }}&amp;week={{ following|date:'Y-m-d' }}">{% translate "Next week" %} ▶</a>
+  </div>
+</form>
+
+<div class="card overflow-x-auto">
+  <table class="table text-sm">
+    <thead><tr>
+      <th class="sticky left-0 z-10 bg-slate-50">{% translate "Section" %}</th>
+      {% for day in days %}<th class="min-w-36 {% if day == today %}bg-indigo-50 text-indigo-800{% elif day.isoweekday in weekend %}bg-slate-100 text-slate-400{% endif %}">{{ day|date:"D j M" }}</th>{% endfor %}
+    </tr></thead>
+    <tbody>
+      {% for row in rows %}
+        <tr class="align-top">
+          <td class="sticky left-0 z-10 bg-white font-medium">{{ row.section }}</td>
+          {% for d in row.days %}
+            <td class="{% if d.over %}bg-red-50{% elif d.day.isoweekday in weekend %}bg-slate-50{% endif %}">
+              {% if d.tasks %}
+                <p class="mb-1 text-xs font-semibold {% if d.over %}text-red-700{% else %}text-slate-600{% endif %}">{{ d.minutes }} {% translate "min" %}</p>
+                <ul class="space-y-1.5">{% for t in d.tasks %}<li><a class="link" href="{% url 'homework:detail' t.pk %}" title="{{ t.title }}">{{ t.title|truncatechars:32 }}</a>
+                  <span class="block text-xs text-slate-500">{{ t.subject.name }} · {{ t.estimated_minutes }} {% translate "min" %}{% if t.selected_only %} · {% translate "chosen students" %}{% endif %}</span></li>{% endfor %}</ul>
+              {% else %}<span class="text-slate-300">·</span>{% endif %}
+            </td>
+          {% endfor %}
+        </tr>
+      {% empty %}
+        <tr><td colspan="8">{% translate "This class has no sections." as nothing %}{% include "components/empty.html" with message=nothing %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="mt-3 text-xs text-slate-500">{% if limit %}{% translate "Daily limit:" %} {{ limit }} {% translate "min" %}. {% translate "Days over it are shaded red." %}{% else %}{% translate "No daily limit is set for this class." %}{% endif %} {% translate "Work set for chosen students only is listed but not added to the section's minutes." %}</p>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends "layouts/base.html" %}
+{% load erp i18n %}
+{% block header_actions %}<a href="{% url 'homework:list' %}" class="btn-secondary btn-sm">{% translate "Homework" %}</a>{% endblock %}
+{% block content %}
+<form method="get" class="card card-body mb-4 flex flex-wrap items-end gap-3">
+  <div><label class="label" for="section">{% translate "Section" %}</label>
+    <select id="section" name="section" class="input">{% for s in sections %}<option value="{{ s.pk }}" {% if s.pk == section.pk %}selected{% endif %}>{{ s }}</option>{% endfor %}</select></div>
+  <div><label class="label" for="weeks">{% translate "Over the last" %}</label>
+    <select id="weeks" name="weeks" class="input">{% for n in week_choices %}<option value="{{ n }}" {% if n == weeks %}selected{% endif %}>{{ n }} {% translate "week(s)" %}</option>{% endfor %}</select></div>
+  <button class="btn-secondary">{% translate "Show" %}</button>
+</form>
+
+<div class="card overflow-x-auto">
+  <table class="table table-stack">
+    <thead><tr><th class="w-12">{% translate "Roll" %}</th><th>{% translate "Student" %}</th><th class="text-right">{% translate "Handed in" %}</th><th class="text-right">{% translate "Not checked" %}</th><th>{% translate "Missing" %}</th></tr></thead>
+    <tbody>
+      {% for s in students %}
+        <tr class="align-top">
+          <td data-label="{% translate "Roll" %}" class="text-slate-500">{{ s.enrollment.roll_number }}</td>
+          <td data-label="{% translate "Student" %}" class="font-medium">{{ s.enrollment.student.full_name }}</td>
+          <td data-label="{% translate "Handed in" %}" class="sm:text-right {% if s.rate is not None and s.rate < 70 %}font-semibold text-red-700{% endif %}">{% if s.rate is not None %}{{ s.rate }}% <span class="text-xs text-slate-500">({{ s.handed }}/{{ s.known }})</span>{% else %}—{% endif %}</td>
+          <td data-label="{% translate "Not checked" %}" class="sm:text-right text-slate-500">{{ s.unchecked }}</td>
+          <td data-label="{% translate "Missing" %}">
+            {% for row in s.missing %}
+              <p class="text-sm"><span class="font-medium">{{ row.task.subject.name }}</span>: {{ row.task.title }} <span class="text-xs text-slate-500">· {{ row.due|date:"d M" }}{% if row.status == "not_done" %} · {% translate "not done" %}{% else %} · {% translate "not handed in" %}{% endif %}</span></p>
+            {% empty %}<span class="text-emerald-700">{% translate "Nothing missing" %}</span>{% endfor %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5">{% translate "No homework was due in this period." as nothing %}{% include "components/empty.html" with message=nothing %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="mt-3 text-xs text-slate-500">{% translate "Missing is work the teacher recorded as not done, or work to be handed in online that has not arrived. Work checked in class that nobody has checked yet is shown apart. Absent and excused are left out." %}</p>
+{% endblock %}

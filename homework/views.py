@@ -2,7 +2,7 @@
 Homework screens: setting and checking work (staff), and the to-do list (students and families).
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
 
 from django import forms
@@ -131,6 +131,7 @@ def task_list(request):
             "tab": tab,
             "counts": {name: qs.distinct().count() for name, qs in tabs.items() if name in ("check", "drafts")},
             "can_set": bool(units) and request.user.has_perm("homework.add_task"),
+            "class_teacher": bool(_class_teacher_sections(request.user, request.school)),
             "subjects": sorted({subject for _level, subject, _s in units}, key=lambda s: s.name),
             "sections": sorted({s for _l, _s, found in units for s in found}, key=lambda s: str(s)),
             "chosen_subject": subject,
@@ -863,3 +864,189 @@ def resource_file(request, pk):
         raise Http404
     ext = {"pdf": ".pdf", "jpeg": ".jpg", "docx": ".docx"}.get(resource.kind, "")
     return serve(resource.file, resource.kind, f"{resource.title[:60]}{ext}")
+
+
+# ------------------------------------------------------------------ planning and following up
+
+
+def _staff_levels(user, school):
+    from academics.models import ClassLevel
+    from core.access import is_manager, sections_for
+
+    if is_manager(user):
+        return list(ClassLevel.objects.filter(school=school, is_active=True).order_by("order"))
+    ids = set(sections_for(user, school).values_list("class_level_id", flat=True))
+    return list(ClassLevel.objects.filter(school=school, pk__in=ids).order_by("order"))
+
+
+@homework_view("homework.view_task", also="classes the viewer teaches; managers every class")
+def calendar(request):
+    """A class's homework week: what is due in each section each school day, against the limit."""
+    from academics.models import Section
+
+    levels = _staff_levels(request.user, request.school)
+    if not levels:
+        raise PermissionDenied
+    raw = request.GET.get("level", "")
+    level = next((lv for lv in levels if str(lv.pk) == raw), levels[0])
+    try:
+        day = parse_date(request.GET.get("week", "") or "") or timezone.localdate()
+    except ValueError:
+        day = timezone.localdate()
+    # The whole week from the day after the weekend, weekend included: work can be due then too.
+    school_days = services.school_week(request.school, day) or [day]
+    days = [school_days[0] + timedelta(days=i) for i in range(7)]
+    sections = Section.objects.filter(school=request.school, class_level=level, is_active=True).order_by("name")
+    rows = [{"section": section, "days": services.section_load(section, days)} for section in sections]
+    return render(
+        request,
+        "homework/calendar.html",
+        {
+            "levels": levels,
+            "level": level,
+            "days": days,
+            "rows": rows,
+            "limit": services.limit_for(level),
+            "weekend": request.school.weekend_day_numbers,
+            "previous": days[0] - timedelta(days=7),
+            "following": days[0] + timedelta(days=7),
+            "today": timezone.localdate(),
+            "page_title": gettext("Homework calendar"),
+        },
+    )
+
+
+def _class_teacher_sections(user, school):
+    from academics.models import Section
+    from core.access import is_manager
+
+    sections = Section.objects.filter(school=school, is_active=True).select_related("class_level")
+    if is_manager(user):
+        return list(sections.order_by("class_level__order", "name"))
+    employee = getattr(user, "employee_profile", None)
+    if employee is None:
+        return []
+    return list(sections.filter(class_teacher=employee).order_by("class_level__order", "name"))
+
+
+@homework_view("homework.view_submission", also="the class teacher of the section, or a manager")
+def missing(request):
+    """For a class teacher: the homework each of their students has not handed in, across subjects."""
+    from .followup import missing_work
+
+    sections = _class_teacher_sections(request.user, request.school)
+    if not sections:
+        raise PermissionDenied
+    raw = request.GET.get("section", "")
+    section = next((s for s in sections if str(s.pk) == raw), sections[0])
+    raw_weeks = request.GET.get("weeks", "")
+    weeks = int(raw_weeks) if raw_weeks.isdigit() and 1 <= int(raw_weeks) <= 12 else 4
+    return render(
+        request,
+        "homework/missing.html",
+        {
+            "sections": sections,
+            "section": section,
+            "weeks": weeks,
+            "week_choices": [1, 2, 4, 8, 12],
+            "students": missing_work(section, weeks),
+            "page_title": gettext("Missing homework"),
+        },
+    )
+
+
+@homework_view("homework.view_submission", also="teachers of the subject there, or a manager")
+def export(request, pk, section):
+    """
+    Homework marks for one section, in the marks-import format, to bring into an exam part on
+    purpose: the average of the chosen tasks, scaled to an exam paper or to a number.
+    """
+    from academics.models import Section
+    from core.exports import spreadsheet
+    from examinations.mark_import import headers_for
+    from examinations.models import ExamSchedule
+    from examinations.parts import plain
+    from examinations.subjects import enrollments_taking
+
+    from .followup import export_marks
+
+    task = task_for_staff(request.user, request.school, pk)
+    target_section = get_object_or_404(Section, school=request.school, pk=section)
+    if not may_mark(request.user, task, target_section):
+        raise PermissionDenied
+    candidates = list(
+        Task.objects.filter(
+            school=request.school,
+            academic_year=task.academic_year,
+            subject=task.subject,
+            status=Task.Status.PUBLISHED,
+            marking=Task.Marking.MARKS,
+            targets__section=target_section,
+        )
+        .order_by("-publish_at")
+        .distinct()
+    )
+    if not candidates:
+        messages.error(request, gettext("No homework in this subject and section is marked out of a number."))
+        return redirect("homework:detail", pk=task.pk)
+    papers = list(
+        ExamSchedule.objects.filter(
+            school=request.school,
+            exam__academic_year=task.academic_year,
+            class_level=target_section.class_level,
+            subject_id__in=services.subject_family(task.subject),
+            components__isnull=True,
+        )
+        .exclude(exam__status="published")
+        .select_related("exam", "subject")
+    )
+    fmt = request.GET.get("format")
+    if fmt in ("csv", "xlsx"):
+        chosen = [t for t in candidates if str(t.pk) in request.GET.getlist("task")]
+        if not chosen:
+            messages.error(request, gettext("Choose at least one piece of homework."))
+            return redirect(reverse("homework:export", args=[task.pk, target_section.pk]))
+        paper = next((p for p in papers if str(p.pk) == request.GET.get("paper")), None)
+        raw_out_of = request.GET.get("out_of", "")
+        try:
+            out_of = Decimal(paper.full_marks) if paper else Decimal(raw_out_of or "100")
+        except InvalidOperation:
+            out_of = Decimal(100)
+        if out_of <= 0:
+            out_of = Decimal(100)
+        enrollments = services.eligible(task.academic_year, target_section.class_level, task.subject, [target_section])
+        if paper is not None:
+            enrollments = enrollments_taking(paper, enrollments)
+        zero = request.GET.get("missing") == "zero"
+        marks = export_marks(chosen, target_section, missing_as_zero=zero, out_of=out_of, students=enrollments)
+        headers = headers_for(paper, []) if paper else ["Roll", "Student ID", "Student", f"Marks ({plain(out_of)})"]
+        rows = [
+            [
+                e.roll_number,
+                e.student.student_id,
+                e.student.full_name,
+                plain(marks[e.pk]) if marks[e.pk] is not None else "",
+            ]
+            for e in enrollments
+        ]
+        preamble = [
+            ("Homework", "; ".join(t.title for t in chosen)),
+            ("Section", str(target_section)),
+            ("Worked out as", f"the average percentage across these, scaled to {plain(out_of)}"),
+            ("Missing work", "counted as 0" if zero else "left out"),
+            ("Excused or absent", "left out"),
+        ]
+        if paper is not None:
+            preamble.append(("For", f"{paper.exam.name}: {paper.subject.name}"))
+        return spreadsheet(f"homework-marks-{target_section}", headers, rows, fmt, preamble=preamble)
+    return render(
+        request,
+        "homework/export.html",
+        {
+            "task": task,
+            "section": target_section,
+            "candidates": candidates,
+            "papers": papers,
+            "page_title": gettext("Homework marks for an exam"),
+        },
+    )
