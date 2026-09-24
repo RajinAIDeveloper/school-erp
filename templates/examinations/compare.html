@@ -1,0 +1,60 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block header_actions %}
+  <a href="{% url 'examinations:results' %}" class="btn-secondary btn-sm">Results</a>
+{% endblock %}
+{% block content %}
+<p class="mb-4 text-sm text-slate-600">
+  Proof before a real result day. Enter or import one past exam's marks here, then upload what
+  your old software published for that exam. Every mark, grade and GPA that does not match is
+  listed, student by student. Nothing is saved; the file is only read.
+</p>
+<form method="post" enctype="multipart/form-data" class="card card-body mb-4 space-y-4">
+  {% csrf_token %}
+  <div class="grid gap-4 sm:grid-cols-2">{% for field in form %}{% render_field field %}{% endfor %}</div>
+  <div>
+    <label class="label" for="file">Results from the other program (Excel or CSV)</label>
+    <input id="file" type="file" name="file" accept=".xlsx,.csv" class="input">
+    <p class="mt-1 text-xs text-slate-500">One row per student and subject, with Student ID, Subject (its code or name) and any of Marks, Grade and GPA. The class template has the rows ready.</p>
+  </div>
+  <div class="flex flex-wrap gap-2">
+    <button name="action" value="compare" class="btn-primary">Compare</button>
+    <button name="action" value="compare_csv" class="btn-secondary">Compare and download the differences (CSV)</button>
+    <button name="action" value="template_xlsx" class="btn-secondary">Class template (Excel)</button>
+    <button name="action" value="template_csv" class="btn-secondary">Class template (CSV)</button>
+  </div>
+</form>
+
+{% if summary %}
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <h2 class="font-semibold">{{ exam }} &middot; {{ level }} against {{ filename }}</h2>
+        <p class="text-sm text-slate-600">{{ summary.students }} student{{ summary.students|pluralize }} &middot; {{ summary.compared }} value{{ summary.compared|pluralize }} compared</p>
+      </div>
+      {% if summary.differences %}
+        <span class="font-semibold text-red-700">{{ summary.differences }} difference{{ summary.differences|pluralize }}</span>
+      {% else %}
+        <span class="font-semibold text-emerald-700">Every mark, grade and GPA in the file matches.</span>
+      {% endif %}
+    </div>
+    {% if differences %}
+      <div class="overflow-x-auto">
+        <table class="table">
+          <thead><tr><th>Row</th><th>Student</th><th>Subject</th><th>What</th><th>Here</th><th>In the file</th></tr></thead>
+          <tbody>
+            {% for d in differences %}
+              <tr><td class="text-slate-500">{{ d.row }}</td><td>{{ d.student }}</td><td>{{ d.subject }}</td><td>{{ d.what }}</td><td class="font-medium">{{ d.here|default:"—" }}</td><td class="font-medium text-red-700">{{ d.there }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="border-t border-slate-200 px-5 py-3 text-xs text-slate-500">
+        A difference is either a mark entered differently here, or a rule the two programs apply
+        differently. Check the marks first; if they agree, the grade scale or the rulebook settings
+        are where to look.
+      </p>
+    {% endif %}
+  </div>
+{% endif %}
+{% endblock %}

@@ -13,6 +13,7 @@ from .common import (  # noqa: F401
     mask_name,
     verification_url,
 )
+from .compare import compare_results  # noqa: F401
 from .exams import (  # noqa: F401
     ExamListView,
     _checklist_for,

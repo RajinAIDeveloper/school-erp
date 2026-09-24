@@ -80,6 +80,7 @@ quietly join it.
 | /exams/registration/ | examinations:board_registration | `students.view_student` | managers only: identity numbers of students and parents | Y | Y | Y | Y | . | . | . |
 | /exams/report-cards.pdf | examinations:report_cards | `examinations.view_mark` | own sections, published only | Y | Y | . | Y | . | . | . |
 | /exams/results/ | examinations:results | `examinations.view_mark` | own sections only | Y | Y | . | Y | . | . | . |
+| /exams/results/compare/ | examinations:compare_results | `examinations.change_exam` | - | Y | Y | . | . | . | . | . |
 | /exams/scale/ | examinations:scale_list | `examinations.view_gradescale` | - | Y | Y | . | . | . | . | . |
 | /exams/scale/<int:pk>/edit/ | examinations:scale_update | `examinations.change_gradescale` | - | Y | Y | . | . | . | . | . |
 | /exams/scale/new/ | examinations:scale_create | `examinations.add_gradescale` | - | Y | Y | . | . | . | . | . |
@@ -163,6 +164,7 @@ quietly join it.
 | /portal/privacy/ | portal:privacy | `(sign-in only)` | - | o | o | o | o | o | o | o |
 | /portal/results/ | portal:results | `(sign-in only)` | - | o | o | o | o | o | o | o |
 | /reports/ | reports:hub | `(sign-in only)` | - | o | o | o | o | o | o | o |
+| /reports/early-warning/ | reports:early_warning | `examinations.view_mark` | own sections unless a manager | Y | Y | . | Y | . | . | . |
 | /reports/leave/ | reports:leave_register | `attendance.view_leaverequest` | own requests unless a manager | Y | Y | . | Y | Y | . | . |
 | /reports/overview/ | reports:overview | `finance.view_account` | - | Y | Y | Y | . | . | . | . |
 | /reports/payroll/ | reports:payroll_register | `finance.view_payroll` | - | Y | . | Y | . | . | . | . |

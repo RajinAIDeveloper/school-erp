@@ -1,5 +1,5 @@
 {% extends "layouts/base.html" %}{% load erp %}{% block content %}
-<form method="get" class="card card-body mb-4">{% render_form form %}<div class="flex gap-3 mt-4"><button class="btn-primary">View results</button><button class="btn-secondary" name="format" value="csv">CSV</button><button class="btn-secondary" name="format" value="xlsx">Excel</button><button class="btn-secondary" name="format" value="pdf">PDF</button></div></form>
+<form method="get" class="card card-body mb-4">{% render_form form %}<div class="flex gap-3 mt-4"><button class="btn-primary">View results</button><button class="btn-secondary" name="format" value="csv">CSV</button><button class="btn-secondary" name="format" value="xlsx">Excel</button><button class="btn-secondary" name="format" value="pdf">PDF</button>{% if perms.examinations.change_exam %}<a class="btn-secondary ml-auto" href="{% url 'examinations:compare_results' %}">Compare with another program</a>{% endif %}</div></form>
 {% if report %}
 <div class="mb-3 text-sm text-slate-600">{% for label, value in report.about %}<span class="mr-4"><b>{{ label }}:</b> {{ value }}</span>{% endfor %}</div>
 {% if report.note %}<p class="mb-3 text-sm text-slate-500">{{ report.note }}</p>{% endif %}

@@ -122,6 +122,12 @@ HUB_REPORTS = [
         timetable_planner,
         "Periods per week per teacher, heaviest first.",
     ),
+    (
+        "Early warning",
+        "reports:early_warning",
+        "examinations.view_mark",
+        "Students to talk to now: low attendance, a drop since the last exam, a failed or only just passed subject.",
+    ),
 ]
 
 
@@ -192,6 +198,85 @@ def hub(request):
         request,
         "reports/hub.html",
         {"links": links, "personal": personal, "page_title": "Reports"},
+    )
+
+
+class EarlyWarningForm(TailwindFormMixin, forms.Form):
+    section = forms.ModelChoiceField(queryset=None)
+    attendance_below = forms.IntegerField(
+        min_value=1, max_value=100, required=False, label="Attendance below (%)", help_text="75 if left blank."
+    )
+    drop_by = forms.IntegerField(
+        min_value=1,
+        max_value=100,
+        required=False,
+        label="Result down by at least (points)",
+        help_text="Percentage points since the previous published exam. 10 if left blank.",
+    )
+    margin = forms.IntegerField(
+        min_value=1,
+        max_value=50,
+        required=False,
+        label="Only just passed: within (marks)",
+        help_text="5 if left blank.",
+    )
+
+    def __init__(self, *args, user, school, **kwargs):
+        from core.access import sections_for
+
+        super().__init__(*args, **kwargs)
+        self.fields["section"].queryset = sections_for(user, school).select_related("class_level")
+
+
+@require_permission("examinations.view_mark", also="own sections unless a manager")
+def early_warning(request):
+    """The students in a section to talk to now, and why."""
+    from academics.models import AcademicYear
+
+    from .warnings import early_warnings
+
+    form = EarlyWarningForm(request.GET or None, user=request.user, school=request.school)
+    year = AcademicYear.current_for(request.school)
+    flagged, students, section = [], 0, None
+    if form.is_bound and form.is_valid() and year:
+        data = form.cleaned_data
+        section = data["section"]
+        flagged, students = early_warnings(
+            section,
+            year,
+            attendance_below=data.get("attendance_below") or 75,
+            drop_by=data.get("drop_by") or 10,
+            margin=data.get("margin") or 5,
+        )
+    headers = ["Roll", "Student", "Attendance", "Latest result", "Change", "Concerns"]
+    rows = [
+        [
+            row["enrollment"].roll_number,
+            row["enrollment"].student.full_name,
+            f"{row['attendance']}%" if row["attendance"] is not None else "",
+            f"{row['latest'].exam.name}: {row['latest'].payload.get('headline', '')}" if row["latest"] else "",
+            f"{row['change']:+.2f}".rstrip("0").rstrip(".") if row["change"] is not None else "",
+            "; ".join(row["concerns"]),
+        ]
+        for row in flagged
+    ]
+    if section:
+        exported = _export(request, f"Early warning · {section}", headers, rows, "early-warning.pdf")
+        if exported:
+            return exported
+    return render(
+        request,
+        "reports/early_warning.html",
+        {
+            "form": form,
+            "section": section,
+            "headers": headers,
+            # The same figures as the export, with the concerns kept as a list for the page.
+            "rows": [(*line[:5], row["concerns"]) for line, row in zip(rows, flagged, strict=True)],
+            "students": students,
+            "year": year,
+            "page_title": "Early warning",
+        },
     )
 
 

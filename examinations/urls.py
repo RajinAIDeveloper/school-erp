@@ -18,6 +18,7 @@ urlpatterns = [
     path("<int:pk>/seating/", views.seat_plans, name="seat_plans"),
     path("<int:pk>/seating/sitting/", views.seat_plan, name="seat_plan"),
     path("results/", views.results, name="results"),
+    path("results/compare/", views.compare_results, name="compare_results"),
     path("admit-cards.pdf", views.admit_cards, name="admit_cards"),
     path("report-cards.pdf", views.report_cards, name="report_cards"),
     path("<int:pk>/routine/", views.exam_routine, name="exam_routine"),

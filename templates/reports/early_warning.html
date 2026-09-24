@@ -1,0 +1,48 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block header_actions %}
+  {% if section %}
+    <a href="?{{ request.GET.urlencode }}&amp;format=csv" class="btn-secondary btn-sm">CSV</a>
+    <a href="?{{ request.GET.urlencode }}&amp;format=xlsx" class="btn-secondary btn-sm">Excel</a>
+    <a href="?{{ request.GET.urlencode }}&amp;format=pdf" class="btn-secondary btn-sm">PDF</a>
+  {% endif %}
+  <a href="{% url 'reports:hub' %}" class="btn-secondary btn-sm">All reports</a>
+{% endblock %}
+{% block content %}
+<p class="mb-4 text-sm text-slate-600">
+  Students to talk to while there is still time: attendance below the threshold this year, a
+  result down since the previous published exam, a subject failed in the latest published exam,
+  or a subject passed by only a few marks. Figures come from the registers and the published
+  results{% if year %} for {{ year }}{% endif %}.
+</p>
+<form method="get" class="card card-body mb-4">
+  <div class="grid gap-4 sm:grid-cols-4">{% for field in form %}{% render_field field %}{% endfor %}</div>
+  <div class="mt-4"><button class="btn-secondary">Show</button></div>
+</form>
+
+{% if section %}
+  <div class="card overflow-x-auto">
+    <div class="card-header">
+      <h2 class="font-semibold">{{ section }}</h2>
+      <p class="text-sm text-slate-600">{{ rows|length }} of {{ students }} student{{ students|pluralize }} listed</p>
+    </div>
+    <table class="table">
+      <thead><tr>{% for header in headers %}<th>{{ header }}</th>{% endfor %}</tr></thead>
+      <tbody>
+        {% for row in rows %}
+          <tr class="align-top">
+            <td class="text-slate-500">{{ row.0 }}</td>
+            <td class="font-medium">{{ row.1 }}</td>
+            <td>{{ row.2|default:"—" }}</td>
+            <td class="text-sm">{{ row.3|default:"—" }}</td>
+            <td>{{ row.4|default:"—" }}</td>
+            <td class="text-sm"><ul class="list-inside list-disc">{% for concern in row.5 %}<li>{{ concern }}</li>{% endfor %}</ul></td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="{{ headers|length }}">{% include "components/empty.html" with message="No student in this section needs attention on these thresholds." %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endif %}
+{% endblock %}

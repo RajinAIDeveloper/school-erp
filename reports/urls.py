@@ -10,4 +10,5 @@ urlpatterns = [
     path("payroll/", views.payroll_register, name="payroll_register"),
     path("leave/", views.leave_register, name="leave_register"),
     path("teacher-load/", views.teacher_load, name="teacher_load"),
+    path("early-warning/", views.early_warning, name="early_warning"),
 ]

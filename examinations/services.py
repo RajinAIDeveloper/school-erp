@@ -286,7 +286,7 @@ def save_marks(*, user, schedule, section, rows):
 # ------------------------------------------------------------------------ building a result
 
 
-def _class_attendance(enrollment_ids, until):
+def class_attendance(enrollment_ids, until):
     """
     Attendance in the exam's year up to the exam, as it stood when the result was built, for a
     whole class in one query: {enrollment_id: figures}, leaving out students with no register.
@@ -407,7 +407,7 @@ def live_class_sheet(exam, class_level):
     from .feedback import card_feedback, effort_label
 
     feedback = card_feedback(exam, [e.pk for e in enrollments], until)
-    attendance = _class_attendance([e.pk for e in enrollments], until)
+    attendance = class_attendance([e.pk for e in enrollments], until)
     rows = []
     for e in enrollments:
         taken = papers_for(e, schedules, plan)
