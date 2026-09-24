@@ -16,7 +16,7 @@ from django.utils.translation import gettext
 from core.models import AuditLog
 
 from .access import employee_of, may_manage, may_mark, may_set
-from .models import DailyLimit, Submission, Task, TaskSection
+from .models import DailyLimit, Submission, SubmissionFile, Task, TaskResource, TaskSection
 
 SUGGEST_DAYS = 28  # how far ahead the next lesson is looked for
 DEFAULT_START = time(9, 0)  # the due time when the school has no periods set up
@@ -604,7 +604,9 @@ def check_rows(*, user, task, target, rows, return_work, now=None):
                 else:
                     row.checked_by, row.checked_at = user, now
                 changed[row.pk] = row
-            if return_work and row.returned_at is None and row.status != Submission.Status.PENDING:
+            if new["status"] in Submission.HANDED_IN:
+                row.redo_requested = False
+            if return_work and row.status != Submission.Status.PENDING and not is_returned(row):
                 row.returned_at = now
                 changed[row.pk] = row
         if stale:
@@ -623,3 +625,228 @@ def check_rows(*, user, task, target, rows, return_work, now=None):
         if changed:
             _audit(task, user, "homework.checked", f"{target.section}: {len(changed)} record(s)")
     return len(changed)
+
+
+# ------------------------------------------------------------------ handing in online
+
+
+def is_returned(row):
+    """The teacher has given the work back since it was last handed in."""
+    return row.returned_at is not None and (row.handed_in_at is None or row.returned_at >= row.handed_in_at)
+
+
+def hand_in_closed(row, now):
+    """Why the family cannot hand in or change the hand-in now, as a sentence; None when they can."""
+    task = row.task
+    if not task.is_live(now) or task.hand_in != Task.HandIn.ONLINE:
+        return gettext("This work is not handed in online.")
+    if row.status == Submission.Status.EXCUSED:
+        return gettext("You have been excused from this work.")
+    if row.redo_requested:
+        return None
+    if is_returned(row):
+        return gettext("Your teacher has returned this work.")
+    if now > row.due_at and not task.allow_late:
+        return gettext("The due time has passed, and this work is not taken late.")
+    return None
+
+
+def _family_row(submission):
+    return (
+        Submission.objects.select_for_update()
+        .select_related("task", "target", "enrollment__student")
+        .get(pk=submission.pk)
+    )
+
+
+def hand_in_online(*, user, submission, uploads, note="", now=None):
+    """
+    A student, or a guardian with the family's phone, hands work in: photos of the pages, a
+    PDF or a Word document, and a short note. More pages can be added until it is returned.
+    """
+    from .files import prepare_all
+
+    now = now or timezone.now()
+    with transaction.atomic():
+        row = _family_row(submission)
+        problem = hand_in_closed(row, now)
+        if problem:
+            raise ValidationError(problem)
+        current = list(row.files.filter(attempt=row.attempt))
+        prepared = prepare_all(uploads, already=len(current), already_bytes=sum(f.size for f in current))
+        note = (note or "").strip()
+        if len(note) > 500:
+            raise ValidationError(gettext("Keep the note to 500 characters."))
+        if not prepared and not current and not note and not row.note:
+            raise ValidationError(gettext("Add a photo or a file of the work, or write a note."))
+        page = max((f.page for f in current), default=0)
+        for content, kind in prepared:
+            page += 1
+            SubmissionFile.objects.create(
+                school=row.school,
+                submission=row,
+                file=content,
+                kind=kind,
+                size=content.size,
+                page=page,
+                attempt=row.attempt,
+                uploaded_by=user,
+            )
+        row.status, row.source = Submission.Status.DONE, Submission.Source.ONLINE
+        row.handed_in_at, row.handed_in_by = now, user
+        row.by_guardian = row.enrollment.student.user_id != user.pk
+        row.late = now > row.due_at
+        if note:
+            row.note = note
+        row.redo_requested = False
+        row.version += 1
+        row.save()
+    return row
+
+
+def remove_page(*, user, page, now=None):
+    """Take a page back out of a hand-in that has not been returned."""
+    now = now or timezone.now()
+    with transaction.atomic():
+        row = _family_row(page.submission)
+        problem = hand_in_closed(row, now)
+        if problem:
+            raise ValidationError(problem)
+        if page.attempt != row.attempt:
+            raise ValidationError(gettext("Only pages of the latest hand-in can be taken out."))
+        page.delete()
+        if not row.files.filter(attempt=row.attempt).exists() and not row.note:
+            row.status, row.source = Submission.Status.PENDING, Submission.Source.NONE
+            row.handed_in_at, row.handed_in_by, row.by_guardian, row.late = None, None, False, False
+        row.version += 1
+        row.save()
+    return row
+
+
+# ------------------------------------------------------------------ the teacher's answer
+
+
+def _teacher_row(user, submission):
+    row = (
+        Submission.objects.select_for_update()
+        .select_related("task", "target__section", "enrollment__student")
+        .get(pk=submission.pk)
+    )
+    if not may_mark(user, row.task, row.target.section):
+        raise PermissionDenied
+    if row.task.status != Task.Status.PUBLISHED:
+        raise ValidationError(gettext("Only published work can be checked."))
+    return row
+
+
+def _later(extend_to, now):
+    if extend_to is not None and extend_to <= now:
+        raise ValidationError(gettext("Choose a new due time in the future."))
+    return extend_to
+
+
+def ask_to_redo(*, user, submission, feedback="", extend_to=None, now=None):
+    """Give work back to be done again, saying why; optionally with more time."""
+    now = now or timezone.now()
+    with transaction.atomic():
+        row = _teacher_row(user, submission)
+        feedback = (feedback or "").strip()
+        if len(feedback) > 1000:
+            raise ValidationError(gettext("Keep feedback to 1000 characters."))
+        if not feedback:
+            raise ValidationError(gettext("Say what needs doing again."))
+        row.extended_to = _later(extend_to, now) or row.extended_to
+        row.feedback = feedback
+        row.status, row.source, row.late = Submission.Status.PENDING, Submission.Source.NONE, False
+        row.redo_requested = True
+        row.attempt += 1
+        row.returned_at = now
+        row.checked_by, row.checked_at = None, None
+        row.version += 1
+        row.save()
+        _audit(row.task, user, "homework.redo_requested", row.enrollment.student.student_id)
+    return row
+
+
+def give_more_time(*, user, submission, extend_to, now=None):
+    """A later due time for one student: a catch-up after absence, or a fair extension."""
+    now = now or timezone.now()
+    with transaction.atomic():
+        row = _teacher_row(user, submission)
+        if extend_to is None:
+            raise ValidationError(gettext("Choose the new due time."))
+        row.extended_to = _later(extend_to, now)
+        if row.status in (Submission.Status.NOT_DONE, Submission.Status.ABSENT):
+            row.status, row.source = Submission.Status.PENDING, Submission.Source.NONE
+            row.checked_by, row.checked_at = None, None
+        if row.handed_in_at is not None:
+            row.late = row.handed_in_at > row.extended_to
+        row.version += 1
+        row.save()
+        _audit(row.task, user, "homework.extended", row.enrollment.student.student_id)
+    return row
+
+
+def excuse(*, user, submission, reason, now=None):
+    """Excuse a student from the work. Excused work is left out of every figure."""
+    now = now or timezone.now()
+    with transaction.atomic():
+        row = _teacher_row(user, submission)
+        reason = (reason or "").strip()
+        if not reason:
+            raise ValidationError(gettext("Say why the student is excused."))
+        row.status, row.reason, row.late = Submission.Status.EXCUSED, reason[:150], False
+        row.redo_requested = False
+        row.checked_by, row.checked_at = user, now
+        row.version += 1
+        row.save()
+        _audit(row.task, user, "homework.excused", row.enrollment.student.student_id)
+    return row
+
+
+# ------------------------------------------------------------------ worksheets and links
+
+
+def clean_link(url):
+    from django.core.validators import URLValidator
+
+    url = (url or "").strip()
+    if not url:
+        return ""
+    if "://" not in url:
+        url = "https://" + url
+    try:
+        URLValidator(schemes=["http", "https"])(url)
+    except ValidationError:
+        raise ValidationError(gettext("That link is not a web address.")) from None
+    return url
+
+
+def add_resources(*, user, task, prepared=(), link="", title=""):
+    """
+    Give the task worksheets (checked by files.prepare, each with its name) and a link.
+    Families see them with the task.
+    """
+    from pathlib import PurePath
+
+    if not may_manage(user, task):
+        raise PermissionDenied
+    for (content, kind), name in prepared:
+        TaskResource.objects.create(
+            school=task.school,
+            task=task,
+            title=(PurePath(name).stem or gettext("Worksheet"))[:150],
+            file=content,
+            kind=kind,
+            size=content.size,
+        )
+    link = clean_link(link)
+    if link:
+        TaskResource.objects.create(school=task.school, task=task, title=(title or link)[:150], url=link)
+
+
+def remove_resources(*, user, task, ids):
+    if not may_manage(user, task):
+        raise PermissionDenied
+    for resource in task.resources.filter(pk__in=ids):
+        resource.delete()

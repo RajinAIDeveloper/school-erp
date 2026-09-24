@@ -12,12 +12,15 @@ family's phone, can also tick work done at home.
 passed, and it is worked out when asked, so a changed due date needs no clean-up.
 """
 
+import uuid
+from pathlib import PurePath
+
 from django.conf import settings
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 
-from core.models import SchoolScopedModel
+from core.models import HttpsURLField, SchoolScopedModel
 
 
 class Task(SchoolScopedModel):
@@ -237,3 +240,61 @@ class DailyLimit(SchoolScopedModel):
 
     def __str__(self):
         return f"{self.class_level}: {self.minutes} min"
+
+
+def hand_in_path(instance, filename):
+    """Where a hand-in is stored: by school and year, under a random name, never the child's."""
+    task = instance.submission.task
+    return f"homework/{task.school_id}/{task.academic_year_id}/{uuid.uuid4().hex}{PurePath(filename).suffix.lower()}"
+
+
+def resource_path(instance, filename):
+    return f"homework/{instance.school_id}/resources/{uuid.uuid4().hex}{PurePath(filename).suffix.lower()}"
+
+
+class SubmissionFile(SchoolScopedModel):
+    """One page or file of a student's work handed in online."""
+
+    class Kind(models.TextChoices):
+        PDF = "pdf", "PDF"
+        JPEG = "jpeg", "Photo"
+        DOCX = "docx", "Word document"
+
+    submission = models.ForeignKey(Submission, on_delete=models.CASCADE, related_name="files")
+    file = models.FileField(upload_to=hand_in_path, max_length=200)
+    kind = models.CharField(max_length=8, choices=Kind.choices)
+    size = models.PositiveIntegerField()
+    page = models.PositiveSmallIntegerField(default=1)
+    attempt = models.PositiveSmallIntegerField(default=1)
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+
+    class Meta:
+        ordering = ["attempt", "page", "pk"]
+
+    def __str__(self):
+        return f"{self.submission} · page {self.page}"
+
+
+class TaskResource(SchoolScopedModel):
+    """A worksheet or a link the teacher gives with the task."""
+
+    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name="resources")
+    title = models.CharField(max_length=150)
+    file = models.FileField(upload_to=resource_path, blank=True, max_length=200)
+    kind = models.CharField(max_length=8, blank=True, choices=SubmissionFile.Kind.choices)
+    size = models.PositiveIntegerField(null=True, blank=True)
+    url = HttpsURLField(blank=True)
+
+    class Meta:
+        ordering = ["pk"]
+        constraints = [
+            models.CheckConstraint(
+                condition=(Q(file="") & ~Q(url="")) | (~Q(file="") & Q(url="")),
+                name="homework_resource_is_a_file_or_a_link",
+            ),
+        ]
+
+    def __str__(self):
+        return self.title

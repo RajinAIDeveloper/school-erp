@@ -155,6 +155,12 @@ class School(TimeStampedModel):
     homework_enabled = models.BooleanField(
         "Homework module", default=False, help_text="Set by the platform administrator only."
     )
+    homework_files_months = models.PositiveSmallIntegerField(
+        "Keep homework files for (months)",
+        default=6,
+        validators=[MinValueValidator(1), MaxValueValidator(60)],
+        help_text="How long after the academic year ends the photos and files students handed in are kept.",
+    )
     admissions_enabled = models.BooleanField(
         "Online admissions module", default=False, help_text="Set by the platform administrator only."
     )

@@ -19,7 +19,7 @@ its classification, the system uses the working classes below.
 | Class | Data | Who sees it |
 |---|---|---|
 | Internal | Names, class, section, roll, attendance, marks, results, fees | Staff by role; the family for their own child |
-| Confidential | Addresses, phone numbers, emails, parents' names, photos, guardian relationships, comments on results | Staff by role; the family for their own child |
+| Confidential | Addresses, phone numbers, emails, parents' names, photos, guardian relationships, comments on results, homework handed in and the teacher's feedback on it | Staff by role; the family for their own child. Homework: the subject's teachers, the class teacher and managers |
 | Restricted | Birth registration numbers, NIDs (student, father, mother, guardian), religion, blood group, access arrangements (health and disability information) | Managers only (Administrator, Principal); every view or export of registration data and access arrangements is written to the audit log |
 
 ## 2. Consent
@@ -58,7 +58,15 @@ and the student ID typed as confirmation:
 - replaces the child's name with the student ID in sent SMS text and in ledger narrations;
 - erases each guardian unless another child at the school still links to them, and removes
   the name and number from messages sent to an erased guardian;
-- deactivates the student's and erased guardians' sign-ins.
+- deactivates the student's and erased guardians' sign-ins;
+- deletes the homework they handed in, and clears their notes and the teacher's feedback on it.
+
+Homework files are kept for a set time after the year ends, six months unless the school's
+managers change it (Homework settings), and then deleted by the nightly `homework_purge_files`
+job. The record of what was done and the mark stay. Photos are redrawn when they arrive, which
+drops the camera's EXIF data, including where the photo was taken; files are stored under a
+random name and served only through a checked view. Backups keep a deleted file until the 14
+runs that hold it have been pruned.
 
 Marks, attendance, invoices, receipts and the ledger are kept, tied to the student ID, because
 the school needs them for its accounts and records.

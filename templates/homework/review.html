@@ -1,0 +1,87 @@
+{% extends "layouts/base.html" %}
+{% load erp i18n %}
+{% block header_actions %}<a href="{% url 'homework:check' task.pk row.target.section_id %}" class="btn-secondary btn-sm">{% translate "Back to the section" %}</a>{% endblock %}
+{% block content %}
+<div class="grid gap-6 lg:grid-cols-3">
+  <section class="card lg:col-span-2">
+    <div class="card-header"><h2 class="font-semibold">{{ row.enrollment.student.full_name }} <span class="text-sm font-normal text-slate-500">{% translate "Roll" %} {{ row.enrollment.roll_number }} · {{ row.target.section }}</span></h2>
+      <span class="text-xs {% if overdue %}font-semibold text-red-700{% else %}text-slate-500{% endif %}">{% translate "Due" %} {{ row.due_at|date:"D d M, H:i" }}{% if row.extended_to %} ({% translate "more time given" %}){% endif %}</span></div>
+    <div class="card-body space-y-4">
+      {% if row.source == "online" %}
+        <p class="text-sm text-slate-600">{% if row.by_guardian %}{% translate "Handed in online by a guardian" %}{% else %}{% translate "Handed in online" %}{% endif %} · {{ row.handed_in_at|date:"D d M, H:i" }}{% if row.late %} · <span class="font-semibold text-amber-700">{% translate "late" %}</span>{% endif %}</p>
+      {% elif row.source == "family" %}
+        <p class="text-sm text-slate-600">{% translate "Ticked done at home" %} · {{ row.handed_in_at|date:"D d M, H:i" }}</p>
+      {% endif %}
+      {% if row.note %}<blockquote class="rounded-md border-l-4 border-slate-300 bg-slate-50 px-4 py-2 text-sm text-slate-700">{{ row.note }}</blockquote>{% endif %}
+      {% for attempt, pages in attempts %}
+        <div>
+          {% if attempts|length > 1 %}<p class="mb-2 text-xs font-semibold uppercase text-slate-500">{% translate "Hand-in" %} {{ attempt }}</p>{% endif %}
+          <div class="grid gap-3 sm:grid-cols-2">
+            {% for page in pages %}
+              {% if page.kind == "jpeg" %}
+                <a href="{% url 'homework:file' page.pk %}" target="_blank" rel="noopener" class="block overflow-hidden rounded-md border border-slate-200">
+                  <img src="{% url 'homework:file' page.pk %}" alt="{% translate "Page" %} {{ page.page }}" loading="lazy" class="w-full"></a>
+              {% else %}
+                <a href="{% url 'homework:file' page.pk %}" class="flex items-center gap-2 rounded-md border border-slate-200 px-4 py-3 text-sm hover:bg-slate-50">📄 {% translate "Page" %} {{ page.page }} · {{ page.get_kind_display }} · {{ page.size|filesizeformat }}</a>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+      {% empty %}
+        <p class="text-sm text-slate-500">{% translate "Nothing has been handed in online." %}</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  <div class="space-y-6">
+    <form method="post" class="card card-body space-y-3">
+      {% csrf_token %}
+      <input type="hidden" name="version" value="{{ row.version }}">
+      <h2 class="font-semibold">{% translate "Check and return" %}</h2>
+      <div class="flex flex-wrap gap-1">
+        {% for value, label in choices %}
+          <label class="cursor-pointer"><input type="radio" name="status" value="{{ value }}" class="peer sr-only" {% if row.status == value %}checked{% endif %} {% if not editable %}disabled{% endif %}>
+            <span class="inline-flex rounded-full border border-slate-200 px-2.5 py-1 text-xs peer-checked:border-transparent peer-checked:bg-indigo-100 peer-checked:font-semibold peer-checked:text-indigo-800">{% if value == 'pending' %}—{% else %}{{ label }}{% endif %}</span></label>
+        {% endfor %}
+      </div>
+      <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="late" value="1" {% if row.late %}checked{% endif %} {% if not editable %}disabled{% endif %}> {% translate "Late" %}</label>
+      {% if task.marking == "marks" %}<div><label class="label" for="mark">{% translate "Mark" %} / {{ task.max_marks|mark }}</label><input class="input w-28" type="number" step="0.5" min="0" max="{{ task.max_marks|stringformat:'s' }}" id="mark" name="mark" value="{{ row.mark|default_if_none:''|stringformat:'s' }}" {% if not editable %}disabled{% endif %}></div>
+      {% elif task.marking == "grade" %}<div><label class="label" for="grade">{% translate "Grade" %}</label><input class="input w-28" maxlength="10" id="grade" name="grade" value="{{ row.grade }}" {% if not editable %}disabled{% endif %}></div>{% endif %}
+      <div><label class="label" for="feedback">{% translate "Feedback" %}</label><textarea class="input" rows="4" maxlength="1000" id="feedback" name="feedback" {% if not editable %}disabled{% endif %}>{{ row.feedback }}</textarea></div>
+      {% if editable %}
+        <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="return_work" value="1" checked> {% translate "Return it to the family" %}</label>
+        <div class="flex flex-wrap gap-2"><button class="btn-primary" name="next" value="">{% translate "Save" %}</button><button class="btn-secondary" name="next" value="1">{% translate "Save and open the next" %}</button></div>
+      {% endif %}
+      {% if returned %}<p class="text-xs text-slate-500">{% translate "Returned" %} {{ row.returned_at|date:"d M, H:i" }}</p>{% endif %}
+    </form>
+
+    {% if editable %}
+      <form method="post" class="card card-body space-y-3">
+        {% csrf_token %}
+        <h2 class="font-semibold">{% translate "Ask for it again" %}</h2>
+        <textarea class="input" rows="3" maxlength="1000" name="feedback" placeholder="{% translate "What needs doing again" %}" aria-label="{% translate "What needs doing again" %}"></textarea>
+        <div class="flex flex-wrap items-end gap-2">
+          <div><label class="label" for="redo_date">{% translate "New due date (optional)" %}</label><input class="input" type="date" id="redo_date" name="until_date"></div>
+          <div><label class="label" for="redo_time">{% translate "Time" %}</label><input class="input" type="time" id="redo_time" name="until_time"></div>
+        </div>
+        <button class="btn-secondary" name="action" value="redo">{% translate "Send it back" %}</button>
+      </form>
+      <form method="post" class="card card-body space-y-3">
+        {% csrf_token %}
+        <h2 class="font-semibold">{% translate "Give more time" %}</h2>
+        <div class="flex flex-wrap items-end gap-2">
+          <div><label class="label" for="extend_date">{% translate "New due date" %}</label><input class="input" type="date" id="extend_date" name="until_date" required></div>
+          <div><label class="label" for="extend_time">{% translate "Time" %}</label><input class="input" type="time" id="extend_time" name="until_time"></div>
+        </div>
+        <button class="btn-secondary" name="action" value="extend">{% translate "Give more time" %}</button>
+      </form>
+      <form method="post" class="card card-body space-y-3">
+        {% csrf_token %}
+        <h2 class="font-semibold">{% translate "Excuse" %}</h2>
+        <input class="input" maxlength="150" name="reason" value="{{ row.reason }}" placeholder="{% translate "Why, in a few words" %}" aria-label="{% translate "Why, in a few words" %}" required>
+        <button class="btn-secondary" name="action" value="excuse">{% translate "Excuse from this work" %}</button>
+      </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

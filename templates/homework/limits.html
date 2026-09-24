@@ -18,6 +18,11 @@
       </tbody>
     </table>
   </div>
+  <div class="border-t border-slate-200 px-5 py-4">
+    <label class="label" for="files_months">{% translate "Keep handed-in photos and files for (months after the year ends)" %}</label>
+    <input class="input mt-1 w-28" type="number" min="1" max="60" id="files_months" name="files_months" value="{{ files_months }}">
+    <p class="mt-1 text-xs text-slate-500">{% translate "After that the files are deleted; the record of what was done, the mark and the feedback stay. Children's work is personal data, so keep it no longer than you need." %}</p>
+  </div>
   <div class="flex justify-end border-t border-slate-200 px-5 py-4"><button class="btn-primary">{% translate "Save" %}</button></div>
 </form>
 {% endblock %}

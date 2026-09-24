@@ -49,6 +49,7 @@ TRANSLATED_TEMPLATES = [
     "templates/homework/todo.html",
     "templates/homework/_todo_rows.html",
     "templates/homework/todo_task.html",
+    "templates/homework/review.html",
 ]
 
 
@@ -216,3 +217,22 @@ def test_the_printed_card_and_tabulation_follow_the_readers_language(erp, board)
     assert "চতুর্থ বিষয়" in headers and "জিপিএ" in headers
     english = " ".join(card_texts(report_card_flowables(erp.school, board.exam, board.science, row, None, styles())))
     assert "Full marks" in english and "(both papers)" in english
+
+
+def test_no_label_shadows_how_django_writes_a_date():
+    """
+    Django translates day and month names through the same catalogue. A label of ours that is
+    also one of those words ("Sat" for students who sat a paper) would rename every Saturday.
+    """
+    from django.utils import translation
+    from django.utils.dates import MONTHS, MONTHS_3, MONTHS_ALT, MONTHS_AP, WEEKDAYS, WEEKDAYS_ABBR
+
+    with translation.override("en"):
+        words = {
+            str(word)
+            for table in (MONTHS, MONTHS_3, MONTHS_AP, MONTHS_ALT, WEEKDAYS, WEEKDAYS_ABBR)
+            for word in table.values()
+        }
+    assert "Sat" in words and "May" in words
+    ours = set(re.findall(r'^msgid "(.*)"$', CATALOGUE.read_text(encoding="utf-8"), re.M))
+    assert not ours & words

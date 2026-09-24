@@ -43,7 +43,10 @@
             <td class="font-medium">{{ row.enrollment.student.full_name }}
               {% if row.left %}<span class="ml-1 rounded bg-slate-100 px-1.5 text-xs text-slate-600">{% translate "Moved or left" %}</span>{% endif %}
               {% if row.source == "family" %}<p class="text-xs font-normal text-emerald-700">{% if row.by_guardian %}{% translate "Ticked done at home by a guardian" %}{% else %}{% translate "Ticked done at home" %}{% endif %} · {{ row.handed_in_at|date:"d M, H:i" }}{% if row.late %} · {% translate "late" %}{% endif %}</p>{% endif %}
+              {% if row.source == "online" %}<p class="text-xs font-normal text-emerald-700">{% if row.by_guardian %}{% translate "Handed in online by a guardian" %}{% else %}{% translate "Handed in online" %}{% endif %} · {{ row.handed_in_at|date:"d M, H:i" }}{% if row.late %} · {% translate "late" %}{% endif %}</p>{% endif %}
+              {% if row.redo_requested %}<p class="text-xs font-normal text-amber-700">{% translate "Asked to do it again" %}</p>{% endif %}
               {% if row.returned_at %}<p class="text-xs font-normal text-slate-500">{% translate "Returned" %} {{ row.returned_at|date:"d M" }}</p>{% endif %}
+              {% if row.pages or row.note or task.hand_in == "online" %}<a class="link text-xs font-normal" href="{% url 'homework:review' row.pk %}">{% if row.pages %}{{ row.pages }} {% translate "page(s)" %} · {% endif %}{% translate "Open" %}</a>{% endif %}
             </td>
             <td>
               <div class="flex flex-wrap gap-1">

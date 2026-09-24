@@ -9,7 +9,7 @@ from django import forms
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
-from django.db.models import Count, Q
+from django.db.models import Count, F, Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -33,7 +33,8 @@ from .access import (
 )
 from .family import family_students, family_submission
 from .family import todo as todo_groups
-from .models import DailyLimit, Submission, Task
+from .files import prepare, serve, too_large
+from .models import DailyLimit, Submission, SubmissionFile, Task, TaskResource
 
 
 def _year(school):
@@ -59,15 +60,12 @@ class TaskForm(TailwindFormMixin, forms.ModelForm):
             "marking",
             "max_marks",
             "marks_visible",
+            "allow_late",
         ]
         widgets = {"instructions": forms.Textarea(attrs={"rows": 5})}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Handing in online arrives with file uploads; until then work is checked in class or at home.
-        self.fields["hand_in"].choices = [
-            (value, label) for value, label in Task.HandIn.choices if value != Task.HandIn.ONLINE
-        ]
         for name in ("kind", "hand_in", "marking"):
             self.fields[name].choices = [(value, gettext(label)) for value, label in self.fields[name].choices]
         self.fields["estimated_minutes"].widget.attrs.update(min=1, max=300)
@@ -93,12 +91,23 @@ def task_list(request):
                 distinct=True,
             ),
             open_targets=Count("targets", filter=Q(targets__due_at__gt=now), distinct=True),
+            to_return=Count(
+                "submissions",
+                filter=Q(submissions__source=Submission.Source.ONLINE)
+                & (
+                    Q(submissions__returned_at__isnull=True)
+                    | Q(submissions__handed_in_at__gt=F("submissions__returned_at"))
+                ),
+                distinct=True,
+            ),
         )
     )
     live = Q(status=Task.Status.PUBLISHED, publish_at__lte=now)
     tabs = {
         "upcoming": tasks.filter(live, open_targets__gt=0).order_by("targets__due_at"),
-        "check": tasks.filter(live, unchecked__gt=0, hand_in=Task.HandIn.IN_CLASS).order_by("-publish_at"),
+        "check": tasks.filter(live, Q(unchecked__gt=0, hand_in=Task.HandIn.IN_CLASS) | Q(to_return__gt=0)).order_by(
+            "-publish_at"
+        ),
         "scheduled": tasks.filter(status=Task.Status.PUBLISHED, publish_at__gt=now).order_by("publish_at"),
         "drafts": tasks.filter(status=Task.Status.DRAFT).order_by("-updated_at"),
         "past": tasks.filter(live, open_targets=0).order_by("-publish_at"),
@@ -207,6 +216,20 @@ def _task_form(request, task, level, subject, sections, year, copy=None):
         publish_at = _publish_at(request)
         raw_minutes = request.POST.get("estimated_minutes", "")
         minutes = int(raw_minutes) if raw_minutes.isdigit() else task.estimated_minutes
+        resources, link, link_title = [], request.POST.get("resource_link", ""), request.POST.get("resource_title", "")
+        removed = [int(v) for v in request.POST.getlist("remove_resource") if v.isdigit()]
+        if too_large(request):
+            problems.append(gettext("The files are larger than the upload limit of 30 MB."))
+        elif action != "check":
+            for upload in request.FILES.getlist("resource_files"):
+                try:
+                    resources.append((prepare(upload), upload.name))
+                except ValidationError as exc:
+                    problems.extend(_errors(exc))
+            try:
+                link = services.clean_link(link)
+            except ValidationError as exc:
+                problems.extend(_errors(exc))
         if action == "check":
             # Only looking at the load: show the form as typed, without complaining yet.
             posted = {name: request.POST.get(name, "") for name in TaskForm.Meta.fields}
@@ -229,6 +252,9 @@ def _task_form(request, task, level, subject, sections, year, copy=None):
             except ValidationError as exc:
                 problems.extend(_errors(exc))
             else:
+                services.add_resources(user=request.user, task=saved, prepared=resources, link=link, title=link_title)
+                if removed:
+                    services.remove_resources(user=request.user, task=saved, ids=removed)
                 messages.success(
                     request,
                     {
@@ -281,6 +307,7 @@ def _task_form(request, task, level, subject, sections, year, copy=None):
             "subject": subject,
             "rows": rows,
             "eligible": eligible,
+            "resources": list(task.resources.all()) if task.pk else [],
             "only_some": only_some,
             "selected": set(selected or []),
             "copy": copy,
@@ -386,6 +413,7 @@ def task_detail(request, pk):
             "targets": targets,
             "can_manage": may_manage(request.user, task, pairs),
             "answered": services.has_responses(task),
+            "resources": list(task.resources.all()),
             "live": task.is_live(now),
             "scheduled": task.is_scheduled(now),
             "page_title": task.title,
@@ -499,9 +527,9 @@ def check(request, pk, section):
         for problem in problems:
             messages.error(request, problem)
     rows = list(
-        target.submissions.select_related("enrollment__student", "enrollment__section", "handed_in_by").order_by(
-            "enrollment__roll_number"
-        )
+        target.submissions.select_related("enrollment__student", "enrollment__section", "handed_in_by")
+        .annotate(pages=Count("files"))
+        .order_by("enrollment__roll_number")
     )
     absent = set(
         StudentAttendance.objects.filter(
@@ -546,6 +574,9 @@ def limits(request):
     if request.method == "POST":
         problems = []
         wanted = {}
+        raw_months = (request.POST.get("files_months") or "").strip()
+        if not raw_months.isdigit() or not 1 <= int(raw_months) <= 60:
+            problems.append(gettext("Keep handed-in files for 1 to 60 months."))
         for level in levels:
             raw = (request.POST.get(f"minutes_{level.pk}") or "").strip()
             if not raw:
@@ -567,13 +598,17 @@ def limits(request):
                 elif minutes is not None and row.minutes != minutes:
                     row.minutes = minutes
                     row.save(update_fields=["minutes", "updated_at"])
-            messages.success(request, gettext("Daily limits saved."))
+            if int(raw_months) != request.school.homework_files_months:
+                request.school.homework_files_months = int(raw_months)
+                request.school.save(update_fields=["homework_files_months", "updated_at"])
+            messages.success(request, gettext("Homework settings saved."))
             return redirect("homework:limits")
     return render(
         request,
         "homework/limits.html",
         {
             "levels": [(level, current.get(level.pk)) for level in levels],
+            "files_months": request.school.homework_files_months,
             "page_title": gettext("Homework settings"),
         },
     )
@@ -617,15 +652,41 @@ def todo(request):
 
 @homework_view(None, also="own children only")
 def todo_task(request, pk):
+    from django.http import JsonResponse
+
     now = timezone.now()
     row = family_submission(request.user, request.school, pk, now)
     if request.method == "POST":
+        fetched = request.headers.get("X-Requested-With") == "fetch"
+        action = request.POST.get("action")
         try:
-            services.family_mark_done(
-                user=request.user, submission=row, done=request.POST.get("action") == "done", now=now
-            )
+            if too_large(request):
+                raise ValidationError(gettext("The files are larger than the upload limit of 30 MB."))
+            if action == "hand_in":
+                services.hand_in_online(
+                    user=request.user,
+                    submission=row,
+                    uploads=request.FILES.getlist("pages"),
+                    note=request.POST.get("note", ""),
+                    now=now,
+                )
+                message = gettext("Handed in. The teacher can see it now.")
+            elif action == "remove":
+                page = get_object_or_404(row.files, pk=request.POST.get("page") or 0)
+                services.remove_page(user=request.user, page=page, now=now)
+                message = gettext("Page taken out.")
+            else:
+                services.family_mark_done(user=request.user, submission=row, done=action == "done", now=now)
+                message = ""
         except ValidationError as exc:
+            if fetched:
+                return JsonResponse({"ok": False, "errors": _errors(exc)}, status=400)
             messages.error(request, " ".join(_errors(exc)))
+        else:
+            if message and not fetched:
+                messages.success(request, message)
+            if fetched:
+                return JsonResponse({"ok": True, "message": message})
         return redirect(reverse("homework:todo_task", args=[row.pk]))
     task = row.task
     returned = row.returned_at is not None
@@ -639,7 +700,166 @@ def todo_task(request, pk):
             "returned": returned,
             "show_mark": returned and task.marks_visible,
             "can_tick": task.hand_in != Task.HandIn.ONLINE and row.checked_at is None and task.is_live(now),
+            "online": task.hand_in == Task.HandIn.ONLINE,
+            "closed": services.hand_in_closed(row, now) if task.hand_in == Task.HandIn.ONLINE else None,
+            "pages": list(row.files.all()),
+            "resources": list(task.resources.all()),
             "is_guardian": row.enrollment.student.user_id != request.user.pk,
             "page_title": task.title,
         },
     )
+
+
+# ------------------------------------------------------------------ one student's work
+
+
+def _moment(request, prefix):
+    try:
+        day = parse_date(request.POST.get(f"{prefix}_date", "") or "")
+        moment = parse_time(request.POST.get(f"{prefix}_time", "") or "")
+    except ValueError:
+        return None
+    if day is None:
+        return None
+    return timezone.make_aware(datetime.combine(day, moment or datetime.min.time().replace(hour=23, minute=59)))
+
+
+@homework_view("homework.view_submission", also="teachers of the subject there; the class teacher reads it")
+def review(request, pk):
+    now = timezone.now()
+    row = get_object_or_404(
+        Submission.objects.select_related("task__subject", "target__section", "enrollment__student", "handed_in_by"),
+        school=request.school,
+        pk=pk,
+    )
+    task = task_for_staff(request.user, request.school, row.task_id)
+    pairs = teaching_pairs(request.user, request.school, task.academic_year)
+    if not may_view(request.user, task, row.target.section, pairs):
+        raise PermissionDenied
+    editable = (
+        may_mark(request.user, task, row.target.section, pairs)
+        and request.user.has_perm("homework.change_submission")
+        and task.status == Task.Status.PUBLISHED
+    )
+    if request.method == "POST":
+        if not editable:
+            raise PermissionDenied
+        action = request.POST.get("action")
+        try:
+            if action == "redo":
+                services.ask_to_redo(
+                    user=request.user,
+                    submission=row,
+                    feedback=request.POST.get("feedback", ""),
+                    extend_to=_moment(request, "until"),
+                    now=now,
+                )
+                messages.success(request, gettext("Sent back to be done again."))
+            elif action == "extend":
+                services.give_more_time(user=request.user, submission=row, extend_to=_moment(request, "until"), now=now)
+                messages.success(request, gettext("More time given."))
+            elif action == "excuse":
+                services.excuse(user=request.user, submission=row, reason=request.POST.get("reason", ""), now=now)
+                messages.success(request, gettext("Excused."))
+            else:
+                version = request.POST.get("version", "")
+                services.check_rows(
+                    user=request.user,
+                    task=task,
+                    target=row.target,
+                    rows=[
+                        {
+                            "id": row.pk,
+                            "version": int(version) if version.isdigit() else -1,
+                            "status": request.POST.get("status", row.status),
+                            "late": bool(request.POST.get("late")),
+                            "mark": _decimal(request.POST.get("mark")),
+                            "grade": request.POST.get("grade", ""),
+                            "feedback": request.POST.get("feedback", ""),
+                            "reason": row.reason,
+                        }
+                    ],
+                    return_work=bool(request.POST.get("return_work")),
+                    now=now,
+                )
+                messages.success(request, gettext("Saved."))
+                following = (
+                    row.target.submissions.filter(
+                        source=Submission.Source.ONLINE, enrollment__roll_number__gt=row.enrollment.roll_number
+                    )
+                    .filter(Q(returned_at__isnull=True) | Q(handed_in_at__gt=F("returned_at")))
+                    .order_by("enrollment__roll_number")
+                    .first()
+                )
+                if following is not None and request.POST.get("next"):
+                    return redirect("homework:review", pk=following.pk)
+        except ValidationError as exc:
+            for problem in _errors(exc):
+                messages.error(request, problem)
+        return redirect("homework:review", pk=row.pk)
+    pages = list(row.files.all())
+    attempts = sorted({page.attempt for page in pages}, reverse=True)
+    return render(
+        request,
+        "homework/review.html",
+        {
+            "row": row,
+            "task": task,
+            "editable": editable,
+            "attempts": [(n, [page for page in pages if page.attempt == n]) for n in attempts],
+            "choices": [(value, gettext(label)) for value, label in Submission.Status.choices],
+            "returned": services.is_returned(row),
+            "overdue": row.is_missing(now),
+            "page_title": f"{row.enrollment.student.full_name} · {task.title}",
+        },
+    )
+
+
+# ------------------------------------------------------------------ files, checked every time
+
+
+def _family_may_open(user, school, row, now):
+    return row.task.is_live(now) and family_students(user, school).filter(pk=row.enrollment.student_id).exists()
+
+
+@homework_view(None, also="the student, their family, the subject's teachers, the class teacher, managers")
+def hand_in_file(request, pk):
+    """A page of a student's hand-in, for the people who may see that student's work."""
+    now = timezone.now()
+    page = get_object_or_404(
+        SubmissionFile.objects.select_related(
+            "submission__task__subject", "submission__target__section", "submission__enrollment__student"
+        ),
+        school=request.school,
+        pk=pk,
+    )
+    row = page.submission
+    allowed = _family_may_open(request.user, request.school, row, now)
+    if not allowed and request.user.has_perm("homework.view_submission"):
+        task = visible_tasks(request.user, request.school).filter(pk=row.task_id).first()
+        allowed = task is not None and may_view(request.user, task, row.target.section)
+    if not allowed:
+        raise Http404
+    ext = {"pdf": ".pdf", "jpeg": ".jpg", "docx": ".docx"}.get(page.kind, "")
+    name = f"{row.task.subject.code or 'homework'}-{row.task_id}-{row.enrollment.student.student_id}-p{page.page}{ext}"
+    return serve(page.file, page.kind, name)
+
+
+@homework_view(None, also="the families the task is set for, and staff who may open the task")
+def resource_file(request, pk):
+    """A worksheet given with a task."""
+    now = timezone.now()
+    resource = get_object_or_404(TaskResource.objects.select_related("task"), school=request.school, pk=pk)
+    if not resource.file:
+        raise Http404
+    task = resource.task
+    allowed = (
+        task.is_live(now)
+        and task.submissions.filter(enrollment__student__in=family_students(request.user, request.school)).exists()
+    )
+    if not allowed and request.user.has_perm("homework.view_task"):
+        allowed = visible_tasks(request.user, request.school).filter(pk=task.pk).exists()
+    if not allowed:
+        raise Http404
+    ext = {"pdf": ".pdf", "jpeg": ".jpg", "docx": ".docx"}.get(resource.kind, "")
+    return serve(resource.file, resource.kind, f"{resource.title[:60]}{ext}")

@@ -216,6 +216,22 @@ The task needs the same environment variables as the application (`SQLITE_PATH`,
 `DJANGO_SECRET_KEY` and so on); set them for the account the task runs as. Check the log or
 the backup folder after the first night.
 
+A school given the homework module keeps the photos and files students hand in for a set time
+after the year ends (six months unless its managers change it under Homework settings). Delete
+the old ones every night, after the backup:
+
+```powershell
+schtasks /Create /TN "School ERP homework files" /SC DAILY /ST 23:50 /RU SYSTEM `
+  /TR "E:\school-erp\.venv\Scripts\python.exe E:\school-erp\manage.py homework_purge_files"
+```
+
+```cron
+50 23 * * * cd /srv/school-erp && .venv/bin/python manage.py homework_purge_files >> /var/log/school-erp-homework.log 2>&1
+```
+
+`--dry-run` counts the files without deleting them. Uploads are capped at 30 MB a request; set
+the proxy in front to refuse larger bodies too (nginx `client_max_body_size 30m;`).
+
 On PostgreSQL the dump runs `pg_dump` with connection arguments and the password in `PGPASSWORD`,
 never in a connection URI: a URI puts the password in the process list for every user on the
 machine to read, and has to be percent-encoded, so a password containing `@` or `/` would

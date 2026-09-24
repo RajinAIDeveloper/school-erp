@@ -193,6 +193,13 @@ EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "1") == "1"
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "school@example.com")
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 DATA_UPLOAD_MAX_MEMORY_SIZE = 12 * 1024 * 1024
+# No request may upload more than this: its files are not stored, and the view says why.
+MAX_UPLOAD_REQUEST = 30 * 1024 * 1024
+FILE_UPLOAD_HANDLERS = [
+    "core.uploads.CappedUploadHandler",
+    "django.core.files.uploadhandler.MemoryFileUploadHandler",
+    "django.core.files.uploadhandler.TemporaryFileUploadHandler",
+]
 # A mark grid or a timetable week posts one field per cell, so the default 1000 is low.
 DATA_UPLOAD_MAX_NUMBER_FIELDS = int(os.environ.get("DJANGO_MAX_FORM_FIELDS", "5000"))
 

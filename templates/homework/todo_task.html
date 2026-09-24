@@ -1,12 +1,16 @@
 {% extends "layouts/base.html" %}
-{% load erp i18n %}
+{% load erp i18n static %}
 {% block header_actions %}<a href="{% url 'homework:todo' %}?student={{ row.enrollment.student_id }}" class="btn-secondary btn-sm">{% translate "All homework" %}</a>{% endblock %}
+{% block scripts %}{% if online and not closed %}<script src="{% static 'js/homework.js' %}" defer></script>{% endif %}{% endblock %}
 {% block content %}
 <div class="grid gap-6 lg:grid-cols-3">
   <section class="card card-body lg:col-span-2">
     <p class="text-sm text-slate-500">{{ task.subject.name }} · {% translate task.get_kind_display %} · {{ task.estimated_minutes }} {% translate "min" %}</p>
     {% if task.purpose %}<p class="mt-3 rounded-md bg-indigo-50 px-3 py-2 text-sm text-indigo-900"><span class="font-semibold">{% translate "Why:" %}</span> {{ task.purpose }}</p>{% endif %}
     {% if task.instructions %}<div class="mt-4 whitespace-pre-line text-slate-800">{{ task.instructions }}</div>{% endif %}
+    {% if resources %}
+      <ul class="mt-4 space-y-1 text-sm">{% for r in resources %}<li>{% if r.url %}🔗 <a class="link" href="{{ r.url }}" target="_blank" rel="noopener noreferrer">{{ r.title }}</a>{% else %}📄 <a class="link" href="{% url 'homework:resource' r.pk %}">{{ r.title }}</a>{% endif %}</li>{% endfor %}</ul>
+    {% endif %}
     <dl class="mt-5 grid grid-cols-2 gap-3 text-sm">
       <div><dt class="text-slate-500">{% translate "Due" %}</dt><dd class="font-medium {% if overdue %}text-red-700{% endif %}">{{ row.due_at|date:"l d M, H:i" }}</dd></div>
       <div><dt class="text-slate-500">{% translate "How it is handed in" %}</dt><dd>{% translate task.get_hand_in_display %}</dd></div>
@@ -21,6 +25,10 @@
       {% if row.status == "pending" %}{% if overdue %}{% translate "Overdue" %}{% else %}{% translate "To do" %}{% endif %}
       {% elif row.status == "done" and row.source == "family" and not row.checked_at %}{% translate "Ticked done" %}
       {% else %}{% translate row.get_status_display %}{% endif %}</p>
+    {% if row.source == "online" %}
+      <p class="mt-1 text-xs text-slate-500">{% if row.by_guardian %}{% translate "Handed in online by a guardian" %}{% else %}{% translate "Handed in online" %}{% endif %} · {{ row.handed_in_at|date:"d M, H:i" }}{% if row.late %} · {% translate "after the due time" %}{% endif %}</p>
+    {% endif %}
+    {% if row.redo_requested %}<p class="mt-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">{% translate "Your teacher has asked for this work again. See the feedback below." %}</p>{% endif %}
     {% if row.source == "family" %}
       <p class="mt-1 text-xs text-slate-500">{% if row.by_guardian %}{% translate "Ticked by a guardian" %}{% else %}{% translate "Ticked by the student" %}{% endif %} · {{ row.handed_in_at|date:"d M, H:i" }}{% if row.late %} · {% translate "after the due time" %}{% endif %}</p>
     {% endif %}
@@ -38,6 +46,42 @@
     {% endif %}
   </section>
 </div>
+
+{% if online %}
+  <section class="card card-body mt-6">
+    <h2 class="font-semibold">{% translate "Hand it in" %}</h2>
+    {% if pages %}
+      <div class="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5">
+        {% for page in pages %}
+          <div class="rounded-md border border-slate-200 p-1 text-center text-xs {% if page.attempt != row.attempt %}opacity-60{% endif %}">
+            <a href="{% url 'homework:file' page.pk %}" target="_blank" rel="noopener">{% if page.kind == "jpeg" %}<img src="{% url 'homework:file' page.pk %}" alt="{% translate "Page" %} {{ page.page }}" loading="lazy" class="mx-auto h-24 w-full object-cover">{% else %}<span class="block py-8">📄 {{ page.get_kind_display }}</span>{% endif %}</a>
+            <span class="text-slate-500">{% translate "Page" %} {{ page.page }}</span>
+            {% if not closed and page.attempt == row.attempt %}
+              <form method="post">{% csrf_token %}<input type="hidden" name="page" value="{{ page.pk }}"><button class="text-red-700 hover:underline" name="action" value="remove">{% translate "Take out" %}</button></form>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+    {% if closed %}
+      <p class="mt-3 text-sm text-slate-600">{{ closed }}</p>
+    {% else %}
+      <form method="post" enctype="multipart/form-data" class="mt-4 space-y-3" data-hand-in data-failed="{% translate "The upload did not finish. Check the connection and try again." %}">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="hand_in">
+        <div class="flex flex-wrap gap-2">
+          <label class="btn-secondary cursor-pointer">📷 {% translate "Take a photo" %}<input class="sr-only" type="file" name="pages" accept="image/*" capture="environment" data-pages></label>
+          <label class="btn-secondary cursor-pointer">📎 {% translate "Choose photos or files" %}<input class="sr-only" type="file" name="pages" accept="image/*,application/pdf,.docx" multiple data-pages></label>
+        </div>
+        <ol class="grid grid-cols-3 gap-2 sm:grid-cols-5" data-thumbs></ol>
+        <p class="text-xs text-slate-500">{% translate "One photo for each page. Photos are made smaller on your phone before they are sent, to save data. PDF and Word files are taken too." %}</p>
+        <div><label class="label" for="note">{% translate "A note for the teacher (optional)" %}</label><textarea class="input" rows="2" maxlength="500" id="note" name="note"></textarea></div>
+        <div class="hidden text-sm" data-progress><progress class="w-full" max="100" value="0"></progress><p class="text-slate-600" data-progress-text></p></div>
+        <button class="btn-primary w-full sm:w-auto">{% if pages %}{% translate "Add to the hand-in" %}{% else %}{% translate "Hand it in" %}{% endif %}</button>
+      </form>
+    {% endif %}
+  </section>
+{% endif %}
 
 {% if returned and row.feedback or show_mark and row.mark is not None or show_mark and row.grade %}
   <section class="card card-body mt-6">

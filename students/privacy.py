@@ -200,6 +200,10 @@ def erase_student(*, school, user, student, confirm):
         document.file.delete(save=False)
         document.delete()
     student.consents.all().delete()
+    # Homework they handed in, and what was written about it.
+    from homework.privacy import erase_homework
+
+    erase_homework(student)
 
     # Guardians who have no other child here.
     for link in StudentGuardian.objects.filter(student=student).select_related("guardian"):

@@ -1127,7 +1127,7 @@ msgstr "পাসের হার"
 msgid "graded, not passed or failed"
 msgstr "গ্রেড দেওয়া হয়, পাস-ফেল নয়"
 
-msgid "Sat"
+msgid "Sat the paper"
 msgstr "পরীক্ষা দিয়েছে"
 
 msgid "To follow up"
@@ -1851,3 +1851,215 @@ msgstr "আপনি পাতাটি খোলা রাখার সময�
 
 msgid "%(section)s now has %(minutes)s minutes of homework due on %(day)s; the school's limit for the class is %(limit)s."
 msgstr "%(section)s-এ এখন %(day)s তারিখে %(minutes)s মিনিটের বাড়ির কাজ জমা; শ্রেণিটির জন্য বিদ্যালয়ের সীমা %(limit)s।"
+
+# ---- homework: handing in online
+
+msgid "Take work handed in online after the due time (marked late)"
+msgstr "জমার সময়ের পরে অনলাইনে জমা নেওয়া হবে (দেরিতে বলে চিহ্নিত)"
+
+msgid "Worksheets and links"
+msgstr "ওয়ার্কশিট ও লিংক"
+
+msgid "PDF, photos or Word documents, up to 10 MB each. Families see them with the homework."
+msgstr "PDF, ছবি বা Word ফাইল, প্রতিটি 10 MB পর্যন্ত। পরিবার বাড়ির কাজের সঙ্গে এগুলো দেখবে।"
+
+msgid "Remove"
+msgstr "সরান"
+
+msgid "Add files"
+msgstr "ফাইল যোগ করুন"
+
+msgid "Or a link"
+msgstr "অথবা একটি লিংক"
+
+msgid "Name of the link"
+msgstr "লিংকের নাম"
+
+msgid "Handed in online by a guardian"
+msgstr "অভিভাবক অনলাইনে জমা দিয়েছেন"
+
+msgid "Asked to do it again"
+msgstr "আবার করতে বলা হয়েছে"
+
+msgid "page(s)"
+msgstr "পাতা"
+
+msgid "Keep handed-in photos and files for (months after the year ends)"
+msgstr "জমা দেওয়া ছবি ও ফাইল রাখার সময় (বছর শেষের পরে মাস)"
+
+msgid "After that the files are deleted; the record of what was done, the mark and the feedback stay. Children's work is personal data, so keep it no longer than you need."
+msgstr "এরপর ফাইলগুলো মুছে যাবে; কী করা হয়েছিল, নম্বর ও মতামতের রেকর্ড থেকে যাবে। শিশুদের কাজ ব্যক্তিগত তথ্য, তাই যতদিন দরকার তার বেশি রাখবেন না।"
+
+msgid "Your teacher has asked for this work again. See the feedback below."
+msgstr "শিক্ষক কাজটি আবার চেয়েছেন। নিচে মতামত দেখুন।"
+
+msgid "Hand it in"
+msgstr "জমা দিন"
+
+msgid "Page"
+msgstr "পাতা"
+
+msgid "Take out"
+msgstr "বাদ দিন"
+
+msgid "The upload did not finish. Check the connection and try again."
+msgstr "আপলোড শেষ হয়নি। সংযোগ দেখে আবার চেষ্টা করুন।"
+
+msgid "Take a photo"
+msgstr "ছবি তুলুন"
+
+msgid "Choose photos or files"
+msgstr "ছবি বা ফাইল বেছে নিন"
+
+msgid "One photo for each page. Photos are made smaller on your phone before they are sent, to save data. PDF and Word files are taken too."
+msgstr "প্রতি পাতার জন্য একটি ছবি। ডেটা বাঁচাতে পাঠানোর আগে ছবিগুলো ফোনেই ছোট করা হয়। PDF ও Word ফাইলও নেওয়া হয়।"
+
+msgid "A note for the teacher (optional)"
+msgstr "শিক্ষকের জন্য একটি নোট (ঐচ্ছিক)"
+
+msgid "Add to the hand-in"
+msgstr "জমায় যোগ করুন"
+
+msgid "Back to the section"
+msgstr "শাখায় ফিরে যান"
+
+msgid "more time given"
+msgstr "বাড়তি সময় দেওয়া হয়েছে"
+
+msgid "Hand-in"
+msgstr "জমা"
+
+msgid "Nothing has been handed in online."
+msgstr "অনলাইনে কিছু জমা দেওয়া হয়নি।"
+
+msgid "Check and return"
+msgstr "দেখে ফেরত দিন"
+
+msgid "Return it to the family"
+msgstr "পরিবারকে ফেরত দিন"
+
+msgid "Save and open the next"
+msgstr "সংরক্ষণ করে পরেরটি খুলুন"
+
+msgid "Ask for it again"
+msgstr "আবার চান"
+
+msgid "What needs doing again"
+msgstr "কী আবার করতে হবে"
+
+msgid "New due date (optional)"
+msgstr "নতুন জমার তারিখ (ঐচ্ছিক)"
+
+msgid "Send it back"
+msgstr "ফেরত পাঠান"
+
+msgid "Give more time"
+msgstr "বাড়তি সময় দিন"
+
+msgid "New due date"
+msgstr "নতুন জমার তারিখ"
+
+msgid "Excuse"
+msgstr "অব্যাহতি"
+
+msgid "Why, in a few words"
+msgstr "কেন, কয়েক শব্দে"
+
+msgid "Excuse from this work"
+msgstr "এই কাজ থেকে অব্যাহতি দিন"
+
+msgid "The files are larger than the upload limit of 30 MB."
+msgstr "ফাইলগুলো 30 MB আপলোড সীমার চেয়ে বড়।"
+
+msgid "Keep handed-in files for 1 to 60 months."
+msgstr "জমা দেওয়া ফাইল 1 থেকে 60 মাস রাখুন।"
+
+msgid "Homework settings saved."
+msgstr "বাড়ির কাজের সেটিংস সংরক্ষিত হয়েছে।"
+
+msgid "Handed in. The teacher can see it now."
+msgstr "জমা হয়েছে। শিক্ষক এখন দেখতে পাবেন।"
+
+msgid "Page taken out."
+msgstr "পাতাটি বাদ দেওয়া হয়েছে।"
+
+msgid "Sent back to be done again."
+msgstr "আবার করার জন্য ফেরত পাঠানো হয়েছে।"
+
+msgid "More time given."
+msgstr "বাড়তি সময় দেওয়া হয়েছে।"
+
+msgid "Excused."
+msgstr "অব্যাহতি দেওয়া হয়েছে।"
+
+msgid "Saved."
+msgstr "সংরক্ষিত হয়েছে।"
+
+msgid "This work is not handed in online."
+msgstr "এই কাজ অনলাইনে জমা হয় না।"
+
+msgid "You have been excused from this work."
+msgstr "তোমাকে এই কাজ থেকে অব্যাহতি দেওয়া হয়েছে।"
+
+msgid "Your teacher has returned this work."
+msgstr "শিক্ষক কাজটি ফেরত দিয়েছেন।"
+
+msgid "The due time has passed, and this work is not taken late."
+msgstr "জমার সময় পেরিয়ে গেছে, আর এই কাজ দেরিতে নেওয়া হয় না।"
+
+msgid "Keep the note to 500 characters."
+msgstr "নোট 500 অক্ষরের মধ্যে রাখুন।"
+
+msgid "Add a photo or a file of the work, or write a note."
+msgstr "কাজের একটি ছবি বা ফাইল যোগ করুন, অথবা একটি নোট লিখুন।"
+
+msgid "Only pages of the latest hand-in can be taken out."
+msgstr "শুধু শেষ জমার পাতাগুলোই বাদ দেওয়া যায়।"
+
+msgid "Choose a new due time in the future."
+msgstr "ভবিষ্যতের একটি নতুন জমার সময় বেছে নিন।"
+
+msgid "Keep feedback to 1000 characters."
+msgstr "মতামত 1000 অক্ষরের মধ্যে রাখুন।"
+
+msgid "Say what needs doing again."
+msgstr "কী আবার করতে হবে, লিখুন।"
+
+msgid "Choose the new due time."
+msgstr "নতুন জমার সময় বেছে নিন।"
+
+msgid "Say why the student is excused."
+msgstr "কেন অব্যাহতি দেওয়া হচ্ছে, লিখুন।"
+
+msgid "That link is not a web address."
+msgstr "লিংকটি কোনো ওয়েব ঠিকানা নয়।"
+
+msgid "Worksheet"
+msgstr "ওয়ার্কশিট"
+
+msgid "The file"
+msgstr "ফাইলটি"
+
+msgid "%(name)s is too large a picture."
+msgstr "%(name)s ছবিটি খুব বড়।"
+
+msgid "%(name)s could not be read as a picture."
+msgstr "%(name)s ছবি হিসেবে পড়া যায়নি।"
+
+msgid "%(name)s is larger than 10 MB."
+msgstr "%(name)s 10 MB-এর চেয়ে বড়।"
+
+msgid "%(name)s is not a PDF, a photo or a Word document."
+msgstr "%(name)s কোনো PDF, ছবি বা Word ফাইল নয়।"
+
+msgid "A hand-in can have at most 10 pages or files."
+msgstr "একবারের জমায় সর্বোচ্চ 10টি পাতা বা ফাইল দেওয়া যায়।"
+
+msgid "A hand-in can be at most 25 MB in all."
+msgstr "একবারের জমা সব মিলিয়ে সর্বোচ্চ 25 MB হতে পারে।"
+
+msgid "Photo"
+msgstr "ছবি"
+
+msgid "Word document"
+msgstr "Word ফাইল"

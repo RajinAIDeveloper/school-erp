@@ -245,9 +245,9 @@ quizzes, chat) are not being built.
 | P2 | Bangla on the teacher's screens and on the card, tabulation and exam-hall PDFs | Done: test_language.py checks every marked string, including blocktranslate blocks; PDFs follow the reader's language |
 | P3 | Recompute-and-compare for pilots; early-warning report | Done: test_compare_and_warnings.py. Compare is read-only and for managers; early warning is in Reports, teachers see their own sections |
 | P4 | Transcript; online admissions (module) | Later round |
-| P5 | Full homework (module) | In progress: 5a done, 5b and 5c next |
+| P5 | Full homework (module) | In progress: 5a and 5b done, 5c next |
 | P5a | Paper homework end to end: set work for one or more sections or chosen students, due at the next lesson by default, a daily load check against the school's limit (a warning, never a block), a check-in-class grid with marks, feedback and return, and the family to-do list where a student or guardian ticks work done | Done: test_homework_module.py, test_homework_setting.py. Only the platform administrator gives a school the module; without it every homework address is not found for every role |
-| P5b | Online hand-in: files, content checks, the feedback loop (redo, extension, excuse), erasure and file retention | |
+| P5b | Online hand-in: files, content checks, the feedback loop (redo, extension, excuse), erasure and file retention | Done: test_homework_handin.py (with a browser test of the phone shrinking a photo). Files are judged by content, photos redrawn without EXIF, stored under random names and served only to those who may see the child's work; a 30 MB ceiling on any upload; old files deleted nightly by homework_purge_files |
 | P5c | Calendars, the class teacher's missing-work list, dashboard tiles, the marks export and the weekly SMS digest | |
 | P6a | Analytics foundation: Vice Principal role (the Principal's access); the platform page where only the platform administrator gives a school a module; the analytics tables, written on every publication and rebuildable; one access check for all analytics | Done: test_analytics_foundation.py |
 | P6b | Student and family progress (portal, English and Bangla), with a printable progress report | Done: test_progress.py. Charts are server-drawn SVG; staff open the same view from a student's record |

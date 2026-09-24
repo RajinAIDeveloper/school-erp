@@ -26,7 +26,7 @@
     <p class="mt-1 text-xs text-slate-500">{% translate "lowest" %} {{ data.lowest|default_if_none:"—"|mark }}</p></div>
   <div class="stat"><p class="text-sm text-slate-500">{% translate "Pass rate" %}</p><p class="mt-1 text-3xl font-bold">{% if data.pass_rate is not None %}{{ data.pass_rate|mark }}%{% else %}—{% endif %}</p>
     <p class="mt-1 text-xs text-slate-500">{% if data.pass_mark is not None %}{% blocktranslate with mark=data.pass_mark|mark trimmed %}pass mark {{ mark }}{% endblocktranslate %}{% else %}{% translate "graded, not passed or failed" %}{% endif %}</p></div>
-  <div class="stat"><p class="text-sm text-slate-500">{% translate "Sat" %}</p><p class="mt-1 text-3xl font-bold">{{ data.sat }}</p>
+  <div class="stat"><p class="text-sm text-slate-500">{% translate "Sat the paper" %}</p><p class="mt-1 text-3xl font-bold">{{ data.sat }}</p>
     <p class="mt-1 text-xs text-slate-500">{% blocktranslate with absent=data.absent missing=data.missing trimmed %}{{ absent }} absent · {{ missing }} without a mark{% endblocktranslate %}</p></div>
   <div class="stat"><p class="text-sm text-slate-500">{% translate "To follow up" %}</p><p class="mt-1 text-3xl font-bold {% if data.flagged %}text-amber-600{% endif %}">{{ data.flagged }}</p>
     <p class="mt-1 text-xs text-slate-500">{% translate "students flagged below" %}</p></div>
