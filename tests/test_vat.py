@@ -88,3 +88,27 @@ def test_the_invoice_shows_its_vat(erp):
     client.force_login(erp.admin)
     page = client.get(f"/fees/{invoice.pk}/").content.decode()
     assert "VAT" in page and "1,050" in page
+
+
+def test_vat_is_charged_on_the_fee_after_an_invoice_discount(erp):
+    from fees.services import create_invoice, edit_invoice
+
+    erp.category.vat_rate = Decimal("5")
+    erp.category.save()
+    invoice = create_invoice(
+        school=erp.school,
+        user=erp.admin,
+        student=erp.student,
+        enrollment=erp.enrollment,
+        academic_year=erp.year,
+        month=None,
+        issue_date=date(2026, 9, 1),
+        due_date=date(2026, 9, 10),
+        items=[(erp.category, "1000")],
+        discount="200",
+    )
+    assert invoice.vat_total == Decimal("40.00")  # 5% of the 800 actually charged
+    assert invoice.total == Decimal("840.00")
+    edit_invoice(school=erp.school, user=erp.admin, invoice=invoice, items=[(erp.category, "1000")], discount="0")
+    invoice.refresh_from_db()
+    assert invoice.vat_total == Decimal("50.00") and invoice.total == Decimal("1050.00")

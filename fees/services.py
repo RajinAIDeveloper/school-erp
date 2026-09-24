@@ -196,10 +196,21 @@ def cancel_payment(*, school, user, payment, reason):
     )
 
 
-def vat_on(category, amount):
-    """The VAT on one fee line at its fee head's rate, rounded to the paisa."""
+def vat_on(category, amount, net_share=Decimal(1)):
+    """
+    The VAT on one fee line at its fee head's rate, rounded to the paisa.
+
+    `net_share` is the part of the fees left after an invoice-level discount, so VAT is
+    charged on what the family actually pays for, not on the fee before the discount.
+    """
     rate = category.vat_rate or ZERO
-    return (Decimal(amount) * rate / 100).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) if rate else ZERO
+    if not rate:
+        return ZERO
+    return (Decimal(amount) * net_share * rate / 100).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+def _net_share(subtotal, discount):
+    return (subtotal - discount) / subtotal if subtotal else Decimal(1)
 
 
 def _priced_lines(school, items):
@@ -273,7 +284,7 @@ def edit_invoice(*, school, user, invoice, items, discount=ZERO, late_fee=ZERO, 
                 category=category,
                 description=description,
                 amount=amount,
-                vat=vat_on(category, amount),
+                vat=vat_on(category, amount, _net_share(subtotal, discount)),
             )
             for category, description, amount in priced
         ]
@@ -348,7 +359,7 @@ def create_invoice(
                 category=category,
                 description=description,
                 amount=amount,
-                vat=vat_on(category, amount),
+                vat=vat_on(category, amount, _net_share(subtotal, discount)),
             )
             for category, description, amount in priced
         ]

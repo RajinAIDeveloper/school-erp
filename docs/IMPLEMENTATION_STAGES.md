@@ -165,6 +165,22 @@ Each stage closes only when its tests pass and the full gate passes:
 
 **Deferred by the owner:** the parent app.
 
+### Remaining phases (after S13)
+
+Built one at a time after the planned stages, each with tests and the full gate:
+
+| Phase | Scope |
+|---|---|
+| **R1** | VAT charged on the fee after an invoice-level discount |
+| **R2** | Bangla on the teacher-facing staff screens (dashboard, registers, mark entry, comments) |
+| **R3** | Exam officer: paper timetable clashes, official results held until the series' release date, post-results enquiries and re-marks |
+| **R4** | Pearson Edexcel International A Level: unit UMS, cash-in, and the A* rule |
+| **R5** | IB PYP narrative reports |
+| **R6** | Moderation: second marking of a sample and agreed adjustments before publication |
+| **R7** | National curriculum administration: admissions (lottery, quotas, age check), fee caps, BANBEIS survey and stipend eligibility reports |
+| **R8** | Hosted service readiness: a school per web address, onboarding a new school, and health and backup checks |
+
+
 ### Scope changes from the English-medium research
 
 [The research](ENGLISH_MEDIUM_RESEARCH.md) verified or corrected several points. The stages
