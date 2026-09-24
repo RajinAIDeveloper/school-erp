@@ -218,6 +218,10 @@ test_family_phone.py, test_register_policy.py.
 | R7 | Results menu links to exam series and combined results; teachers no longer see "Basic Settings" | Navigation tests |
 | R8 | `examinations/views.py` split into modules by area, with no change in behaviour | Full suite unchanged |
 
+R8 done: `examinations/views/` has common, exams, marks, results, series and combined
+modules (largest 484 lines, from one file of 1,873); every view is still importable from
+`examinations.views`, and the full suite passed unchanged (931).
+
 R1–R7 done: tests/test_operations.py (backup snapshot, `--copy-to`, a locked database),
 test_hardening.py (SMS compose, return addresses, proxies, per-student limit, menu),
 test_query_counts.py (five result pages cost the same queries for 28 students as for 3),
