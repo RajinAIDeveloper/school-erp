@@ -61,6 +61,8 @@ def receipt_pdf(school, payment, *, copy=False):
         [item.category.name, item.description or "", f"{currency}{item.amount}"]
         for item in invoice.items.select_related("category")
     ]
+    if invoice.vat_total:
+        items.append(["VAT", "", f"{currency}{invoice.vat_total}"])
     if invoice.discount:
         items.append(["Discount", "", f"-{currency}{invoice.discount}"])
     if invoice.late_fee:

@@ -100,7 +100,9 @@ def generate_invoices(*, school, user, academic_year, class_level=None, month, i
             due_date=due_date,
             created_by=user,
         )
-        FeeInvoiceItem.objects.bulk_create([FeeInvoiceItem(invoice=inv, category=c, amount=a) for c, a in items])
+        FeeInvoiceItem.objects.bulk_create(
+            [FeeInvoiceItem(invoice=inv, category=c, amount=a, vat=vat_on(c, a)) for c, a in items]
+        )
         inv.refresh_status()
         created += 1
     AuditLog.objects.create(
@@ -194,6 +196,12 @@ def cancel_payment(*, school, user, payment, reason):
     )
 
 
+def vat_on(category, amount):
+    """The VAT on one fee line at its fee head's rate, rounded to the paisa."""
+    rate = category.vat_rate or ZERO
+    return (Decimal(amount) * rate / 100).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) if rate else ZERO
+
+
 def _priced_lines(school, items):
     """Validate the fee lines of an invoice and return them as (category, description, amount)."""
     priced = []
@@ -260,7 +268,13 @@ def edit_invoice(*, school, user, invoice, items, discount=ZERO, late_fee=ZERO, 
     invoice.items.all().delete()
     FeeInvoiceItem.objects.bulk_create(
         [
-            FeeInvoiceItem(invoice=invoice, category=category, description=description, amount=amount)
+            FeeInvoiceItem(
+                invoice=invoice,
+                category=category,
+                description=description,
+                amount=amount,
+                vat=vat_on(category, amount),
+            )
             for category, description, amount in priced
         ]
     )
@@ -329,7 +343,13 @@ def create_invoice(
     )
     FeeInvoiceItem.objects.bulk_create(
         [
-            FeeInvoiceItem(invoice=invoice, category=category, description=description, amount=amount)
+            FeeInvoiceItem(
+                invoice=invoice,
+                category=category,
+                description=description,
+                amount=amount,
+                vat=vat_on(category, amount),
+            )
             for category, description, amount in priced
         ]
     )

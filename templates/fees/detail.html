@@ -33,6 +33,7 @@
           <tr><td>{{ item.category }}</td><td class="text-slate-500">{{ item.description }}</td>
             <td class="text-right">{% money item.amount %}</td></tr>
         {% endfor %}
+        {% if invoice.vat_total %}<tr><td colspan="2">VAT</td><td class="text-right">{% money invoice.vat_total %}</td></tr>{% endif %}
         {% if invoice.discount %}<tr><td colspan="2">Discount</td><td class="text-right text-emerald-700">-{% money invoice.discount %}</td></tr>{% endif %}
         {% if invoice.late_fee %}<tr><td colspan="2">Late fee</td><td class="text-right text-red-600">{% money invoice.late_fee %}</td></tr>{% endif %}
         <tr class="bg-slate-50 font-semibold"><td colspan="2">Total</td><td class="text-right">{% money invoice.total %}</td></tr>

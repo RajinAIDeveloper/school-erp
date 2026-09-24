@@ -25,8 +25,13 @@ for model, key, fields, columns in [
     (
         FeeCategory,
         "category",
-        ["name", "income_account", "is_active"],
-        [("Category", "name"), ("Income account", "income_account"), ("Active", "is_active", "bool")],
+        ["name", "income_account", "vat_rate", "is_active"],
+        [
+            ("Category", "name"),
+            ("Income account", "income_account"),
+            ("VAT %", "vat_rate"),
+            ("Active", "is_active", "bool"),
+        ],
     ),
     (
         FeeStructure,

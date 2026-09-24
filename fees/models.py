@@ -37,6 +37,16 @@ class FeeCategory(SchoolScopedModel):
         related_name="fee_categories",
         help_text="Income account credited when this fee is collected",
     )
+    vat_rate = models.DecimalField(
+        "VAT %",
+        max_digits=5,
+        decimal_places=2,
+        default=ZERO,
+        help_text=(
+            "VAT added to this fee, in percent. Leave at 0 unless your tax adviser confirms VAT "
+            "applies: whether it does for school tuition has been disputed and ruled on before."
+        ),
+    )
     is_active = models.BooleanField(default=True)
 
     class Meta:
@@ -111,6 +121,13 @@ class FeeInvoiceQuerySet(SchoolQuerySet):
             .annotate(total=Sum("amount"))
             .values("total")
         )
+        vat = (
+            FeeInvoiceItem.objects.filter(invoice=OuterRef("pk"))
+            .order_by()
+            .values("invoice")
+            .annotate(total=Sum("vat"))
+            .values("total")
+        )
         payments = (
             FeePayment.objects.filter(invoice=OuterRef("pk"), is_cancelled=False)
             .order_by()
@@ -122,10 +139,11 @@ class FeeInvoiceQuerySet(SchoolQuerySet):
         return (
             self.annotate(
                 subtotal_amount=Coalesce(Subquery(items, output_field=money), zero),
+                vat_amount=Coalesce(Subquery(vat, output_field=money), zero),
                 paid_amount=Coalesce(Subquery(payments, output_field=money), zero),
             )
             .annotate(
-                total_amount=F("subtotal_amount") - F("discount") + F("late_fee"),
+                total_amount=F("subtotal_amount") + F("vat_amount") - F("discount") + F("late_fee"),
             )
             .annotate(
                 balance_amount=F("total_amount") - F("paid_amount"),
@@ -179,10 +197,16 @@ class FeeInvoice(SchoolScopedModel):
         return self.items.aggregate(s=Sum("amount"))["s"] or ZERO
 
     @property
+    def vat_total(self):
+        if hasattr(self, "vat_amount"):
+            return self.vat_amount
+        return self.items.aggregate(s=Sum("vat"))["s"] or ZERO
+
+    @property
     def total(self):
         if hasattr(self, "total_amount"):
             return self.total_amount
-        return self.subtotal - self.discount + self.late_fee
+        return self.subtotal + self.vat_total - self.discount + self.late_fee
 
     @property
     def paid(self):
@@ -213,7 +237,7 @@ class FeeInvoice(SchoolScopedModel):
             return
         # Recompute from the database: an annotated instance carries the totals it was
         # loaded with, which are stale the moment a payment is written.
-        for cached in ("subtotal_amount", "paid_amount", "total_amount", "balance_amount"):
+        for cached in ("subtotal_amount", "vat_amount", "paid_amount", "total_amount", "balance_amount"):
             self.__dict__.pop(cached, None)
         paid, total = self.paid, self.total
         if total <= ZERO:
@@ -244,6 +268,9 @@ class FeeInvoiceItem(models.Model):
     category = models.ForeignKey(FeeCategory, on_delete=models.PROTECT)
     description = models.CharField(max_length=150, blank=True)
     amount = models.DecimalField(max_digits=12, decimal_places=2)
+    # Worked out from the fee head's rate when the line is written, and kept, so a later change
+    # of rate never alters an invoice already issued.
+    vat = models.DecimalField(max_digits=12, decimal_places=2, default=ZERO)
 
     def __str__(self):
         return f"{self.category} {self.amount}"
@@ -254,8 +281,11 @@ class FeePayment(SchoolScopedModel):
         CASH = "cash", "Cash"
         BANK = "bank", "Bank transfer / cheque"
         MOBILE = "mobile", "Mobile banking (bKash / Nagad / Rocket)"
+        ONLINE = "online", "Paid online (payment gateway)"
 
-    METHOD_ACCOUNT_CODE = {"cash": "1010", "bank": "1020", "mobile": "1030"}
+    # Online payments land in a clearing account: the gateway holds the money until it
+    # settles to the school's bank, less its charges.
+    METHOD_ACCOUNT_CODE = {"cash": "1010", "bank": "1020", "mobile": "1030", "online": "1040"}
 
     receipt_no = models.CharField(max_length=30)
     invoice = models.ForeignKey(FeeInvoice, on_delete=models.PROTECT, related_name="payments")
@@ -316,6 +346,11 @@ class FeePayment(SchoolScopedModel):
                 raise ValidationError("Fee categories must use income accounts from the same school.")
             if item.amount > 0:
                 amounts[account.pk] = amounts.get(account.pk, ZERO) + item.amount
+        vat = sum((item.vat for item in self.invoice.items.all()), ZERO)
+        if vat > 0:
+            # The VAT share of what was received is owed to the tax authority, not earned.
+            payable = Account.objects.get(school=self.school, code="2020")
+            amounts[payable.pk] = amounts.get(payable.pk, ZERO) + vat
         if not amounts:
             amounts[fallback.pk] = self.amount
         total = sum(amounts.values(), ZERO)
