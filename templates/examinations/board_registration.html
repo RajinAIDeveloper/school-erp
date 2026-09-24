@@ -1,0 +1,43 @@
+{% extends "layouts/base.html" %}
+{% block header_actions %}
+  {% if level %}
+    <a href="?class_level={{ level.pk }}&format=csv" class="btn-secondary btn-sm">CSV</a>
+    <a href="?class_level={{ level.pk }}&format=xlsx" class="btn-secondary btn-sm">Excel</a>
+  {% endif %}
+{% endblock %}
+{% block content %}
+<div class="mb-4 rounded-md border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+  The fields the education board's registration (eSIF) asks for, for a national-curriculum class in
+  {{ year|default:"the current year" }}. Fix the gaps listed first, then check the file against the
+  board's portal before entering it there. The file holds birth registration and parents' NID numbers:
+  keep it private and delete it once entered.
+</div>
+<form method="get" class="mb-4 flex items-end gap-3">
+  <div><label class="label" for="class_level">Class</label>
+    <select id="class_level" name="class_level" class="input w-48">
+      <option value="">Choose a class</option>
+      {% for lv in levels %}<option value="{{ lv.pk }}" {% if lv.pk == level.pk %}selected{% endif %}>{{ lv }}</option>{% endfor %}
+    </select></div>
+  <button class="btn-secondary">Show</button>
+</form>
+
+{% if level %}
+  {% if checks %}
+    <div class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+      <p class="font-medium">{{ checks|length }} gap{{ checks|length|pluralize }} to fill</p>
+      <ul class="mt-1 max-h-64 list-inside list-disc overflow-y-auto">{% for c in checks %}<li>{{ c }}</li>{% endfor %}</ul>
+    </div>
+  {% else %}
+    <p class="mb-4 text-sm text-emerald-700">No gaps found.</p>
+  {% endif %}
+  <div class="card overflow-x-auto">
+    <table class="table text-xs">
+      <thead><tr>{% for h in headers %}<th>{{ h }}</th>{% endfor %}</tr></thead>
+      <tbody>
+        {% for r in rows %}<tr>{% for v in r %}<td>{{ v }}</td>{% endfor %}</tr>
+        {% empty %}<tr><td colspan="{{ headers|length|default:1 }}">{% include "components/empty.html" with message="No students in this class." %}</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endif %}
+{% endblock %}

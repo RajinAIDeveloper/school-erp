@@ -1,3 +1,4 @@
+from datetime import date
 from decimal import Decimal, InvalidOperation
 from urllib.parse import urlencode
 
@@ -1344,6 +1345,7 @@ def series_detail(request, pk):
                     candidate=candidate,
                     candidate_number=request.POST.get("candidate_number", ""),
                     uci=request.POST.get("uci", ""),
+                    certificate_name=request.POST.get("certificate_name"),
                 )
                 messages.success(request, f"Updated {candidate.student}.")
             elif action == "add_entries":
@@ -1369,6 +1371,31 @@ def series_detail(request, pk):
                 )
                 note = f" ({skipped} already entered)" if skipped else ""
                 messages.success(request, f"Entered {made} candidate(s){note}.")
+            elif action == "arrangement":
+                from .candidates import save_arrangement
+                from .models import AccessArrangement
+
+                candidate = get_object_or_404(SeriesCandidate, series=series, pk=request.POST.get("candidate") or 0)
+                raw = request.POST.get("arrangement", "")
+                existing = (
+                    get_object_or_404(AccessArrangement, candidate__series=series, pk=raw) if raw.isdigit() else None
+                )
+                raw_consent = request.POST.get("consent_on", "")
+                try:
+                    consent = date.fromisoformat(raw_consent) if raw_consent else None
+                except ValueError:
+                    raise ValidationError("Enter the consent date as a date.") from None
+                save_arrangement(
+                    user=request.user,
+                    candidate=candidate,
+                    kind=request.POST.get("kind", ""),
+                    details=request.POST.get("details", ""),
+                    evidence=request.POST.get("evidence", ""),
+                    consent_on=consent,
+                    status=request.POST.get("status", "draft"),
+                    arrangement=existing,
+                )
+                messages.success(request, f"Saved the access arrangement for {candidate.student}.")
             elif action == "withdraw":
                 entry = get_object_or_404(SeriesEntry, candidate__series=series, pk=request.POST.get("entry") or 0)
                 withdraw_entry(user=request.user, entry=entry)
@@ -1377,12 +1404,24 @@ def series_detail(request, pk):
         except ValidationError as exc:
             messages.error(request, " ".join(exc.messages))
     candidates = series.candidates.select_related("student").prefetch_related("entries")
+    from .candidates import entry_problems
+    from .models import AccessArrangement
+
+    sees_arrangements = is_manager(request.user) and request.user.has_perm("examinations.view_accessarrangement")
     return render(
         request,
         "examinations/series_detail.html",
         {
             "series": series,
             "candidates": candidates,
+            "problems": entry_problems(series),
+            "arrangements": (
+                AccessArrangement.objects.filter(candidate__series=series).select_related("candidate__student")
+                if sees_arrangements
+                else None
+            ),
+            "arrangement_kinds": AccessArrangement.Kind.choices,
+            "arrangement_statuses": AccessArrangement.Status.choices,
             "sections": sections_for(request.user, request.school).select_related("class_level"),
             "subjects": Subject.objects.filter(school=request.school),
             "tiers": SeriesEntry.Tier.choices,
@@ -1689,5 +1728,69 @@ def combined_verify(request, code):
             "headline": headline(payload),
             "fingerprint": payload.get("fingerprint", ""),
             "page_title": "Report verification",
+        },
+    )
+
+
+@require_permission("examinations.view_examseries")
+def series_export(request, pk):
+    """The series' entries as a file for the exam officer to check and upload to the body's own system."""
+    from .candidates import entry_rows
+
+    series = _series(request, pk)
+    headers, rows = entry_rows(series)
+    fmt = "xlsx" if request.GET.get("format") == "xlsx" else "csv"
+    preamble = [
+        ("Series", str(series)),
+        ("Centre", series.centre_number or "not set"),
+        ("Entries", str(len(rows))),
+        ("Note", "Check against the body's entry system before uploading; this file is not sent anywhere."),
+    ]
+    return spreadsheet(f"entries-{series.pk}", headers, rows, fmt, preamble=preamble)
+
+
+@require_permission("students.view_student", also="managers only: identity numbers of students and parents")
+def board_registration(request):
+    """
+    The national board registration (eSIF) fields for a class, with the gaps to fill first.
+
+    It carries birth registration and parents' NID numbers, so only the school's managers
+    can open it.
+    """
+    from academics.models import AcademicYear
+
+    from .candidates import registration_rows
+
+    if not is_manager(request.user):
+        raise PermissionDenied("Only the school's managers can export registration data.")
+    year = AcademicYear.current_for(request.school)
+    levels = ClassLevel.objects.filter(school=request.school, is_active=True).order_by("order")
+    raw = request.GET.get("class_level", "")
+    level = levels.filter(pk=int(raw)).first() if raw.isdigit() else None
+    headers, rows, checks = registration_rows(year, level) if (year and level) else ([], [], [])
+    if level and request.GET.get("format") in ("csv", "xlsx"):
+        return spreadsheet(
+            f"board-registration-{level.pk}",
+            headers,
+            rows,
+            request.GET["format"],
+            preamble=[
+                ("Class", str(level)),
+                ("Year", str(year)),
+                ("Students", str(len(rows))),
+                ("Gaps to fill", str(len(checks))),
+            ],
+        )
+    return render(
+        request,
+        "examinations/board_registration.html",
+        {
+            "levels": levels,
+            "level": level,
+            "year": year,
+            "headers": headers,
+            "rows": rows,
+            "checks": checks,
+            "page_title": "Board registration data",
         },
     )

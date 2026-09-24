@@ -1,6 +1,7 @@
 {% extends "layouts/base.html" %}
 {% block header_actions %}
   {% if perms.examinations.add_examseries %}<a href="{% url 'examinations:series_create' %}" class="btn-primary btn-sm">New series</a>{% endif %}
+  {% if perms.students.view_student %}<a href="{% url 'examinations:board_registration' %}" class="btn-secondary btn-sm">Board registration (eSIF) data</a>{% endif %}
 {% endblock %}
 {% block content %}
 <div class="mb-4 rounded-md border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">

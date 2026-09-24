@@ -73,6 +73,7 @@ quietly join it.
 | /exams/marks/ | examinations:marks | `examinations.view_mark` | assigned subjects and sections only | Y | Y | . | Y | . | . | . |
 | /exams/marks/save/ | examinations:save_mark | `examinations.change_mark` | - | Y | Y | . | Y | . | . | . |
 | /exams/progress/<int:student_pk>/ | examinations:progress | `(sign-in only)` | - | o | o | o | o | o | o | o |
+| /exams/registration/ | examinations:board_registration | `students.view_student` | managers only: identity numbers of students and parents | Y | Y | Y | Y | . | . | . |
 | /exams/report-cards.pdf | examinations:report_cards | `examinations.view_mark` | own sections, published only | Y | Y | . | Y | . | . | . |
 | /exams/results/ | examinations:results | `examinations.view_mark` | own sections only | Y | Y | . | Y | . | . | . |
 | /exams/scale/ | examinations:scale_list | `examinations.view_gradescale` | - | Y | Y | . | . | . | . | . |
@@ -87,6 +88,7 @@ quietly join it.
 | /exams/schedule/new/ | examinations:schedule_create | `examinations.add_examschedule` | - | Y | Y | . | . | . | . | . |
 | /exams/series/ | examinations:series_list | `examinations.view_examseries` | - | Y | Y | . | . | . | . | . |
 | /exams/series/<int:pk>/ | examinations:series_detail | `examinations.view_examseries` | - | Y | Y | . | . | . | . | . |
+| /exams/series/<int:pk>/entries.csv | examinations:series_export | `examinations.view_examseries` | - | Y | Y | . | . | . | . | . |
 | /exams/series/<int:pk>/results/ | examinations:series_results | `examinations.view_officialresult` | - | Y | Y | . | . | . | . | . |
 | /exams/series/manage/ | examinations:series_list | `examinations.view_examseries` | - | Y | Y | . | . | . | . | . |
 | /exams/series/manage/<int:pk>/edit/ | examinations:series_update | `examinations.change_examseries` | - | Y | Y | . | . | . | . | . |

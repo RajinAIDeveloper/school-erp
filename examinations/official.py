@@ -70,9 +70,14 @@ def add_candidates(*, user, series, students, first_number=None):
 
 
 @transaction.atomic
-def update_candidate(*, user, candidate, candidate_number, uci=""):
+def update_candidate(*, user, candidate, candidate_number, uci="", certificate_name=None):
     _allowed(user, candidate.school, "examinations.change_seriescandidate")
     number, uci = (candidate_number or "").strip(), (uci or "").strip()
+    if certificate_name is not None:
+        name = certificate_name.strip()
+        if len(name) > 60:
+            raise ValidationError("The name on the certificate can be at most 60 characters.")
+        candidate.certificate_name = name
     if not number or len(number) > 12:
         raise ValidationError("Give the candidate number the body issued, up to 12 characters.")
     if (
@@ -82,7 +87,7 @@ def update_candidate(*, user, candidate, candidate_number, uci=""):
     ):
         raise ValidationError(f"Candidate number {number} is already used in this series.")
     candidate.candidate_number, candidate.uci = number, uci[:20]
-    candidate.save(update_fields=["candidate_number", "uci", "updated_at"])
+    candidate.save(update_fields=["candidate_number", "uci", "certificate_name", "updated_at"])
     return candidate
 
 

@@ -488,6 +488,11 @@ class SeriesCandidate(SchoolScopedModel):
     student = models.ForeignKey("students.Student", on_delete=models.PROTECT, related_name="series_candidacies")
     candidate_number = models.CharField(max_length=12)
     uci = models.CharField("Unique candidate identifier", max_length=20, blank=True)
+    certificate_name = models.CharField(
+        max_length=60,
+        blank=True,
+        help_text="The name as it should print on the certificate, up to 60 characters. Blank uses the student's name.",
+    )
 
     class Meta:
         ordering = ["candidate_number"]
@@ -638,3 +643,39 @@ class CombinedSnapshot(SchoolScopedModel):
                 fields=["combined", "enrollment", "version"], name="one_combined_snapshot_per_version"
             )
         ]
+
+
+class AccessArrangement(SchoolScopedModel):
+    """
+    An access arrangement asked of an awarding body for one candidate: extra time, a reader,
+    a scribe, a separate room. It carries sensitive information about a child, so only the
+    school's managers see it, and the guardian's consent is recorded before it is sent.
+    """
+
+    class Kind(models.TextChoices):
+        EXTRA_TIME = "extra_time", "Extra time"
+        READER = "reader", "Reader or computer reader"
+        SCRIBE = "scribe", "Scribe or word processor"
+        ROOM = "room", "Separate room"
+        BREAKS = "breaks", "Supervised rest breaks"
+        OTHER = "other", "Other"
+
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Being prepared"
+        APPLIED = "applied", "Applied for"
+        APPROVED = "approved", "Approved by the body"
+        REFUSED = "refused", "Refused by the body"
+
+    candidate = models.ForeignKey(SeriesCandidate, on_delete=models.CASCADE, related_name="access_arrangements")
+    kind = models.CharField(max_length=12, choices=Kind.choices)
+    details = models.CharField(max_length=200, blank=True, help_text="e.g. 25% extra time in written papers.")
+    evidence = models.CharField(max_length=200, blank=True, help_text="What supports it; keep the documents offline.")
+    consent_on = models.DateField(null=True, blank=True, help_text="When the guardian consented to the application.")
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.DRAFT)
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
+
+    class Meta:
+        ordering = ["candidate__candidate_number", "kind"]
+
+    def __str__(self):
+        return f"{self.candidate} {self.get_kind_display()}"

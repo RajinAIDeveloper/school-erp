@@ -2,6 +2,8 @@
 {% block header_actions %}
   <a href="{% url 'examinations:series_list' %}" class="btn-secondary btn-sm">All series</a>
   {% if perms.examinations.view_officialresult %}<a href="{% url 'examinations:series_results' series.pk %}" class="btn-secondary btn-sm">Official results</a>{% endif %}
+  <a href="{% url 'examinations:series_export' series.pk %}" class="btn-secondary btn-sm">Entries CSV</a>
+  <a href="{% url 'examinations:series_export' series.pk %}?format=xlsx" class="btn-secondary btn-sm">Excel</a>
 {% endblock %}
 {% block content %}
 <div class="mb-4 grid gap-3 text-sm sm:grid-cols-4">
@@ -10,6 +12,13 @@
   <div class="card card-body"><p class="text-xs text-slate-500">Results released</p><p class="font-semibold">{{ series.results_date|date:"d M Y"|default:"—" }}</p></div>
   <div class="card card-body"><p class="text-xs text-slate-500">Candidates</p><p class="font-semibold">{{ candidates|length }}</p></div>
 </div>
+
+{% if problems %}
+  <div class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+    <p class="font-medium">Check before sending entries</p>
+    <ul class="mt-1 list-inside list-disc">{% for p in problems %}<li>{{ p }}</li>{% endfor %}</ul>
+  </div>
+{% endif %}
 
 {% if perms.examinations.add_seriescandidate %}
   <form method="post" class="card card-body mb-4 flex flex-wrap items-end gap-3">
@@ -72,12 +81,13 @@
         <tbody>
           {% for c in candidates %}
             <tr class="align-top">
-              <td class="w-72">
+              <td class="w-[36rem]">
                 {% if perms.examinations.change_seriescandidate %}
                   <form method="post" class="flex gap-2">
                     {% csrf_token %}<input type="hidden" name="action" value="update_candidate"><input type="hidden" name="candidate" value="{{ c.pk }}">
                     <input name="candidate_number" value="{{ c.candidate_number }}" maxlength="12" class="input w-24 py-1 text-sm font-mono">
                     <input name="uci" value="{{ c.uci }}" maxlength="20" placeholder="UCI" class="input w-32 py-1 text-sm font-mono">
+                    <input name="certificate_name" value="{{ c.certificate_name }}" maxlength="60" placeholder="Name on certificate" class="input w-48 py-1 text-sm">
                     <button class="btn-secondary btn-sm">Save</button>
                   </form>
                 {% endif %}
@@ -97,5 +107,36 @@
       </table>
     </div>
   </details>
+{% endif %}
+{% if arrangements is not None %}
+  <section class="card mt-4">
+    <div class="card-header"><h3 class="font-semibold">Access arrangements</h3><span class="text-xs text-slate-500">Seen only by the school's managers</span></div>
+    <div class="overflow-x-auto">
+      <table class="table">
+        <thead><tr><th>Candidate</th><th>Arrangement</th><th>Details</th><th>Consent</th><th>Status</th></tr></thead>
+        <tbody>
+          {% for a in arrangements %}
+            <tr><td>{{ a.candidate.candidate_number }} {{ a.candidate.student.full_name }}</td><td>{{ a.get_kind_display }}</td>
+              <td class="text-sm">{{ a.details }}{% if a.evidence %}<br><span class="text-xs text-slate-500">{{ a.evidence }}</span>{% endif %}</td>
+              <td class="text-sm">{{ a.consent_on|date:"d M Y"|default:"Not yet" }}</td><td class="text-sm">{{ a.get_status_display }}</td></tr>
+          {% empty %}
+            <tr><td colspan="5">{% include "components/empty.html" with message="No access arrangements recorded." %}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if candidates %}
+      <form method="post" class="grid gap-3 border-t border-slate-200 px-5 py-4 sm:grid-cols-3">
+        {% csrf_token %}<input type="hidden" name="action" value="arrangement">
+        <div><label class="label">Candidate</label><select name="candidate" class="input">{% for c in candidates %}<option value="{{ c.pk }}">{{ c.candidate_number }} {{ c.student.full_name }}</option>{% endfor %}</select></div>
+        <div><label class="label">Arrangement</label><select name="kind" class="input">{% for v, l in arrangement_kinds %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select></div>
+        <div><label class="label">Status</label><select name="status" class="input">{% for v, l in arrangement_statuses %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select></div>
+        <div><label class="label">Details</label><input name="details" maxlength="200" class="input" placeholder="25% extra time"></div>
+        <div><label class="label">Evidence</label><input name="evidence" maxlength="200" class="input" placeholder="Assessor's report, 2026"></div>
+        <div><label class="label">Guardian consented on</label><input type="date" name="consent_on" class="input"></div>
+        <div class="sm:col-span-3 text-right"><button class="btn-secondary">Record arrangement</button></div>
+      </form>
+    {% endif %}
+  </section>
 {% endif %}
 {% endblock %}
