@@ -1300,3 +1300,554 @@ msgstr "মেয়ে"
 
 msgid "Other"
 msgstr "অন্যান্য"
+
+# ---- homework
+
+msgid "Homework"
+msgstr "বাড়ির কাজ"
+
+msgid "due this week"
+msgstr "এই সপ্তাহে জমা"
+
+msgid "overdue"
+msgstr "সময় পেরিয়েছে"
+
+msgid "Set homework"
+msgstr "বাড়ির কাজ দিন"
+
+msgid "Homework settings"
+msgstr "বাড়ির কাজের সেটিংস"
+
+msgid "Upcoming"
+msgstr "আসন্ন"
+
+msgid "To check"
+msgstr "দেখা বাকি"
+
+msgid "Scheduled"
+msgstr "নির্ধারিত সময়ে যাবে"
+
+msgid "Drafts"
+msgstr "খসড়া"
+
+msgid "Past"
+msgstr "আগের"
+
+msgid "Withdrawn"
+msgstr "প্রত্যাহার করা"
+
+msgid "All"
+msgstr "সব"
+
+msgid "Due"
+msgstr "জমার সময়"
+
+msgid "Done"
+msgstr "করা হয়েছে"
+
+msgid "Not checked"
+msgstr "দেখা হয়নি"
+
+msgid "min"
+msgstr "মিনিট"
+
+msgid "chosen students"
+msgstr "নির্বাচিত শিক্ষার্থী"
+
+msgid "Goes out"
+msgstr "যাবে"
+
+msgid "Nothing here."
+msgstr "এখানে কিছু নেই।"
+
+msgid "Which class and subject is it for?"
+msgstr "কোন শ্রেণি ও বিষয়ের জন্য?"
+
+msgid "Choose"
+msgstr "বেছে নিন"
+
+msgid "You are not down to teach any subject this year. Ask the office to add you under Subjects and teaching."
+msgstr "এ বছর আপনার নামে কোনো বিষয় পড়ানোর দায়িত্ব নেই। Subjects and teaching-এ আপনাকে যোগ করতে অফিসকে বলুন।"
+
+msgid "Back to the homework"
+msgstr "বাড়ির কাজে ফিরে যান"
+
+msgid "Another class or subject"
+msgstr "অন্য শ্রেণি বা বিষয়"
+
+msgid "Copied from"
+msgstr "যেখান থেকে কপি"
+
+msgid "Title"
+msgstr "শিরোনাম"
+
+msgid "What it practises"
+msgstr "কী অনুশীলন হবে"
+
+msgid "One line. Families see it first, so they know why it matters."
+msgstr "এক লাইনে লিখুন। পরিবার এটি আগে দেখবে, তাই বুঝবে কাজটি কেন দরকার।"
+
+msgid "Instructions"
+msgstr "নির্দেশনা"
+
+msgid "Kind of work"
+msgstr "কাজের ধরন"
+
+msgid "How it is handed in"
+msgstr "কীভাবে জমা হবে"
+
+msgid "Time needed (minutes)"
+msgstr "প্রয়োজনীয় সময় (মিনিট)"
+
+msgid "About how long a typical student needs. It is added to the day's load below."
+msgstr "একজন সাধারণ শিক্ষার্থীর মোটামুটি কত সময় লাগবে। নিচে দিনের মোট কাজে এটি যোগ হবে।"
+
+msgid "Marking"
+msgstr "মূল্যায়ন"
+
+msgid "Marked out of"
+msgstr "পূর্ণ নম্বর"
+
+msgid "Only when the marking is Marks."
+msgstr "শুধু মূল্যায়ন নম্বরে হলে।"
+
+msgid "Show the mark to the student and family when the work is returned"
+msgstr "কাজ ফেরত দিলে শিক্ষার্থী ও পরিবারকে নম্বর দেখান"
+
+msgid "When is it due?"
+msgstr "কবে জমা দিতে হবে?"
+
+msgid "Each section's next lesson in the subject is suggested. The week shows the minutes of homework already due."
+msgstr "প্রতিটি শাখায় বিষয়টির পরের ক্লাস প্রস্তাব করা হয়েছে। সপ্তাহের ঘরে আগে থেকে জমা থাকা বাড়ির কাজের মিনিট দেখানো হয়েছে।"
+
+msgid "Time"
+msgstr "সময়"
+
+msgid "Suggested:"
+msgstr "প্রস্তাবিত:"
+
+msgid "The school is closed that day."
+msgstr "সেদিন বিদ্যালয় বন্ধ।"
+
+msgid "Over the school's daily limit for this class on the due day. You can still set it."
+msgstr "জমার দিনে এই শ্রেণির জন্য বিদ্যালয়ের দৈনিক সীমা ছাড়িয়ে যাচ্ছে। তবুও আপনি কাজটি দিতে পারেন।"
+
+msgid "Minutes due each school day, with this homework on its due day."
+msgstr "প্রতিটি স্কুল-দিনে জমার মিনিট, জমার দিনে এই কাজসহ।"
+
+msgid "Daily limit:"
+msgstr "দৈনিক সীমা:"
+
+msgid "Check the load again"
+msgstr "আবার মোট কাজ দেখুন"
+
+msgid "After changing a date or the time needed."
+msgstr "তারিখ বা প্রয়োজনীয় সময় বদলানোর পরে।"
+
+msgid "Only for chosen students"
+msgstr "শুধু নির্বাচিত শিক্ষার্থীদের জন্য"
+
+msgid "For extension or catch-up work. Otherwise everyone who takes the subject in the sections ticked gets it."
+msgstr "বাড়তি বা পিছিয়ে পড়া পূরণের কাজের জন্য। না হলে টিক দেওয়া শাখাগুলোতে বিষয়টি যারা পড়ে সবাই পাবে।"
+
+msgid "Choose students"
+msgstr "শিক্ষার্থী বেছে নিন"
+
+msgid "Save changes"
+msgstr "পরিবর্তন সংরক্ষণ করুন"
+
+msgid "Set it now"
+msgstr "এখনই দিন"
+
+msgid "Or send it out at"
+msgstr "অথবা এই সময়ে পাঠান"
+
+msgid "Schedule"
+msgstr "সময় নির্ধারণ করুন"
+
+msgid "Save as draft"
+msgstr "খসড়া হিসেবে রাখুন"
+
+msgid "Families see homework once it is set. A draft is seen only by you and the school's managers."
+msgstr "কাজ দেওয়ার পরই পরিবার দেখতে পায়। খসড়া শুধু আপনি ও বিদ্যালয়ের ব্যবস্থাপকেরা দেখেন।"
+
+msgid "Edit"
+msgstr "সম্পাদনা"
+
+msgid "Copy"
+msgstr "কপি"
+
+msgid "Draft: families cannot see it yet."
+msgstr "খসড়া: পরিবার এখনো দেখতে পাচ্ছে না।"
+
+msgid "Withdrawn: families no longer see it, and it is left out of every figure."
+msgstr "প্রত্যাহার করা হয়েছে: পরিবার আর দেখে না, কোনো হিসাবেও ধরা হয় না।"
+
+msgid "Scheduled: families see it from"
+msgstr "নির্ধারিত: পরিবার যখন থেকে দেখবে:"
+
+msgid "Handed in"
+msgstr "জমা"
+
+msgid "Time needed"
+msgstr "প্রয়োজনীয় সময়"
+
+msgid "out of"
+msgstr "পূর্ণমান"
+
+msgid "Set by"
+msgstr "দিয়েছেন"
+
+msgid "Actions"
+msgstr "করণীয়"
+
+msgid "Withdraw this homework? Families will no longer see it."
+msgstr "এই বাড়ির কাজ প্রত্যাহার করবেন? পরিবার আর দেখতে পাবে না।"
+
+msgid "Delete this homework for good?"
+msgstr "এই বাড়ির কাজ স্থায়ীভাবে মুছে ফেলবেন?"
+
+msgid "Delete"
+msgstr "মুছুন"
+
+msgid "Work has been recorded, so the subject, marking and who it is for are fixed."
+msgstr "কাজের রেকর্ড হয়ে গেছে, তাই বিষয়, মূল্যায়ন ও কার জন্য—এসব আর বদলানো যাবে না।"
+
+msgid "Partly"
+msgstr "আংশিক"
+
+msgid "Not done"
+msgstr "করা হয়নি"
+
+msgid "Absent or excused"
+msgstr "অনুপস্থিত বা অব্যাহতি"
+
+msgid "ticked at home"
+msgstr "বাড়িতে টিক দেওয়া"
+
+msgid "Check work"
+msgstr "কাজ দেখুন"
+
+msgid "No section of yours has this homework."
+msgstr "আপনার কোনো শাখায় এই বাড়ির কাজ নেই।"
+
+msgid "This work is not due yet. You can still record what you have seen."
+msgstr "এই কাজের সময় এখনো হয়নি। তবে যা দেখেছেন তা লিখে রাখতে পারেন।"
+
+msgid "Put it back"
+msgstr "ফিরিয়ে আনুন"
+
+msgid "Discard it"
+msgstr "বাদ দিন"
+
+msgid "For everyone:"
+msgstr "সবার জন্য:"
+
+msgid "All done"
+msgstr "সবাই করেছে"
+
+msgid "All not done"
+msgstr "কেউ করেনি"
+
+msgid "Then change the few who differ."
+msgstr "তারপর যাদের আলাদা, শুধু তাদের বদলান।"
+
+msgid "Mark"
+msgstr "নম্বর"
+
+msgid "Feedback"
+msgstr "মতামত"
+
+msgid "Moved or left"
+msgstr "অন্য শাখায় গেছে বা ছেড়ে গেছে"
+
+msgid "Ticked done at home by a guardian"
+msgstr "অভিভাবক বাড়িতে করা হয়েছে বলে টিক দিয়েছেন"
+
+msgid "Ticked done at home"
+msgstr "বাড়িতে করা হয়েছে বলে টিক দেওয়া"
+
+msgid "late"
+msgstr "দেরিতে"
+
+msgid "Returned"
+msgstr "ফেরত দেওয়া"
+
+msgid "No student in this section takes this subject."
+msgstr "এই শাখায় কেউ এই বিষয় পড়ে না।"
+
+msgid "Return checked work now: the family sees the feedback"
+msgstr "দেখা কাজ এখনই ফেরত দিন: পরিবার মতামত দেখবে"
+
+msgid "and the mark"
+msgstr "ও নম্বর"
+
+msgid "Save"
+msgstr "সংরক্ষণ করুন"
+
+msgid "Students absent from school on the due day start as Absent. Absent and Excused are left out of every figure."
+msgstr "জমার দিনে বিদ্যালয়ে অনুপস্থিত শিক্ষার্থীরা শুরুতে অনুপস্থিত থাকে। অনুপস্থিত ও অব্যাহতি কোনো হিসাবে ধরা হয় না।"
+
+msgid "You can read this but not change it."
+msgstr "আপনি এটি দেখতে পারবেন, বদলাতে পারবেন না।"
+
+msgid "What you typed on this computer at <span data-draft-time></span> was never saved."
+msgstr "এই কম্পিউটারে <span data-draft-time></span>-এ যা লিখেছিলেন তা সংরক্ষণ হয়নি।"
+
+msgid "Most homework due on one day"
+msgstr "এক দিনে সর্বোচ্চ বাড়ির কাজ"
+
+msgid "When a teacher sets homework, they see what the section already has due that day, and a warning if it goes over this. They can still set it. Leave a class blank for no warning."
+msgstr "শিক্ষক বাড়ির কাজ দেওয়ার সময় দেখবেন সেদিন শাখাটির আগে থেকে কত কাজ জমা আছে, আর এই সীমা ছাড়ালে সতর্কবার্তা পাবেন। তবুও কাজটি দিতে পারবেন। সতর্কবার্তা না চাইলে শ্রেণির ঘর ফাঁকা রাখুন।"
+
+msgid "A common guide is about 10 minutes for each year of school: 20 minutes in Class 2, 60 minutes in Class 6. Research finds heavy loads add stress without adding learning."
+msgstr "প্রচলিত নির্দেশিকা হলো প্রতি শ্রেণিতে প্রায় 10 মিনিট করে: দ্বিতীয় শ্রেণিতে 20 মিনিট, ষষ্ঠ শ্রেণিতে 60 মিনিট। গবেষণায় দেখা গেছে বেশি কাজ চাপ বাড়ায়, শেখা বাড়ায় না।"
+
+msgid "Minutes a day"
+msgstr "দিনে মিনিট"
+
+msgid "No current class, so no homework."
+msgstr "বর্তমানে কোনো শ্রেণিতে নেই, তাই বাড়ির কাজ নেই।"
+
+msgid "No homework set yet."
+msgstr "এখনো কোনো বাড়ির কাজ দেওয়া হয়নি।"
+
+msgid "Overdue"
+msgstr "সময় পেরিয়েছে"
+
+msgid "Due today or tomorrow"
+msgstr "আজ বা কাল জমা"
+
+msgid "Later this week"
+msgstr "এই সপ্তাহে পরে"
+
+msgid "Next week"
+msgstr "আগামী সপ্তাহ"
+
+msgid "Later"
+msgstr "পরে"
+
+msgid "Done and checked"
+msgstr "করা ও দেখা হয়েছে"
+
+msgid "the last month"
+msgstr "গত এক মাস"
+
+msgid "due"
+msgstr "জমা"
+
+msgid "To do"
+msgstr "করতে হবে"
+
+msgid "Ticked done"
+msgstr "করা হয়েছে বলে টিক"
+
+msgid "Partly done"
+msgstr "আংশিক করা"
+
+msgid "Excused"
+msgstr "অব্যাহতি"
+
+msgid "All homework"
+msgstr "সব বাড়ির কাজ"
+
+msgid "Why:"
+msgstr "কেন:"
+
+msgid "Teacher"
+msgstr "শিক্ষক"
+
+msgid "Where it stands"
+msgstr "বর্তমান অবস্থা"
+
+msgid "Ticked by a guardian"
+msgstr "অভিভাবক টিক দিয়েছেন"
+
+msgid "Ticked by the student"
+msgstr "শিক্ষার্থী টিক দিয়েছে"
+
+msgid "after the due time"
+msgstr "জমার সময়ের পরে"
+
+msgid "Checked by the teacher"
+msgstr "শিক্ষক দেখেছেন"
+
+msgid "Mark as done at home"
+msgstr "বাড়িতে করা হয়েছে বলে চিহ্নিত করুন"
+
+msgid "I have done it"
+msgstr "আমি করেছি"
+
+msgid "The teacher still checks the work in class."
+msgstr "শিক্ষক তবুও ক্লাসে কাজটি দেখবেন।"
+
+msgid "Take the tick back"
+msgstr "টিক তুলে নিন"
+
+msgid "From the teacher"
+msgstr "শিক্ষকের মতামত"
+
+msgid "%(section)s: give a due date and time."
+msgstr "%(section)s: জমার তারিখ ও সময় দিন।"
+
+msgid "Draft saved. Only you and the school's managers can see it."
+msgstr "খসড়া রাখা হয়েছে। শুধু আপনি ও বিদ্যালয়ের ব্যবস্থাপকেরা দেখতে পারবেন।"
+
+msgid "Homework set."
+msgstr "বাড়ির কাজ দেওয়া হয়েছে।"
+
+msgid "Homework scheduled."
+msgstr "বাড়ির কাজের সময় নির্ধারিত হয়েছে।"
+
+msgid "Changes saved."
+msgstr "পরিবর্তন সংরক্ষিত হয়েছে।"
+
+msgid "Edit homework"
+msgstr "বাড়ির কাজ সম্পাদনা"
+
+msgid "Set up the current academic year first."
+msgstr "আগে চলতি শিক্ষাবর্ষ ঠিক করুন।"
+
+msgid "Homework withdrawn. Families no longer see it."
+msgstr "বাড়ির কাজ প্রত্যাহার করা হয়েছে। পরিবার আর দেখতে পাবে না।"
+
+msgid "Homework deleted."
+msgstr "বাড়ির কাজ মুছে ফেলা হয়েছে।"
+
+msgid "Marks must be numbers."
+msgstr "নম্বর সংখ্যায় লিখুন।"
+
+msgid "Saved: %(n)s record(s) changed."
+msgstr "সংরক্ষিত: %(n)sটি রেকর্ড বদলেছে।"
+
+msgid "%(level)s: give minutes from 1 to 600, or leave it blank."
+msgstr "%(level)s: 1 থেকে 600 মিনিটের মধ্যে লিখুন, অথবা ফাঁকা রাখুন।"
+
+msgid "Daily limits saved."
+msgstr "দৈনিক সীমা সংরক্ষিত হয়েছে।"
+
+msgid "the next %(subject)s lesson"
+msgstr "%(subject)s-এর পরের ক্লাস"
+
+msgid "no school day found: choose a date"
+msgstr "কোনো স্কুল-দিন পাওয়া যায়নি: একটি তারিখ বেছে নিন"
+
+msgid "the next school day: %(subject)s is not on the routine"
+msgstr "পরের স্কুল-দিন: রুটিনে %(subject)s নেই"
+
+msgid "the next school day"
+msgstr "পরের স্কুল-দিন"
+
+msgid "Give the task a title."
+msgstr "কাজটির একটি শিরোনাম দিন।"
+
+msgid "The time needed must be from 1 to 300 minutes."
+msgstr "প্রয়োজনীয় সময় 1 থেকে 300 মিনিটের মধ্যে হতে হবে।"
+
+msgid "Say what the work is marked out of."
+msgstr "কাজটির পূর্ণ নম্বর কত, লিখুন।"
+
+msgid "Choose at least one section."
+msgstr "অন্তত একটি শাখা বেছে নিন।"
+
+msgid "A withdrawn task cannot be changed."
+msgstr "প্রত্যাহার করা কাজ বদলানো যায় না।"
+
+msgid "A published task cannot go back to being a draft; withdraw it instead."
+msgstr "দেওয়া কাজ আবার খসড়া করা যায় না; বরং প্রত্যাহার করুন।"
+
+msgid "This task is already out, so it cannot be scheduled."
+msgstr "কাজটি আগেই দেওয়া হয়েছে, তাই সময় নির্ধারণ করা যায় না।"
+
+msgid "Choose a time in the future to publish it."
+msgstr "দেওয়ার জন্য ভবিষ্যতের একটি সময় বেছে নিন।"
+
+msgid "Only a published task can be saved this way."
+msgstr "শুধু দেওয়া কাজই এভাবে সংরক্ষণ করা যায়।"
+
+msgid "%(section)s: the due time must come after the work goes out."
+msgstr "%(section)s: কাজ দেওয়ার পরের কোনো সময়কে জমার সময় করতে হবে।"
+
+msgid "Choose the students this work is for."
+msgstr "কাজটি কোন শিক্ষার্থীদের জন্য, বেছে নিন।"
+
+msgid "Some of the students chosen do not take this subject in these sections."
+msgstr "বেছে নেওয়া কয়েকজন এই শাখাগুলোতে বিষয়টি পড়ে না।"
+
+msgid "%(section)s: work has already been recorded there, so it cannot be taken off."
+msgstr "%(section)s: সেখানে কাজের রেকর্ড হয়ে গেছে, তাই বাদ দেওয়া যাবে না।"
+
+msgid "Only a published task can be withdrawn."
+msgstr "শুধু দেওয়া কাজই প্রত্যাহার করা যায়।"
+
+msgid "Work has already been recorded for this task, so it cannot be deleted. Withdraw it instead."
+msgstr "এই কাজের রেকর্ড হয়ে গেছে, তাই মোছা যাবে না। বরং প্রত্যাহার করুন।"
+
+msgid "This work is not open."
+msgstr "এই কাজটি খোলা নেই।"
+
+msgid "This work is handed in online."
+msgstr "এই কাজ অনলাইনে জমা দিতে হয়।"
+
+msgid "Your teacher has already checked this work, so it cannot be changed here."
+msgstr "শিক্ষক কাজটি দেখে ফেলেছেন, তাই এখানে বদলানো যাবে না।"
+
+msgid "Only published work can be checked."
+msgstr "শুধু দেওয়া কাজই দেখা যায়।"
+
+msgid "%(name)s: choose a status."
+msgstr "%(name)s: একটি অবস্থা বেছে নিন।"
+
+msgid "%(name)s: this work is not marked out of a number."
+msgstr "%(name)s: এই কাজে নম্বর দেওয়া হয় না।"
+
+msgid "%(name)s: give a mark from 0 to %(max)s."
+msgstr "%(name)s: 0 থেকে %(max)s-এর মধ্যে নম্বর দিন।"
+
+msgid "%(name)s: keep a grade to 10 characters."
+msgstr "%(name)s: গ্রেড 10 অক্ষরের মধ্যে রাখুন।"
+
+msgid "%(name)s: keep feedback to 1000 characters."
+msgstr "%(name)s: মতামত 1000 অক্ষরের মধ্যে রাখুন।"
+
+msgid "Practice"
+msgstr "অনুশীলন"
+
+msgid "Reading"
+msgstr "পড়া"
+
+msgid "Revision"
+msgstr "পুনরাবৃত্তি"
+
+msgid "Project"
+msgstr "প্রকল্প"
+
+msgid "Preparation"
+msgstr "প্রস্তুতি"
+
+msgid "Checked in class"
+msgstr "ক্লাসে দেখা হবে"
+
+msgid "Handed in online"
+msgstr "অনলাইনে জমা"
+
+msgid "Nothing to hand in"
+msgstr "কিছু জমা দিতে হবে না"
+
+msgid "No mark"
+msgstr "নম্বর নেই"
+
+msgid "Comment only"
+msgstr "শুধু মতামত"
+
+msgid "Not checked yet"
+msgstr "এখনো দেখা হয়নি"
+
+msgid "Work has already been recorded for this task, so its subject, marking and who it is for cannot change. Set a new task instead."
+msgstr "এই কাজের রেকর্ড হয়ে গেছে, তাই বিষয়, মূল্যায়ন ও কার জন্য—এসব বদলানো যাবে না। বরং নতুন কাজ দিন।"
+
+msgid "Someone else changed this work while you had it open: %(names)s. Nothing was saved; open the page again and check once more."
+msgstr "আপনি পাতাটি খোলা রাখার সময় অন্য কেউ এই কাজ বদলেছেন: %(names)s। কিছুই সংরক্ষিত হয়নি; পাতাটি আবার খুলে আরেকবার দেখুন।"
+
+msgid "%(section)s now has %(minutes)s minutes of homework due on %(day)s; the school's limit for the class is %(limit)s."
+msgstr "%(section)s-এ এখন %(day)s তারিখে %(minutes)s মিনিটের বাড়ির কাজ জমা; শ্রেণিটির জন্য বিদ্যালয়ের সীমা %(limit)s।"

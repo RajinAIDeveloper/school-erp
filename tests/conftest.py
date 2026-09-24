@@ -249,3 +249,34 @@ def igcse(erp):
             )
         )
     return SimpleNamespace(level=level, section=section, exam=exam, papers=papers, pupils=pupils, scale=scale)
+
+
+@pytest.fixture
+def homework(erp):
+    """
+    The school given the homework module, with Math on section A's routine: Monday in the
+    2nd period (10:00) and Wednesday in the 1st (09:00). The weekend is Friday and Saturday.
+    """
+    from datetime import time
+
+    from timetable.models import Period, RoutineSlot
+
+    erp.school.homework_enabled = True
+    erp.school.save()
+    first = Period.objects.create(school=erp.school, name="1st", order=1, start_time=time(9), end_time=time(9, 45))
+    second = Period.objects.create(school=erp.school, name="2nd", order=2, start_time=time(10), end_time=time(10, 45))
+    for weekday, period in ((1, second), (3, first)):
+        RoutineSlot.objects.create(
+            school=erp.school,
+            academic_year=erp.year,
+            section=erp.section,
+            weekday=weekday,
+            period=period,
+            subject=erp.subject,
+            teacher=erp.employee,
+        )
+    student_user = User.objects.create_user(username="ayesha", school=erp.school, password="Test-pass-9842")
+    student_user.groups.add(Group.objects.get(name="Student"))
+    erp.student.user = student_user
+    erp.student.save()
+    return SimpleNamespace(periods=(first, second), student_user=student_user)

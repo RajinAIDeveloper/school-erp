@@ -13,6 +13,7 @@ from .access import platform_admin, require_permission
 from .forms import FinancePolicyForm, NotificationSettingsForm, PaymentSettingsForm, SchoolForm, SMSSettingsForm
 from .mixins import ERPPermissionMixin
 from .models import AuditLog, audit
+from .modules import has_module
 
 
 @login_required
@@ -188,6 +189,13 @@ SETTINGS_CARDS = [
         "permission": "examinations.view_gradescale",
     },
     {
+        "title": "Homework",
+        "description": "How many minutes of homework each class should have due on one day.",
+        "url": "homework:limits",
+        "permission": "homework.change_dailylimit",
+        "module": "homework",
+    },
+    {
         "title": "Periods and rooms",
         "description": "The school day's periods, breaks and teaching rooms.",
         "url": "timetable:period_list",
@@ -238,7 +246,10 @@ def settings_hub(request):
     from django.urls import reverse
 
     cards = [
-        {**card, "href": reverse(card["url"])} for card in SETTINGS_CARDS if request.user.has_perm(card["permission"])
+        {**card, "href": reverse(card["url"])}
+        for card in SETTINGS_CARDS
+        if request.user.has_perm(card["permission"])
+        and (not card.get("module") or has_module(request.school, card["module"]))
     ]
     if not cards:
         raise PermissionDenied("You do not have access to any settings.")

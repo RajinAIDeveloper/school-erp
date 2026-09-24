@@ -1,0 +1,50 @@
+{% extends "layouts/base.html" %}
+{% load erp i18n %}
+{% block header_actions %}<a href="{% url 'homework:todo' %}?student={{ row.enrollment.student_id }}" class="btn-secondary btn-sm">{% translate "All homework" %}</a>{% endblock %}
+{% block content %}
+<div class="grid gap-6 lg:grid-cols-3">
+  <section class="card card-body lg:col-span-2">
+    <p class="text-sm text-slate-500">{{ task.subject.name }} · {% translate task.get_kind_display %} · {{ task.estimated_minutes }} {% translate "min" %}</p>
+    {% if task.purpose %}<p class="mt-3 rounded-md bg-indigo-50 px-3 py-2 text-sm text-indigo-900"><span class="font-semibold">{% translate "Why:" %}</span> {{ task.purpose }}</p>{% endif %}
+    {% if task.instructions %}<div class="mt-4 whitespace-pre-line text-slate-800">{{ task.instructions }}</div>{% endif %}
+    <dl class="mt-5 grid grid-cols-2 gap-3 text-sm">
+      <div><dt class="text-slate-500">{% translate "Due" %}</dt><dd class="font-medium {% if overdue %}text-red-700{% endif %}">{{ row.due_at|date:"l d M, H:i" }}</dd></div>
+      <div><dt class="text-slate-500">{% translate "How it is handed in" %}</dt><dd>{% translate task.get_hand_in_display %}</dd></div>
+      {% if task.teacher %}<div><dt class="text-slate-500">{% translate "Teacher" %}</dt><dd>{{ task.teacher }}</dd></div>{% endif %}
+      <div><dt class="text-slate-500">{% translate "Student" %}</dt><dd>{{ row.enrollment.student.full_name }}</dd></div>
+    </dl>
+  </section>
+
+  <section class="card card-body">
+    <h2 class="font-semibold">{% translate "Where it stands" %}</h2>
+    <p class="mt-2 text-lg font-semibold {% if row.status == 'not_done' or overdue %}text-red-700{% elif row.status == 'done' %}text-emerald-700{% endif %}">
+      {% if row.status == "pending" %}{% if overdue %}{% translate "Overdue" %}{% else %}{% translate "To do" %}{% endif %}
+      {% elif row.status == "done" and row.source == "family" and not row.checked_at %}{% translate "Ticked done" %}
+      {% else %}{% translate row.get_status_display %}{% endif %}</p>
+    {% if row.source == "family" %}
+      <p class="mt-1 text-xs text-slate-500">{% if row.by_guardian %}{% translate "Ticked by a guardian" %}{% else %}{% translate "Ticked by the student" %}{% endif %} · {{ row.handed_in_at|date:"d M, H:i" }}{% if row.late %} · {% translate "after the due time" %}{% endif %}</p>
+    {% endif %}
+    {% if row.checked_at %}<p class="mt-1 text-xs text-slate-500">{% translate "Checked by the teacher" %} · {{ row.checked_at|date:"d M" }}</p>{% endif %}
+
+    {% if can_tick %}
+      <form method="post" class="mt-4">{% csrf_token %}
+        {% if row.status == "pending" %}
+          <button class="btn-primary w-full" name="action" value="done">{% if is_guardian %}{% translate "Mark as done at home" %}{% else %}{% translate "I have done it" %}{% endif %}</button>
+          <p class="mt-2 text-xs text-slate-500">{% translate "The teacher still checks the work in class." %}</p>
+        {% elif row.source == "family" %}
+          <button class="btn-secondary w-full" name="action" value="undo">{% translate "Take the tick back" %}</button>
+        {% endif %}
+      </form>
+    {% endif %}
+  </section>
+</div>
+
+{% if returned and row.feedback or show_mark and row.mark is not None or show_mark and row.grade %}
+  <section class="card card-body mt-6">
+    <h2 class="font-semibold">{% translate "From the teacher" %}</h2>
+    {% if show_mark and row.mark is not None %}<p class="mt-2 text-2xl font-bold">{{ row.mark|mark }} <span class="text-base font-normal text-slate-500">/ {{ task.max_marks|mark }}</span></p>{% endif %}
+    {% if show_mark and row.grade %}<p class="mt-2 text-2xl font-bold">{{ row.grade }}</p>{% endif %}
+    {% if row.feedback %}<p class="mt-2 whitespace-pre-line text-slate-800">{{ row.feedback }}</p>{% endif %}
+  </section>
+{% endif %}
+{% endblock %}

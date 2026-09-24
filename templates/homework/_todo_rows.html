@@ -1,0 +1,24 @@
+{% load erp i18n %}
+<ul class="divide-y divide-slate-100">
+  {% for row in rows %}
+    <li>
+      <a href="{% url 'homework:todo_task' row.pk %}" class="flex items-start justify-between gap-3 px-5 py-3 hover:bg-slate-50">
+        <span class="min-w-0">
+          <span class="block font-medium text-slate-900">{{ row.task.title }}</span>
+          <span class="block text-xs text-slate-500">{{ row.task.subject.name }} · {{ row.task.estimated_minutes }} {% translate "min" %} · {% translate "due" %} {{ row.due_at|date:"D d M, H:i" }}</span>
+        </span>
+        <span class="shrink-0 text-right text-xs">
+          {% if row.status == "pending" %}
+            {% if row.due_at <= now %}<span class="rounded-full bg-red-100 px-2 py-0.5 font-semibold text-red-800">{% translate "Overdue" %}</span>
+            {% else %}<span class="rounded-full bg-slate-100 px-2 py-0.5 text-slate-700">{% translate "To do" %}</span>{% endif %}
+          {% elif row.status == "done" %}<span class="rounded-full bg-emerald-100 px-2 py-0.5 font-semibold text-emerald-800">{% if row.source == "family" and not row.checked_at %}{% translate "Ticked done" %}{% else %}{% translate "Done" %}{% endif %}</span>
+          {% elif row.status == "partial" %}<span class="rounded-full bg-amber-100 px-2 py-0.5 text-amber-800">{% translate "Partly done" %}</span>
+          {% elif row.status == "not_done" %}<span class="rounded-full bg-red-100 px-2 py-0.5 font-semibold text-red-800">{% translate "Not done" %}</span>
+          {% elif row.status == "absent" %}<span class="rounded-full bg-sky-100 px-2 py-0.5 text-sky-800">{% translate "Absent" %}</span>
+          {% else %}<span class="rounded-full bg-slate-100 px-2 py-0.5 text-slate-700">{% translate "Excused" %}</span>{% endif %}
+          {% if row.returned_at and row.feedback %}<span class="mt-1 block text-indigo-700">{% translate "Feedback" %}</span>{% endif %}
+        </span>
+      </a>
+    </li>
+  {% endfor %}
+</ul>

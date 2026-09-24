@@ -1,0 +1,84 @@
+{% extends "layouts/base.html" %}
+{% load erp i18n %}
+{% block header_actions %}<a href="{% url 'homework:detail' task.pk %}" class="btn-secondary btn-sm">{% translate "Back to the homework" %}</a>{% endblock %}
+{% block content %}
+<div class="mb-4 grid gap-4 sm:grid-cols-4">
+  <div class="stat"><p class="text-sm text-slate-500">{% translate "Due" %}</p><p class="mt-1 font-semibold">{{ target.due_at|date:"D d M, H:i" }}</p></div>
+  <div class="stat"><p class="text-sm text-slate-500">{% translate "Done" %}</p><p class="mt-1 text-2xl font-bold">{{ counts.done|add:counts.partial }} / {{ counts.expected }}</p></div>
+  <div class="stat"><p class="text-sm text-slate-500">{% translate "Not done" %}</p><p class="mt-1 text-2xl font-bold {% if counts.not_done %}text-red-600{% endif %}">{{ counts.not_done }}</p></div>
+  <div class="stat"><p class="text-sm text-slate-500">{% translate "Not checked" %}</p><p class="mt-1 text-2xl font-bold {% if due and counts.pending %}text-amber-600{% endif %}">{{ counts.pending }}</p></div>
+</div>
+
+{% if not due and editable %}
+  <p class="mb-4 rounded-md border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-700">{% translate "This work is not due yet. You can still record what you have seen." %}</p>
+{% endif %}
+
+<form method="post" class="card"{% if editable %} data-draft-key="homework:{{ task.pk }}:{{ target.section_id }}:{{ user.pk }}" data-draft-base="{{ draft_base }}"{% endif %}>
+  {% csrf_token %}
+  {% if editable %}
+    <div class="hidden border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-900" data-draft-banner>
+      <span>{% blocktranslate trimmed %}What you typed on this computer at <span data-draft-time></span> was never saved.{% endblocktranslate %}</span>
+      <button type="button" class="btn-secondary btn-sm ml-2" data-draft-restore>{% translate "Put it back" %}</button>
+      <button type="button" class="btn-secondary btn-sm ml-1" data-draft-discard>{% translate "Discard it" %}</button>
+    </div>
+    <div class="flex flex-wrap items-center gap-2 border-b border-slate-200 px-5 py-3">
+      <span class="text-sm text-slate-500">{% translate "For everyone:" %}</span>
+      <button type="button" class="btn-secondary btn-sm" data-mark-all="done">{% translate "All done" %}</button>
+      <button type="button" class="btn-secondary btn-sm" data-mark-all="not_done">{% translate "All not done" %}</button>
+      <button type="button" class="btn-secondary btn-sm" data-mark-all="pending">{% translate "Clear" %}</button>
+      <span class="text-xs text-slate-500">{% translate "Then change the few who differ." %}</span>
+    </div>
+  {% endif %}
+  <div class="overflow-x-auto">
+    <table class="table">
+      <thead><tr>
+        <th class="w-12">{% translate "Roll" %}</th><th>{% translate "Student" %}</th><th>{% translate "Status" %}</th><th>{% translate "Late" %}</th>
+        {% if task.marking == "marks" %}<th>{% translate "Mark" %} / {{ task.max_marks|mark }}</th>{% elif task.marking == "grade" %}<th>{% translate "Grade" %}</th>{% endif %}
+        <th>{% translate "Feedback" %}</th>
+      </tr></thead>
+      <tbody>
+        {% for row in rows %}
+          <tr>
+            <td class="text-slate-500">{{ row.enrollment.roll_number }}<input type="hidden" name="row" value="{{ row.pk }}"><input type="hidden" name="version_{{ row.pk }}" value="{{ row.version }}"></td>
+            <td class="font-medium">{{ row.enrollment.student.full_name }}
+              {% if row.left %}<span class="ml-1 rounded bg-slate-100 px-1.5 text-xs text-slate-600">{% translate "Moved or left" %}</span>{% endif %}
+              {% if row.source == "family" %}<p class="text-xs font-normal text-emerald-700">{% if row.by_guardian %}{% translate "Ticked done at home by a guardian" %}{% else %}{% translate "Ticked done at home" %}{% endif %} · {{ row.handed_in_at|date:"d M, H:i" }}{% if row.late %} · {% translate "late" %}{% endif %}</p>{% endif %}
+              {% if row.returned_at %}<p class="text-xs font-normal text-slate-500">{% translate "Returned" %} {{ row.returned_at|date:"d M" }}</p>{% endif %}
+            </td>
+            <td>
+              <div class="flex flex-wrap gap-1">
+                {% for value, label in choices %}
+                  <label class="cursor-pointer">
+                    <input type="radio" name="status_{{ row.pk }}" value="{{ value }}" class="peer sr-only" {% if row.shown_status == value %}checked{% endif %} {% if not editable %}disabled{% endif %}>
+                    <span class="inline-flex rounded-full border border-slate-200 px-2.5 py-1 text-xs peer-checked:border-transparent peer-checked:font-semibold
+                      {% if value == 'done' %}peer-checked:bg-emerald-100 peer-checked:text-emerald-800
+                      {% elif value == 'partial' %}peer-checked:bg-amber-100 peer-checked:text-amber-800
+                      {% elif value == 'not_done' %}peer-checked:bg-red-100 peer-checked:text-red-800
+                      {% elif value == 'absent' %}peer-checked:bg-sky-100 peer-checked:text-sky-800
+                      {% else %}peer-checked:bg-slate-200 peer-checked:text-slate-700{% endif %}">{% if value == 'pending' %}—{% else %}{{ label }}{% endif %}</span>
+                  </label>
+                {% endfor %}
+              </div>
+            </td>
+            <td><input type="checkbox" name="late_{{ row.pk }}" value="1" {% if row.late %}checked{% endif %} {% if not editable %}disabled{% endif %} aria-label="{% translate "Late" %}"></td>
+            {% if task.marking == "marks" %}<td><input class="input w-24" type="number" step="0.5" min="0" max="{{ task.max_marks|stringformat:'s' }}" name="mark_{{ row.pk }}" value="{{ row.mark|default_if_none:''|stringformat:'s' }}" {% if not editable %}disabled{% endif %} aria-label="{% translate "Mark" %}"></td>
+            {% elif task.marking == "grade" %}<td><input class="input w-20" maxlength="10" name="grade_{{ row.pk }}" value="{{ row.grade }}" {% if not editable %}disabled{% endif %} aria-label="{% translate "Grade" %}"></td>{% endif %}
+            <td><input class="input min-w-48" maxlength="1000" name="feedback_{{ row.pk }}" value="{{ row.feedback }}" {% if not editable %}disabled{% endif %} aria-label="{% translate "Feedback" %}"></td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6">{% translate "No student in this section takes this subject." as nothing %}{% include "components/empty.html" with message=nothing %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if editable and rows %}
+    <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-5 py-4">
+      <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="return_work" value="1" checked> {% translate "Return checked work now: the family sees the feedback" %}{% if task.marks_visible and task.marking != "none" %} {% translate "and the mark" %}{% endif %}</label>
+      <button class="btn-primary">{% translate "Save" %}</button>
+    </div>
+    <p class="px-5 pb-4 text-xs text-slate-500">{% translate "Students absent from school on the due day start as Absent. Absent and Excused are left out of every figure." %}</p>
+  {% elif not editable %}
+    <p class="border-t border-slate-200 px-5 py-3 text-sm text-slate-500">{% translate "You can read this but not change it." %}</p>
+  {% endif %}
+</form>
+{% endblock %}

@@ -41,6 +41,7 @@ def source_files():
         "holidays",
         "reports",
         "analytics",
+        "homework",
         "config",
         "templates",
     ):

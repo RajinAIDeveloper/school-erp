@@ -162,6 +162,16 @@ quietly join it.
 | /holidays/calendar/ | holidays:month | `holidays.view_holiday` | - | Y | Y | Y | Y | Y | Y | Y | Y |
 | /holidays/import-national/ | holidays:import_national | `holidays.add_holiday` | - | Y | Y | Y | . | . | . | . | . |
 | /holidays/new/ | holidays:create | `holidays.add_holiday` | - | Y | Y | Y | . | . | . | . | . |
+| /homework/ | homework:list | `homework.view_task` | own sections and subjects; a class teacher reads their section; homework module only | Y | Y | Y | . | Y | . | . | . |
+| /homework/<int:pk>/ | homework:detail | `homework.view_task` | own sections and subjects; a class teacher reads their section; homework module only | Y | Y | Y | . | Y | . | . | . |
+| /homework/<int:pk>/check/<int:section>/ | homework:check | `homework.view_submission` | teachers of the subject there; the class teacher reads it; homework module only | Y | Y | Y | . | Y | . | . | . |
+| /homework/<int:pk>/delete/ | homework:delete | `homework.delete_task` | the teacher of every section it is set for, or a manager; homework module only | Y | Y | Y | . | Y | . | . | . |
+| /homework/<int:pk>/edit/ | homework:edit | `homework.change_task` | the teacher of every section it is set for, or a manager; homework module only | Y | Y | Y | . | Y | . | . | . |
+| /homework/<int:pk>/withdraw/ | homework:withdraw | `homework.change_task` | the teacher of every section it is set for, or a manager; homework module only | Y | Y | Y | . | Y | . | . | . |
+| /homework/limits/ | homework:limits | `homework.change_dailylimit` | the school's managers; homework module only | Y | Y | Y | . | . | . | . | . |
+| /homework/new/ | homework:create | `homework.add_task` | own sections and subjects; homework module only | Y | Y | Y | . | Y | . | . | . |
+| /homework/todo/ | homework:todo | `(sign-in only)` | own children only; homework module only | o | o | o | o | o | o | o | o |
+| /homework/todo/<int:pk>/ | homework:todo_task | `(sign-in only)` | own children only; homework module only | o | o | o | o | o | o | o | o |
 | /language/ | set_language | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
 | /platform/ | platform | `(platform admin)` | platform administrator only | - | - | - | - | - | - | - | - |
 | /portal/ | portal:index | `(sign-in only)` | - | o | o | o | o | o | o | o | o |

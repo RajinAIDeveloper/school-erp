@@ -39,6 +39,16 @@ TRANSLATED_TEMPLATES = [
     "templates/analytics/paper.html",
     "templates/analytics/section.html",
     "templates/analytics/school.html",
+    # Homework, for teachers and for families.
+    "templates/homework/list.html",
+    "templates/homework/choose.html",
+    "templates/homework/form.html",
+    "templates/homework/detail.html",
+    "templates/homework/check.html",
+    "templates/homework/limits.html",
+    "templates/homework/todo.html",
+    "templates/homework/_todo_rows.html",
+    "templates/homework/todo_task.html",
 ]
 
 

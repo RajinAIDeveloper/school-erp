@@ -1,0 +1,49 @@
+{% extends "layouts/base.html" %}
+{% load erp i18n %}
+{% block header_actions %}
+  {% if can_set %}<a href="{% url 'homework:create' %}" class="btn-primary btn-sm">{% translate "Set homework" %}</a>{% endif %}
+  {% if perms.homework.change_dailylimit %}<a href="{% url 'homework:limits' %}" class="btn-secondary btn-sm">{% translate "Homework settings" %}</a>{% endif %}
+{% endblock %}
+{% block content %}
+<div class="mb-4 flex flex-wrap gap-1 border-b border-slate-200">
+  <a href="?tab=upcoming" class="px-3 py-2 text-sm {% if tab == 'upcoming' %}border-b-2 border-indigo-600 font-semibold text-indigo-700{% else %}text-slate-600{% endif %}">{% translate "Upcoming" %}</a>
+  <a href="?tab=check" class="px-3 py-2 text-sm {% if tab == 'check' %}border-b-2 border-indigo-600 font-semibold text-indigo-700{% else %}text-slate-600{% endif %}">{% translate "To check" %}{% if counts.check %} <span class="rounded-full bg-amber-500 px-1.5 text-xs text-white">{{ counts.check }}</span>{% endif %}</a>
+  <a href="?tab=scheduled" class="px-3 py-2 text-sm {% if tab == 'scheduled' %}border-b-2 border-indigo-600 font-semibold text-indigo-700{% else %}text-slate-600{% endif %}">{% translate "Scheduled" %}</a>
+  <a href="?tab=drafts" class="px-3 py-2 text-sm {% if tab == 'drafts' %}border-b-2 border-indigo-600 font-semibold text-indigo-700{% else %}text-slate-600{% endif %}">{% translate "Drafts" %}{% if counts.drafts %} <span class="text-xs text-slate-500">({{ counts.drafts }})</span>{% endif %}</a>
+  <a href="?tab=past" class="px-3 py-2 text-sm {% if tab == 'past' %}border-b-2 border-indigo-600 font-semibold text-indigo-700{% else %}text-slate-600{% endif %}">{% translate "Past" %}</a>
+  <a href="?tab=withdrawn" class="px-3 py-2 text-sm {% if tab == 'withdrawn' %}border-b-2 border-indigo-600 font-semibold text-indigo-700{% else %}text-slate-600{% endif %}">{% translate "Withdrawn" %}</a>
+</div>
+
+{% if subjects or sections %}
+<form method="get" class="mb-4 flex flex-wrap items-end gap-3" data-autosubmit>
+  <input type="hidden" name="tab" value="{{ tab }}">
+  <div><label class="label" for="subject">{% translate "Subject" %}</label>
+    <select id="subject" name="subject" class="input"><option value="">{% translate "All" %}</option>{% for s in subjects %}<option value="{{ s.pk }}" {% if chosen_subject == s.pk|stringformat:"s" %}selected{% endif %}>{{ s.name }}</option>{% endfor %}</select></div>
+  <div><label class="label" for="section">{% translate "Section" %}</label>
+    <select id="section" name="section" class="input"><option value="">{% translate "All" %}</option>{% for s in sections %}<option value="{{ s.pk }}" {% if chosen_section == s.pk|stringformat:"s" %}selected{% endif %}>{{ s }}</option>{% endfor %}</select></div>
+  <noscript><button class="btn-secondary">{% translate "Show" %}</button></noscript>
+</form>
+{% endif %}
+
+<div class="card overflow-x-auto">
+  <table class="table table-stack">
+    <thead><tr><th>{% translate "Homework" %}</th><th>{% translate "Class" %}</th><th>{% translate "Due" %}</th><th class="text-right">{% translate "Done" %}</th><th class="text-right">{% translate "Not checked" %}</th></tr></thead>
+    <tbody>
+      {% for task in page_obj %}
+        <tr>
+          <td data-label="{% translate "Homework" %}"><a class="link font-medium" href="{% url 'homework:detail' task.pk %}">{{ task.title }}</a>
+            <p class="text-xs text-slate-500">{{ task.subject.name }} · {% translate task.get_hand_in_display %} · {{ task.estimated_minutes }} {% translate "min" %}{% if task.selected_only %} · {% translate "chosen students" %}{% endif %}</p></td>
+          <td data-label="{% translate "Class" %}">{{ task.class_level }}</td>
+          <td data-label="{% translate "Due" %}" class="text-sm">{% for t in task.targets.all %}<span class="whitespace-nowrap">{{ t.section.name }}: {{ t.due_at|date:"D d M, H:i" }}</span>{% if not forloop.last %}<br>{% endif %}{% endfor %}
+            {% if task.status == "published" and task.publish_at > now %}<p class="text-xs text-indigo-700">{% translate "Goes out" %} {{ task.publish_at|date:"d M, H:i" }}</p>{% endif %}</td>
+          <td data-label="{% translate "Done" %}" class="sm:text-right">{{ task.done }} / {{ task.expected }}</td>
+          <td data-label="{% translate "Not checked" %}" class="sm:text-right {% if task.unchecked %}font-semibold text-amber-700{% endif %}">{{ task.unchecked }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5">{% translate "Nothing here." as nothing %}{% include "components/empty.html" with message=nothing %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% pagination page_obj %}
+{% endblock %}

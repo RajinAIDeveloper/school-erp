@@ -8,6 +8,7 @@ from django.utils.translation import gettext
 from attendance.models import StudentAttendance
 from core.access import require_permission, students_for
 from core.exports import spreadsheet
+from core.modules import has_module
 from examinations.models import ResultSnapshot
 from fees.models import FeeInvoice
 
@@ -52,6 +53,12 @@ def index(request):
         }
         for student in students
     ]
+    if has_module(request.school, "homework"):
+        from homework.family import due_counts
+
+        for card in cards:
+            enrollment = card["student"].current_enrollment
+            card["homework"] = due_counts(enrollment) if enrollment else None
     family_total = sum((card["owed"] for card in cards), start=Decimal("0.00"))
     return render(
         request,

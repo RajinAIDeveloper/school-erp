@@ -1,0 +1,23 @@
+{% extends "layouts/base.html" %}
+{% load erp i18n %}
+{% block header_actions %}<a href="{% url 'homework:list' %}" class="btn-secondary btn-sm">{% translate "Homework" %}</a>{% endblock %}
+{% block content %}
+<form method="post" class="card max-w-2xl">
+  {% csrf_token %}
+  <div class="card-header"><h2 class="font-semibold">{% translate "Most homework due on one day" %}</h2></div>
+  <div class="card-body">
+    <p class="mb-4 text-sm text-slate-600">{% translate "When a teacher sets homework, they see what the section already has due that day, and a warning if it goes over this. They can still set it. Leave a class blank for no warning." %}</p>
+    <p class="mb-4 text-xs text-slate-500">{% translate "A common guide is about 10 minutes for each year of school: 20 minutes in Class 2, 60 minutes in Class 6. Research finds heavy loads add stress without adding learning." %}</p>
+    <table class="table">
+      <thead><tr><th>{% translate "Class" %}</th><th>{% translate "Minutes a day" %}</th></tr></thead>
+      <tbody>
+        {% for level, limit in levels %}
+          <tr><td class="font-medium">{{ level }}</td>
+            <td><input class="input w-28" type="number" min="1" max="600" name="minutes_{{ level.pk }}" value="{{ limit.minutes|default_if_none:'' }}" aria-label="{% translate "Minutes a day" %}"></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="flex justify-end border-t border-slate-200 px-5 py-4"><button class="btn-primary">{% translate "Save" %}</button></div>
+</form>
+{% endblock %}

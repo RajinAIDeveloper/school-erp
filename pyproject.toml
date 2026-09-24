@@ -19,4 +19,5 @@ ignore = [
 [tool.ruff.lint.isort]
 known-first-party = ["core", "users", "academics", "students", "employees", "attendance",
                      "fees", "finance", "examinations", "timetable", "downloads",
-                     "messaging", "holidays", "reports", "config"]
+                     "messaging", "holidays", "reports", "analytics", "homework",
+                     "config"]

@@ -34,6 +34,7 @@ FULL_APP_ACCESS = {
         "downloads",
         "messaging",
         "holidays",
+        "homework",
         "auth",
     ],
     PRINCIPAL: [
@@ -46,6 +47,7 @@ FULL_APP_ACCESS = {
         "downloads",
         "messaging",
         "holidays",
+        "homework",
     ],
     ACCOUNTANT: ["fees", "finance"],
 }
@@ -108,6 +110,15 @@ EXPLICIT_PERMS = {
         ("downloads", "add_downloaditem"),
         ("downloads", "view_notice"),
         ("holidays", "view_holiday"),
+        # Homework for the sections and subjects they teach; the views narrow it further.
+        # Only a school given the homework module ever reaches these.
+        ("homework", "view_task"),
+        ("homework", "add_task"),
+        ("homework", "change_task"),
+        ("homework", "delete_task"),
+        ("homework", "view_submission"),
+        ("homework", "change_submission"),
+        ("homework", "view_dailylimit"),
         # Deliberately no employees.* here. A teacher opens their own staff file through
         # /employees/me/, which is ownership-checked in the view; the roster carries every
         # colleague's phone, NID and qualification and belongs to the office.

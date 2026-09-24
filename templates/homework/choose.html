@@ -1,0 +1,18 @@
+{% extends "layouts/base.html" %}
+{% load erp i18n %}
+{% block header_actions %}<a href="{% url 'homework:list' %}" class="btn-secondary btn-sm">{% translate "Homework" %}</a>{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header"><h2 class="font-semibold">{% translate "Which class and subject is it for?" %}</h2></div>
+  <ul class="divide-y divide-slate-100">
+    {% for level, subject, sections in units %}
+      <li class="flex flex-wrap items-center justify-between gap-2 px-5 py-3">
+        <span><span class="font-medium">{{ subject.name }}</span> <span class="text-sm text-slate-500">{{ level }} · {% for s in sections %}{{ s.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</span></span>
+        <a class="btn-primary btn-sm" href="?unit={{ level.pk }}-{{ subject.pk }}">{% translate "Choose" %}</a>
+      </li>
+    {% empty %}
+      <li>{% translate "You are not down to teach any subject this year. Ask the office to add you under Subjects and teaching." as nothing %}{% include "components/empty.html" with message=nothing %}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}

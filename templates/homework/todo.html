@@ -1,0 +1,32 @@
+{% extends "layouts/base.html" %}
+{% load erp i18n %}
+{% block content %}
+{% if students|length > 1 %}
+<form method="get" class="card card-body mb-4 flex flex-wrap items-end gap-3">
+  <div class="min-w-48 flex-1"><label class="label" for="student">{% translate "Student" %}</label>
+    <select id="student" class="input" name="student">{% for s in students %}<option value="{{ s.pk }}" {% if selected.pk == s.pk %}selected{% endif %}>{{ s.full_name }}</option>{% endfor %}</select></div>
+  <button class="btn-secondary">{% translate "Show" %}</button>
+</form>
+{% endif %}
+
+{% if not enrollment %}
+  {% translate "No current class, so no homework." as nothing %}{% include "components/empty.html" with message=nothing %}
+{% else %}
+  {% with g=groups %}
+  {% if not g.overdue and not g.soon and not g.week and not g.next and not g.later and not g.done %}
+    <div class="card">{% translate "No homework set yet." as nothing %}{% include "components/empty.html" with message=nothing %}</div>
+  {% endif %}
+  {% if g.overdue %}
+    <section class="card mb-4 border-red-200">
+      <div class="card-header bg-red-50"><h2 class="font-semibold text-red-800">{% translate "Overdue" %}</h2></div>
+      {% include "homework/_todo_rows.html" with rows=g.overdue %}
+    </section>
+  {% endif %}
+  {% if g.soon %}<section class="card mb-4"><div class="card-header"><h2 class="font-semibold">{% translate "Due today or tomorrow" %}</h2></div>{% include "homework/_todo_rows.html" with rows=g.soon %}</section>{% endif %}
+  {% if g.week %}<section class="card mb-4"><div class="card-header"><h2 class="font-semibold">{% translate "Later this week" %}</h2></div>{% include "homework/_todo_rows.html" with rows=g.week %}</section>{% endif %}
+  {% if g.next %}<section class="card mb-4"><div class="card-header"><h2 class="font-semibold">{% translate "Next week" %}</h2></div>{% include "homework/_todo_rows.html" with rows=g.next %}</section>{% endif %}
+  {% if g.later %}<section class="card mb-4"><div class="card-header"><h2 class="font-semibold">{% translate "Later" %}</h2></div>{% include "homework/_todo_rows.html" with rows=g.later %}</section>{% endif %}
+  {% if g.done %}<section class="card mb-4"><div class="card-header"><h2 class="font-semibold text-emerald-800">{% translate "Done and checked" %}</h2><span class="text-xs text-slate-500">{% translate "the last month" %}</span></div>{% include "homework/_todo_rows.html" with rows=g.done %}</section>{% endif %}
+  {% endwith %}
+{% endif %}
+{% endblock %}

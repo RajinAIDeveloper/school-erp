@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     "holidays",
     "reports",
     "analytics",
+    "homework",
 ]
 
 MIDDLEWARE = [

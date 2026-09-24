@@ -1,0 +1,67 @@
+{% extends "layouts/base.html" %}
+{% load erp i18n %}
+{% block header_actions %}
+  <a href="{% url 'homework:list' %}" class="btn-secondary btn-sm">{% translate "Homework" %}</a>
+  {% if can_manage and task.status != "withdrawn" %}<a href="{% url 'homework:edit' task.pk %}" class="btn-secondary btn-sm">{% translate "Edit" %}</a>{% endif %}
+  {% if perms.homework.add_task %}<a href="{% url 'homework:create' %}?copy={{ task.pk }}" class="btn-secondary btn-sm">{% translate "Copy" %}</a>{% endif %}
+{% endblock %}
+{% block content %}
+{% if task.status == "draft" %}
+  <p class="mb-4 rounded-md border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-700">{% translate "Draft: families cannot see it yet." %}</p>
+{% elif task.status == "withdrawn" %}
+  <p class="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800">{% translate "Withdrawn: families no longer see it, and it is left out of every figure." %}</p>
+{% elif scheduled %}
+  <p class="mb-4 rounded-md border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm text-indigo-900">{% translate "Scheduled: families see it from" %} {{ task.publish_at|date:"D d M Y, H:i" }}.</p>
+{% endif %}
+
+<div class="grid gap-6 lg:grid-cols-3">
+  <section class="card card-body lg:col-span-2">
+    <p class="text-sm text-slate-500">{{ task.class_level }} · {{ task.subject.name }} · {% translate task.get_kind_display %}</p>
+    {% if task.purpose %}<p class="mt-2 font-medium text-slate-800">{{ task.purpose }}</p>{% endif %}
+    {% if task.instructions %}<div class="mt-3 whitespace-pre-line text-slate-700">{{ task.instructions }}</div>{% endif %}
+    <dl class="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+      <div><dt class="text-slate-500">{% translate "Handed in" %}</dt><dd>{% translate task.get_hand_in_display %}</dd></div>
+      <div><dt class="text-slate-500">{% translate "Time needed" %}</dt><dd>{{ task.estimated_minutes }} {% translate "min" %}</dd></div>
+      <div><dt class="text-slate-500">{% translate "Marking" %}</dt><dd>{% translate task.get_marking_display %}{% if task.max_marks %} ({% translate "out of" %} {{ task.max_marks|mark }}){% endif %}</dd></div>
+      <div><dt class="text-slate-500">{% translate "Set by" %}</dt><dd>{{ task.teacher|default:task.set_by|default:"—" }}</dd></div>
+    </dl>
+  </section>
+  <section class="card card-body">
+    <h2 class="font-semibold">{% translate "Actions" %}</h2>
+    <div class="mt-3 flex flex-wrap gap-2">
+      {% if can_manage and task.status == "published" %}
+        <form method="post" action="{% url 'homework:withdraw' task.pk %}" data-confirm="{% translate "Withdraw this homework? Families will no longer see it." %}">{% csrf_token %}
+          <button class="btn-secondary btn-sm">{% translate "Withdraw" %}</button></form>
+      {% endif %}
+      {% if can_manage and not answered or can_manage and task.status == "draft" %}
+        <form method="post" action="{% url 'homework:delete' task.pk %}" data-confirm="{% translate "Delete this homework for good?" %}">{% csrf_token %}
+          <button class="btn-danger btn-sm">{% translate "Delete" %}</button></form>
+      {% endif %}
+    </div>
+    {% if answered %}<p class="mt-3 text-xs text-slate-500">{% translate "Work has been recorded, so the subject, marking and who it is for are fixed." %}</p>{% endif %}
+  </section>
+</div>
+
+<section class="card mt-6 overflow-x-auto">
+  <div class="card-header"><h2 class="font-semibold">{% translate "Sections" %}</h2></div>
+  <table class="table table-stack">
+    <thead><tr><th>{% translate "Section" %}</th><th>{% translate "Due" %}</th><th class="text-right">{% translate "Done" %}</th><th class="text-right">{% translate "Partly" %}</th><th class="text-right">{% translate "Not done" %}</th><th class="text-right">{% translate "Not checked" %}</th><th class="text-right">{% translate "Absent or excused" %}</th><th></th></tr></thead>
+    <tbody>
+      {% for item in targets %}{% with c=item.counts t=item.target %}
+        <tr>
+          <td data-label="{% translate "Section" %}" class="font-medium">{{ t.section }}</td>
+          <td data-label="{% translate "Due" %}">{{ t.due_at|date:"D d M, H:i" }}</td>
+          <td data-label="{% translate "Done" %}" class="sm:text-right">{{ c.done }}{% if c.family %} <span class="text-xs text-slate-500">({{ c.family }} {% translate "ticked at home" %})</span>{% endif %}</td>
+          <td data-label="{% translate "Partly" %}" class="sm:text-right">{{ c.partial }}</td>
+          <td data-label="{% translate "Not done" %}" class="sm:text-right {% if c.not_done %}text-red-700{% endif %}">{{ c.not_done }}</td>
+          <td data-label="{% translate "Not checked" %}" class="sm:text-right {% if item.due and c.pending %}font-semibold text-amber-700{% endif %}">{{ c.pending }}</td>
+          <td data-label="{% translate "Absent or excused" %}" class="sm:text-right">{{ c.absent|add:c.excused }}</td>
+          <td class="sm:text-right">{% if task.status != "draft" %}<a class="{% if item.can_check %}btn-primary{% else %}btn-secondary{% endif %} btn-sm" href="{% url 'homework:check' task.pk t.section_id %}">{% if item.can_check %}{% translate "Check work" %}{% else %}{% translate "Open" %}{% endif %}</a>{% endif %}</td>
+        </tr>
+      {% endwith %}{% empty %}
+        <tr><td colspan="8">{% translate "No section of yours has this homework." as nothing %}{% include "components/empty.html" with message=nothing %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}
