@@ -21,6 +21,24 @@ from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, 
 from core.pdf import HEADER_FILL, RULE, data_table, document, letterhead, styles
 
 from .grading import headline, shows_rank
+from .parts import plain
+
+
+def mark_text(value):
+    """A mark as people write it, 92 rather than 92.00; words such as ABS or Exempt pass through."""
+    try:
+        return plain(value)
+    except (ArithmeticError, ValueError, TypeError):
+        return value
+
+
+def shows_points(row):
+    """Only rulebooks with grade points print a Points column; a Cambridge or IB card has none."""
+    return row.get("has_gpa", True)
+
+
+def total_text(row):
+    return f"{mark_text(row['total'])} / {mark_text(row['full_total'])}"
 
 
 def _facts(pairs, style, columns=3, width=178):
@@ -110,10 +128,10 @@ def card_rows(row):
         combined = len(papers) > 1
         for paper in papers:
             parts = " · ".join(
-                f"{part['name']} {part['score'] if part['score'] is not None else '—'}"
+                f"{part['name']} {mark_text(part['score']) if part['score'] is not None else '—'}"
                 for part in paper.get("components") or []
             )
-            obtained = "ABS" if paper["absent"] else ("—" if paper["missing"] else paper["score"])
+            obtained = "ABS" if paper["absent"] else ("—" if paper["missing"] else mark_text(paper["score"]))
             note = notes.get(str(paper.get("subject_id"))) or {}
             lines.append(
                 {
@@ -121,7 +139,7 @@ def card_rows(row):
                     "comment": note.get("comment", ""),
                     "code": paper.get("subject_code", ""),
                     "subject": paper["subject"] + (" (4th subject)" if paper.get("is_fourth") and not combined else ""),
-                    "full_marks": paper["full_marks"],
+                    "full_marks": mark_text(paper["full_marks"]),
                     "parts": parts,
                     "obtained": obtained,
                     "letter": "" if combined else ("—" if paper["missing"] else paper["letter"]),
@@ -130,14 +148,14 @@ def card_rows(row):
                 }
             )
         if combined:
-            obtained = "ABS" if unit["absent"] else ("—" if unit["missing"] else unit["score"])
+            obtained = "ABS" if unit["absent"] else ("—" if unit["missing"] else mark_text(unit["score"]))
             lines.append(
                 {
                     "effort": "",
                     "comment": "",
                     "code": "",
                     "subject": f"{unit['name']} (both papers)" + (" (4th subject)" if unit.get("is_fourth") else ""),
-                    "full_marks": unit["full_marks"],
+                    "full_marks": mark_text(unit["full_marks"]),
                     "parts": "",
                     "obtained": obtained,
                     "letter": "—" if unit["missing"] else unit["letter"],
@@ -195,21 +213,25 @@ def report_card_flowables(school, exam, enrollment, row, snapshot, style, verify
     lines = card_rows(row)
     show_parts = any(line["parts"] for line in lines)
     show_effort = any(line["effort"] for line in lines)
+    show_points = shows_points(row)
     effort_heading = row.get("effort_label") or "Effort"
     headers = (
         ["Code", "Subject", "Full marks"]
         + (["Parts"] if show_parts else [])
-        + ["Obtained", "Grade", "Points"]
+        + ["Obtained", "Grade"]
+        + (["Points"] if show_points else [])
         + ([effort_heading] if show_effort else [])
     )
     body = [
         [line["code"], line["subject"], line["full_marks"]]
         + ([line["parts"]] if show_parts else [])
-        + [line["obtained"], line["letter"], line["grade_point"]]
+        + [line["obtained"], line["letter"]]
+        + ([line["grade_point"]] if show_points else [])
         + ([line["effort"]] if show_effort else [])
         for line in lines
     ]
-    numeric = (2, 4, 6) if show_parts else (2, 3, 5)
+    obtained_at = 4 if show_parts else 3
+    numeric = (2, obtained_at) + ((obtained_at + 2,) if show_points else ())
     table = data_table(headers, body, style, align_right=numeric)
     words = [
         Paragraph(f"<b>{escape(line['subject'])}</b>: {escape(line['comment'])}", style["cell"])
@@ -231,7 +253,7 @@ def report_card_flowables(school, exam, enrollment, row, snapshot, style, verify
         )
 
     result_colour = "#047857" if row.get("result") == "PASS" else "#b91c1c"
-    summary_cells = [("Total", f"{row['total']} / {row['full_total']}")]
+    summary_cells = [("Total", total_text(row))]
     if row.get("has_gpa", True) and row.get("gpa") is not None:
         summary_cells.append(("GPA", f"{row['gpa']}" + (f" ({row['gpa_letter']})" if row.get("gpa_letter") else "")))
     elif row.get("points") is not None:

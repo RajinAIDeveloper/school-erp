@@ -65,6 +65,27 @@ class RegisterFilter(TailwindFormMixin, forms.Form):
             self.fields["section"].required = True
 
 
+def _filter_data(request, staff, sections):
+    """
+    What the register filter is bound to, and the initial values when it is left unbound.
+
+    Opening the screen, or following a link that carries only a date, picks the section when
+    the person has exactly one. With several to choose from the form waits for a choice
+    rather than greeting the teacher with an error they did not cause.
+    """
+    if request.method == "POST":
+        return request.POST, {}
+    data = request.GET.copy()
+    data.setdefault("date", timezone.localdate().isoformat())
+    if staff or data.get("section"):
+        return data, {}
+    only = list(sections.values_list("pk", flat=True)[:2])
+    if len(only) == 1:
+        data["section"] = str(only[0])
+        return data, {}
+    return None, {"date": data["date"]}
+
+
 class RowForm(forms.Form):
     status = forms.ChoiceField(choices=[("", "Not recorded"), *AttendanceStatus.choices], required=False)
     remarks = forms.CharField(max_length=200, required=False)
@@ -79,8 +100,10 @@ def register(request, staff=False):
     editable = request.user.has_perm(
         "attendance.change_staffattendance" if staff else "attendance.change_studentattendance"
     )
-    data = request.POST if request.method == "POST" else request.GET or {"date": timezone.localdate()}
-    form = RegisterFilter(data, user=request.user, school=request.school, staff=staff, taking=True)
+    from .services import register_sections
+
+    data, initial = _filter_data(request, staff, register_sections(request.user, request.school))
+    form = RegisterFilter(data, initial=initial, user=request.user, school=request.school, staff=staff, taking=True)
     rows = []
     closed = False
     if form.is_valid():
@@ -151,9 +174,8 @@ def report(request, staff=False):
     permission = "attendance.view_staffattendance" if staff else "attendance.view_studentattendance"
     if not request.user.has_perm(permission):
         raise PermissionDenied
-    form = RegisterFilter(
-        request.GET or {"date": timezone.localdate()}, user=request.user, school=request.school, staff=staff
-    )
+    data, initial = _filter_data(request, staff, sections_for(request.user, request.school))
+    form = RegisterFilter(data, initial=initial, user=request.user, school=request.school, staff=staff)
     days, rows = [], []
     if form.is_valid():
         day = form.cleaned_data["date"]

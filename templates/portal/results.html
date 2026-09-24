@@ -1,10 +1,41 @@
 {% extends "layouts/base.html" %}{% load erp i18n %}{% block content %}
 <form method="get" class="card card-body mb-4"><label class="label">{% translate "Student" %}</label><select class="input" name="student">{% for s in students %}<option value="{{ s.pk }}" {% if selected.pk == s.pk %}selected{% endif %}>{{ s.full_name }}</option>{% endfor %}</select><button class="btn-primary mt-4">{% translate "View results" %}</button></form>
-{% if selected %}<div class="card overflow-x-auto"><table class="table"><thead><tr><th>{% translate "Exam" %}</th><th>{% translate "Class" %}</th><th>{% translate "Score" %}</th><th>{% translate "Result" %}</th><th>{% translate "Report card" %}</th></tr></thead><tbody>
-{% for snapshot in snapshots %}<tr><td>{{ snapshot.exam.name }}</td><td>{{ snapshot.payload.section }}</td><td>{{ snapshot.payload.total }}/{{ snapshot.payload.full_total }}</td><td>{{ snapshot.payload|result_headline }}</td><td><a class="link" href="{% url 'examinations:report_card' snapshot.exam_id selected.pk %}">{% translate "View or download" %}</a></td></tr>
-{% empty %}<tr><td>{% translate "No published results for this student." %}</td></tr>{% endfor %}</tbody></table></div>
-{% if combined %}<div class="card mt-4 overflow-x-auto"><table class="table"><thead><tr><th>{% translate "Combined result" %}</th><th>{% translate "Score" %}</th><th>{% translate "Result" %}</th><th>{% translate "Report card" %}</th></tr></thead><tbody>
-{% for snapshot in combined %}<tr><td>{{ snapshot.combined.name }}</td><td>{{ snapshot.payload.percent|default:"—" }}%</td><td>{{ snapshot.payload|result_headline }}</td><td><a class="link" href="{% url 'examinations:combined_card' snapshot.combined_id selected.pk %}">{% translate "View or download" %}</a></td></tr>{% endfor %}</tbody></table></div>{% endif %}
+{% if selected %}
+<div class="card overflow-x-auto">
+  <table class="table table-stack">
+    <thead><tr><th>{% translate "Exam" %}</th><th>{% translate "Class" %}</th><th>{% translate "Score" %}</th><th>{% translate "Result" %}</th><th>{% translate "Report card" %}</th></tr></thead>
+    <tbody>
+      {% for snapshot in snapshots %}
+        <tr>
+          <td data-label="{% translate "Exam" %}" class="font-medium">{{ snapshot.exam.name }}</td>
+          <td data-label="{% translate "Class" %}">{{ snapshot.payload.section }}</td>
+          <td data-label="{% translate "Score" %}">{{ snapshot.payload.total|mark }} / {{ snapshot.payload.full_total|mark }}</td>
+          <td data-label="{% translate "Result" %}">{{ snapshot.payload|result_headline }}</td>
+          <td data-label="{% translate "Report card" %}"><a class="link" href="{% url 'examinations:report_card' snapshot.exam_id selected.pk %}">{% translate "View or download" %}</a></td>
+        </tr>
+      {% empty %}
+        <tr><td>{% translate "No published results for this student." %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% if combined %}
+<div class="card mt-4 overflow-x-auto">
+  <table class="table table-stack">
+    <thead><tr><th>{% translate "Combined result" %}</th><th>{% translate "Score" %}</th><th>{% translate "Result" %}</th><th>{% translate "Report card" %}</th></tr></thead>
+    <tbody>
+      {% for snapshot in combined %}
+        <tr>
+          <td data-label="{% translate "Combined result" %}" class="font-medium">{{ snapshot.combined.name }}</td>
+          <td data-label="{% translate "Score" %}">{{ snapshot.payload.percent|default:"—" }}%</td>
+          <td data-label="{% translate "Result" %}">{{ snapshot.payload|result_headline }}</td>
+          <td data-label="{% translate "Report card" %}"><a class="link" href="{% url 'examinations:combined_card' snapshot.combined_id selected.pk %}">{% translate "View or download" %}</a></td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
 <p class="mt-2 text-xs text-slate-500">{% translate "These are the school's own assessments." %}</p>
 {% if official_results %}<section class="card mt-6"><div class="card-header"><h3 class="font-semibold">{% translate "Official results" %}</h3><span class="text-xs text-slate-500">{% translate "As issued by the awarding body" %}</span></div>
 {% include "examinations/_official_results.html" with results=official_results staff=False %}</section>{% endif %}{% endif %}

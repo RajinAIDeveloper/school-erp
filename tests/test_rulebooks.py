@@ -467,3 +467,100 @@ def test_the_schools_own_rules_carry_no_awarding_body_notice(erp):
     client.force_login(erp.admin)
     body = client.get(f"/exams/{erp.exam.pk}/report/{erp.student.pk}/").content.decode()
     assert "not an official result" not in body
+
+
+# ================================================================ what a card prints
+
+
+def card_texts(flowables):
+    """Every piece of text in a card's PDF flowables, tables included."""
+    from reportlab.platypus import Paragraph, Table
+
+    out = []
+    for item in flowables:
+        if isinstance(item, Paragraph):
+            out.append(item.getPlainText())
+        elif isinstance(item, Table):
+            out.extend(card_texts([cell for row in item._cellvalues for cell in row]))
+        elif isinstance(item, list | tuple):
+            out.extend(card_texts(item))
+    return out
+
+
+def test_a_cambridge_card_prints_no_points_column_and_marks_without_decimals(erp, igcse):
+    from core.pdf import styles
+    from examinations.documents import report_card_flowables
+
+    mark_all(
+        erp,
+        igcse,
+        [
+            ({"mcq": "38", "theory": "76", "practical": "38"}, 92),
+            ({"mcq": "20", "theory": "40", "practical": "20"}, 55),
+        ],
+    )
+    publish_exam(igcse.exam, erp.admin)
+    client = Client()
+    client.force_login(erp.admin)
+    body = client.get(f"/exams/{igcse.exam.pk}/report/{igcse.pupils[0].student_id}/").content.decode()
+    assert "Points</th>" not in body
+    assert '<td class="text-right">95</td>' in body and '<td class="text-right">100</td>' in body
+    assert "95.00</td>" not in body and "100.00</td>" not in body
+    assert "Multiple choice 38" in body
+    assert "187 / 200" in body  # 95 + 92 of 200
+    snapshot = ResultSnapshot.objects.get(exam=igcse.exam, enrollment=igcse.pupils[0])
+    printed = card_texts(
+        report_card_flowables(erp.school, igcse.exam, igcse.pupils[0], snapshot.payload, snapshot, styles())
+    )
+    assert "Points" not in printed
+    assert "Total187 / 200" in printed and "95" in printed
+
+
+def test_a_cambridge_results_page_has_no_failed_or_pass_rate(erp, igcse):
+    import io
+
+    from openpyxl import load_workbook
+
+    mark_all(
+        erp,
+        igcse,
+        [
+            ({"mcq": "38", "theory": "76", "practical": "38"}, 92),
+            ({"mcq": "20", "theory": "40", "practical": "20"}, 55),
+        ],
+    )
+    client = Client()
+    client.force_login(erp.admin)
+    query = f"exam={igcse.exam.pk}&class_level={igcse.level.pk}"
+    body = client.get(f"/exams/results/?{query}").content.decode()
+    assert "Subject analysis" in body
+    assert "Failed</th>" not in body and "Pass %" not in body
+    workbook = load_workbook(io.BytesIO(client.get(f"/exams/results/?{query}&format=xlsx").content))
+    headings = [cell.value for cell in workbook["Subject analysis"][1]]
+    assert "Highest" in headings and "Failed" not in headings and "Pass percent" not in headings
+
+
+def test_a_school_with_grade_points_keeps_the_points_and_pass_rate(erp):
+    import io
+
+    from openpyxl import load_workbook
+
+    save_mark(user=erp.teacher, schedule=erp.schedule, enrollment=erp.enrollment, score=Decimal(80))
+    client = Client()
+    client.force_login(erp.admin)
+    card = client.get(f"/exams/{erp.exam.pk}/report/{erp.student.pk}/").content.decode()
+    assert "Points</th>" in card
+    assert '<td class="text-right">80</td>' in card and "80.00</td>" not in card
+    query = f"exam={erp.exam.pk}&class_level={erp.enrollment.class_level_id}"
+    body = client.get(f"/exams/results/?{query}").content.decode()
+    assert "Failed</th>" in body and "Pass %" in body
+    workbook = load_workbook(io.BytesIO(client.get(f"/exams/results/?{query}&format=xlsx").content))
+    assert "Pass percent" in [cell.value for cell in workbook["Subject analysis"][1]]
+
+
+def test_dates_kept_as_text_print_like_every_other_date():
+    from core.templatetags.erp import iso_date, mark
+
+    assert iso_date("2026-09-01") == "01 Sep 2026"
+    assert iso_date("") == ""
+    assert mark("92.00") == "92" and mark("37.50") == "37.5" and mark("ABS") == "ABS" and mark(None) is None

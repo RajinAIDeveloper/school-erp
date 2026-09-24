@@ -26,6 +26,9 @@
           <p class="font-semibold {% if card.owed > 0 %}text-red-600{% else %}text-emerald-700{% endif %}">{% money card.owed %}</p>
         </div>
       </div>
+      {% if card.owed > 0 %}
+        <a class="btn-primary mt-4 w-full sm:w-auto" href="{% url 'portal:fees' %}?student={{ s.pk }}">{% if pay_online %}{% translate "Pay fees" %}{% else %}{% translate "See fees due" %}{% endif %} &middot; {% money card.owed %}</a>
+      {% endif %}
       <div class="mt-4 flex flex-wrap gap-2">
         <a class="btn-secondary btn-sm" href="{% url 'portal:attendance' %}?student={{ s.pk }}">{% translate "Attendance" %}</a>
         <a class="btn-secondary btn-sm" href="{% url 'portal:fees' %}?student={{ s.pk }}">{% translate "Fees" %}</a>

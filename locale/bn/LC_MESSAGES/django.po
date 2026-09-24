@@ -448,3 +448,9 @@ msgstr "প্রত্যাহার করুন"
 msgid "The school uses your child's information only for the purposes below. You can give or withdraw consent for each at any time; the school records the date."
 msgstr "বিদ্যালয় আপনার সন্তানের তথ্য শুধু নিচের উদ্দেশ্যে ব্যবহার করে। যেকোনো সময় প্রতিটির জন্য সম্মতি দিতে বা প্রত্যাহার করতে পারবেন; বিদ্যালয় তারিখ লিপিবদ্ধ রাখে।"
 
+
+msgid "Pay fees"
+msgstr "ফি পরিশোধ করুন"
+
+msgid "See fees due"
+msgstr "বকেয়া ফি দেখুন"

@@ -47,7 +47,7 @@
         <tr>
           <th>{% translate "Code" %}</th><th>{% translate "Subject" %}</th><th class="text-right">{% translate "Full marks" %}</th>
           {% if show_parts %}<th>{% translate "Parts" %}</th>{% endif %}
-          <th class="text-right">{% translate "Obtained" %}</th><th>{% translate "Grade" %}</th><th class="text-right">{% translate "Points" %}</th>
+          <th class="text-right">{% translate "Obtained" %}</th><th>{% translate "Grade" %}</th>{% if show_points %}<th class="text-right">{% translate "Points" %}</th>{% endif %}
           {% if show_effort %}<th>{% translate effort_label %}</th>{% endif %}
         </tr>
       </thead>
@@ -60,7 +60,7 @@
             {% if show_parts %}<td class="text-xs text-slate-600">{{ line.parts }}</td>{% endif %}
             <td class="text-right">{{ line.obtained }}</td>
             <td>{{ line.letter }}</td>
-            <td class="text-right">{{ line.grade_point }}</td>
+            {% if show_points %}<td class="text-right">{{ line.grade_point }}</td>{% endif %}
             {% if show_effort %}<td>{{ line.effort }}</td>{% endif %}
           </tr>
           {% if line.comment %}
@@ -72,7 +72,7 @@
   </div>
 
   <div class="mt-4 grid gap-3 rounded-lg bg-slate-50 p-4 text-sm sm:grid-cols-4">
-    <div><p class="text-xs text-slate-500">{% translate "Total" %}</p><p class="font-bold">{{ row.total }} / {{ row.full_total }}</p></div>
+    <div><p class="text-xs text-slate-500">{% translate "Total" %}</p><p class="font-bold">{{ row.total|mark }} / {{ row.full_total|mark }}</p></div>
     {% if row.gpa is not None and row.has_gpa is not False %}
       <div><p class="text-xs text-slate-500">GPA</p><p class="font-bold">{{ row.gpa }}{% if row.gpa_letter %} ({{ row.gpa_letter }}){% endif %}</p></div>
     {% elif row.points is not None %}
@@ -101,7 +101,7 @@
         <thead><tr><th>{% translate "Subject" %}</th><th>{% translate "Kind" %}</th><th>{% translate "Grade" %}</th><th>{% translate "Decided" %}</th></tr></thead>
         <tbody>
           {% for f in row.forecasts %}
-            <tr><td>{{ f.subject }}</td><td>{% translate f.kind_label %}</td><td class="font-semibold">{{ f.grade }}</td><td class="text-slate-500">{{ f.as_of }}</td></tr>
+            <tr><td>{{ f.subject }}</td><td>{% translate f.kind_label %}</td><td class="font-semibold">{{ f.grade }}</td><td class="text-slate-500">{{ f.as_of|iso_date }}</td></tr>
           {% endfor %}
         </tbody>
       </table>

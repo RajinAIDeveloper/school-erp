@@ -4,6 +4,9 @@ __pycache__/
 .pytest_cache/
 .env
 db.sqlite3
+db.sqlite3-wal
+db.sqlite3-shm
+*.sqlite3-journal
 media/
 staticfiles/
 .coverage

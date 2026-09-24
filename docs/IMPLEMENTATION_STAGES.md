@@ -188,6 +188,33 @@ holding official results until the release date. R2 (Bangla on staff screens), R
 UMS), R5 (PYP narratives), R6 (moderation), R7 (national administration returns) and R8
 (multi-school hosting) wait until a school needs them.
 
+### Audit fixes (24 September 2026)
+
+From the whole-system audit (tests, security review, query measurements, screenshots). The
+demonstration will run on SQLite, so SQLite is treated as the production database.
+
+**Before the demonstration**
+
+| # | Fix | Proof |
+|---|---|---|
+| D1 | SQLite for several users: WAL journal, immediate write transactions, a longer lock wait; the database file's path set by `SQLITE_PATH` so it can live on a persistent volume; a production checklist for SQLite in the README | Settings test; concurrent-write test; path test |
+| D2 | Cards and analysis follow the rulebook: no "Points" column, "Failed" or "Pass %" where the rulebook has neither; marks printed without ".00"; one date format | Card and analysis tests for Cambridge and national |
+| D3 | Family screens on a phone: fee and result tables stack into cards so "Pay online" is on screen; a Pay button on the home card; the fees page opens on the child who owes | Portal tests; phone screenshots |
+| D4 | Register screen: no error before the teacher has done anything; a teacher with one section gets it chosen | Register tests |
+
+**Before a real school**
+
+| # | Fix | Proof |
+|---|---|---|
+| R1 | Backups: the SQLite dump taken as one consistent snapshot; `--copy-to` for an off-site folder; scheduling instructions (Windows Task Scheduler and cron) | Backup test |
+| R2 | SMS compose: template bodies passed with `json_script`, so no script can be planted | Test with a hostile template body |
+| R3 | Every redirect to a posted `next`/`back` address checked to stay on this site | Test per view |
+| R4 | Rate limits keyed on the real client address behind a trusted proxy (`TRUSTED_PROXY_COUNT`); the public lookup limited per student as well, so one visitor cannot lock it for the school | Proxy and lockout tests |
+| R5 | Results built with one attendance query per class, not one per student | Query-count test |
+| R6 | `check_gateway` command to try the school's SSLCommerz sandbox credentials before going live | Test with a stubbed gateway |
+| R7 | Results menu links to exam series and combined results; teachers no longer see "Basic Settings" | Navigation tests |
+| R8 | `examinations/views.py` split into modules by area, with no change in behaviour | Full suite unchanged |
+
 ### Remaining phases (after S13)
 
 Built one at a time after the planned stages, each with tests and the full gate:

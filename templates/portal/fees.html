@@ -1,7 +1,30 @@
-{% extends "layouts/base.html" %}{% load i18n %}{% block content %}
+{% extends "layouts/base.html" %}{% load erp i18n %}{% block content %}
 <form method="get" class="card card-body mb-4"><label class="label">{% translate "Student" %}</label><select class="input" name="student">{% for s in students %}<option value="{{ s.pk }}" {% if selected.pk == s.pk %}selected{% endif %}>{{ s.full_name }}</option>{% endfor %}</select><button class="btn-primary mt-4">{% translate "View fees" %}</button></form>
-{% if selected %}<div class="card overflow-x-auto"><table class="table"><thead><tr><th>{% translate "Invoice" %}</th><th>{% translate "Due date" %}</th><th>{% translate "Total" %}</th><th>{% translate "Paid" %}</th><th>{% translate "Balance" %}</th><th>{% translate "Status" %}</th></tr></thead><tbody>{% for invoice in invoices %}
-<tr><td><a class="link" href="{% url 'fees:invoice_detail' invoice.pk %}">{{ invoice.invoice_no }}</a></td><td>{{ invoice.due_date }}</td><td>{{ invoice.total }}</td><td>{{ invoice.paid }}</td><td>{{ invoice.balance }}</td><td>{% translate invoice.get_status_display %}{% if pay_online and invoice.balance > 0 and invoice.status != "cancelled" %}
-<form method="post" action="{% url 'fees:pay_online' invoice.pk %}" class="mt-1">{% csrf_token %}<input type="hidden" name="amount" value="{{ invoice.balance }}"><input type="hidden" name="back" value="{{ request.get_full_path }}"><button class="btn-primary btn-sm">{% translate "Pay online" %}</button></form>{% endif %}</td></tr>
-{% empty %}<tr><td>{% translate "No fee invoices for this student." %}</td></tr>{% endfor %}</tbody></table></div>{% endif %}
+{% if selected %}
+<div class="card overflow-x-auto">
+  <table class="table table-stack">
+    <thead><tr><th>{% translate "Invoice" %}</th><th>{% translate "Due date" %}</th><th class="text-right">{% translate "Total" %}</th><th class="text-right">{% translate "Paid" %}</th><th class="text-right">{% translate "Balance" %}</th><th>{% translate "Status" %}</th></tr></thead>
+    <tbody>
+      {% for invoice in invoices %}
+        <tr>
+          <td data-label="{% translate "Invoice" %}"><a class="link" href="{% url 'fees:invoice_detail' invoice.pk %}">{{ invoice.invoice_no }}</a></td>
+          <td data-label="{% translate "Due date" %}">{{ invoice.due_date|date:"d M Y" }}</td>
+          <td data-label="{% translate "Total" %}" class="sm:text-right">{% money invoice.total %}</td>
+          <td data-label="{% translate "Paid" %}" class="sm:text-right">{% money invoice.paid %}</td>
+          <td data-label="{% translate "Balance" %}" class="font-semibold sm:text-right{% if invoice.balance > 0 and invoice.status != "cancelled" %} text-red-600{% endif %}">{% money invoice.balance %}</td>
+          <td data-label="{% translate "Status" %}">
+            <div>{% translate invoice.get_status_display %}
+              {% if pay_online and invoice.balance > 0 and invoice.status != "cancelled" %}
+                <form method="post" action="{% url 'fees:pay_online' invoice.pk %}" class="mt-1">{% csrf_token %}<input type="hidden" name="amount" value="{{ invoice.balance }}"><input type="hidden" name="back" value="{{ request.get_full_path }}"><button class="btn-primary btn-sm">{% translate "Pay online" %}</button></form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td>{% translate "No fee invoices for this student." %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
 {% endblock %}

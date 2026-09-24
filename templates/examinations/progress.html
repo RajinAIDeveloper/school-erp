@@ -15,7 +15,7 @@
         <tr>
           <td class="font-medium">{{ row.exam.name }}</td>
           <td>{{ row.section }}</td>
-          <td class="text-right">{{ row.total }}</td>
+          <td class="text-right">{{ row.total|mark }}</td>
           <td class="text-right">{{ row.percent|default:"—" }}</td>
           <td class="font-medium {% if row.result == 'FAIL' %}text-red-600{% elif row.result == 'PASS' %}text-emerald-700{% endif %}">{{ row.headline }}</td>
           <td class="text-right">{{ row.rank|default:"—" }}</td>

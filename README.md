@@ -153,6 +153,26 @@ only.
 Uploaded files stay private: photos, student and staff documents and downloads are all served
 through permission-checked views, never from a public media URL.
 
+### Running on SQLite (one school, such as a demonstration)
+
+Leave `DATABASE_URL` unset and the system uses SQLite, set up for a web server: WAL
+journalling, write transactions that queue instead of failing, and a 20-second wait when the
+database is busy. For a server:
+
+1. Set `SQLITE_PATH` to a file on persistent storage, outside the code folder (and, with
+   Docker, on a mounted volume, or rebuilding the container deletes the database).
+2. Set `DJANGO_DEBUG=0`, `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS` and
+   `DJANGO_CSRF_TRUSTED_ORIGINS`. Never run a server with the default `DJANGO_DEBUG=1`: it shows
+   error details to anyone.
+3. Run `migrate`, `createcachetable` (the login limit's shared cache), `collectstatic` and
+   `setup_roles`.
+4. Run the SMS worker (`python manage.py process_sms --loop`) beside the web server, if SMS is on.
+5. Schedule the backup (below) and keep a copy off the server.
+6. For the demonstration gateway, set `ALLOW_DEMO_PAYMENTS=1`.
+
+Behind a reverse proxy (needed for HTTPS), set `TRUSTED_PROXY_COUNT=1` so rate limits see each
+visitor's own address rather than the proxy's.
+
 ### Backups
 
 ```powershell

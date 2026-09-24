@@ -52,6 +52,27 @@ def shows_rank(row):
 
 
 @register.filter
+def mark(value):
+    """A mark as people write it: 92 rather than 92.00. Words such as ABS pass through."""
+    from examinations.documents import mark_text
+
+    return mark_text(value)
+
+
+@register.filter
+def iso_date(value):
+    """A date kept as text in a published result ("2026-09-01"), shown like every other date."""
+    from datetime import date
+
+    from django.utils.dateformat import format as date_format
+
+    try:
+        return date_format(date.fromisoformat(str(value)), "d M Y")
+    except ValueError:
+        return value
+
+
+@register.filter
 def get_item(d, key):
     if d is None:
         return None

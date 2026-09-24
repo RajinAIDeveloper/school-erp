@@ -105,10 +105,21 @@ if _db_url:
         }
     }
 else:
+    # SQLite serves one school well once it is set up for a web server with several workers:
+    # WAL lets people read while someone writes; IMMEDIATE takes the write lock when a
+    # transaction starts, so two writers queue rather than one failing half way; and a
+    # 20-second wait rides out a busy moment (every teacher saving the 8 a.m. register)
+    # instead of showing "database is locked". SQLITE_PATH puts the file on a volume that
+    # survives rebuilding a container.
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
+            "NAME": os.environ.get("SQLITE_PATH") or BASE_DIR / "db.sqlite3",
+            "OPTIONS": {
+                "transaction_mode": "IMMEDIATE",
+                "timeout": 20,
+                "init_command": "PRAGMA journal_mode=WAL",
+            },
         }
     }
 

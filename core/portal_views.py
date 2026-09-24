@@ -61,6 +61,7 @@ def index(request):
             "cards": cards,
             "family_total": family_total,
             "family_invoices": sum(card["invoices"] for card in cards),
+            "pay_online": request.school.payment_gateway != "none",
             "page_title": gettext("My school records"),
         },
     )
@@ -107,6 +108,14 @@ def attendance(request):
 @require_permission(None)
 def fees(request):
     students, student = select_student(request)
+    if not request.GET.get("student") and len(students) > 1:
+        # Open on the child who owes, not simply the first child on the list.
+        owing = set(
+            FeeInvoice.objects.filter(school=request.school, student__in=students)
+            .outstanding()
+            .values_list("student_id", flat=True)
+        )
+        student = next((s for s in students if s.pk in owing), student)
     invoices = (
         FeeInvoice.objects.filter(school=request.school, student=student).order_by("-issue_date") if student else []
     )

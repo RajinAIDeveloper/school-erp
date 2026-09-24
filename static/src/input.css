@@ -24,6 +24,18 @@
   .link { @apply text-indigo-600 hover:text-indigo-800 hover:underline; }
 }
 
+/* A table that turns into stacked cards on a phone: each cell shows its column's name from
+   data-label, so a family never has to scroll sideways to find the balance or the Pay button. */
+@media (max-width: 639px) {
+  .table-stack thead { display: none; }
+  .table-stack, .table-stack tbody, .table-stack tr, .table-stack td { display: block; width: 100%; }
+  .table-stack tr { padding: 0.5rem 0; }
+  .table-stack td { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; padding: 0.3rem 1rem; text-align: right; }
+  .table-stack td::before { content: attr(data-label); flex-shrink: 0; text-align: left; font-size: 0.75rem; font-weight: 600; color: #64748b; }
+  .table-stack td:not([data-label])::before { content: none; }
+  .table-stack td:not([data-label]) { display: block; text-align: left; }
+}
+
 @media print {
   .print\:hidden { display: none !important; }
   body { background: white; }

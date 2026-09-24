@@ -97,3 +97,21 @@ def test_a_class_without_a_subject_plan_is_flagged_before_publishing(erp, board)
     ClassSubject.objects.filter(class_level=board.level).delete()
     texts = " ".join(item["text"] for item in publication_checklist(board.exam) if item["level"] == "warn")
     assert "has no subject plan" in texts
+
+
+def test_a_teacher_with_one_section_opens_straight_onto_its_register(erp):
+    body = login(erp.teacher).get("/attendance/").content.decode()
+    assert "This field is required" not in body
+    assert "Ayesha" in body  # the one section's register, already open
+    # A link with just a date (the dashboard's) does the same.
+    body = login(erp.teacher).get(f"/attendance/?date={timezone.localdate().isoformat()}").content.decode()
+    assert "This field is required" not in body and "Ayesha" in body
+
+
+def test_someone_with_several_sections_is_asked_to_choose_not_shown_an_error(erp):
+    body = login(erp.admin).get("/attendance/").content.decode()
+    assert "This field is required" not in body
+    assert "Choose a section to open its register." in body
+    assert "Ayesha" not in body
+    report = login(erp.admin).get("/attendance/report/").content.decode()
+    assert "This field is required" not in report

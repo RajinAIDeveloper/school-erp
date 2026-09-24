@@ -19,6 +19,9 @@
   <div class="grid gap-4 sm:grid-cols-3">{% for field in filter_form %}{% render_field field %}{% endfor %}</div>
   <div class="mt-4"><button class="btn-secondary">Load register</button></div>
 </form>
+{% if not staff and not filter_form.is_bound %}
+  <p class="mb-4 text-sm text-slate-600">Choose a section to open its register.</p>
+{% endif %}
 
 {% if rows %}
 <form method="post" class="card">

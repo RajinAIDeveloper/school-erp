@@ -544,16 +544,27 @@ def results(request):
             ]
             preamble = about(sheet, ", ".join(picked.values()))
             if fmt == "pdf":
+                from .documents import mark_text
+
+                # On paper, marks as people write them (92, not 92.00); the spreadsheets keep the figures.
+                first, last = (2 if show_rank else 0) + 3, (2 if show_rank else 0) + 3 + len(subjects)
+                printed = [[mark_text(v) if first <= i <= last else v for i, v in enumerate(r)] for r in rows]
                 subtitle = " · ".join(value for _label, value in preamble[1:4])
                 return table_document(
                     request.school,
                     f"Result sheet - {sheet['exam'].name}",
                     headers,
-                    rows,
+                    printed,
                     subtitle=subtitle,
                     filename="result-sheet.pdf",
                 )
             stats = sheet["subject_stats"]
+            # Failed and pass percent only mean something where papers have pass marks.
+            stat_keys = ["subject", "entered", "absent", "missing", "average", "highest", "lowest"]
+            stat_heads = ["Subject", "Entered", "Absent", "Missing", "Average", "Highest", "Lowest"]
+            if book.pass_marks:
+                stat_keys += ["failed", "pass_pct"]
+                stat_heads += ["Failed", "Pass percent"]
             return spreadsheet(
                 "results",
                 headers,
@@ -562,34 +573,8 @@ def results(request):
                 extra_sheets=[
                     (
                         "Subject analysis",
-                        [
-                            "Subject",
-                            "Entered",
-                            "Absent",
-                            "Missing",
-                            "Average",
-                            "Highest",
-                            "Lowest",
-                            "Failed",
-                            "Pass percent",
-                        ],
-                        [
-                            [
-                                s[k]
-                                for k in (
-                                    "subject",
-                                    "entered",
-                                    "absent",
-                                    "missing",
-                                    "average",
-                                    "highest",
-                                    "lowest",
-                                    "failed",
-                                    "pass_pct",
-                                )
-                            ]
-                            for s in stats
-                        ],
+                        stat_heads,
+                        [[s[k] for k in stat_keys] for s in stats],
                     )
                 ],
                 preamble=preamble,
@@ -656,7 +641,7 @@ def report_card(request, exam_pk, student_pk):
         return report_card_pdf(request.school, exam, enr, row, snap, verify_url=verification_url(request, snap))
     from core.qr import qr_svg
 
-    from .documents import attendance_for, card_rows
+    from .documents import attendance_for, card_rows, shows_points
 
     lines = card_rows(row)
     link = verification_url(request, snap)
@@ -672,13 +657,17 @@ def report_card(request, exam_pk, student_pk):
             "snapshot": snap,
             "lines": lines,
             "show_parts": any(line["parts"] for line in lines),
+            "show_points": shows_points(row),
             "attendance": attendance,
             "attendance_until": _date.fromisoformat(attendance["until"])
             if attendance and attendance.get("until")
             else None,
             "show_effort": any(line["effort"] for line in lines),
             "official_notice": official_notice(row),
-            "comment_span": 5 + any(line["parts"] for line in lines) + any(line["effort"] for line in lines),
+            "comment_span": 4
+            + shows_points(row)
+            + any(line["parts"] for line in lines)
+            + any(line["effort"] for line in lines),
             "effort_label": row.get("effort_label") or "Effort",
             "board": row.get("system") == "national",
             # The working is for staff checking a result, never for a family's view of it.
@@ -1673,7 +1662,7 @@ def combined_card(request, pk, student_pk):
     from core.qr import qr_svg
 
     from .combined import combined_sheet, out_of_date
-    from .documents import card_rows
+    from .documents import card_rows, shows_points
     from .models import CombinedResult, CombinedSnapshot
 
     combined = get_object_or_404(CombinedResult, school=request.school, pk=pk)
@@ -1709,10 +1698,11 @@ def combined_card(request, pk, student_pk):
             "snapshot": snap,
             "lines": lines,
             "show_parts": False,
+            "show_points": shows_points(row),
             "attendance": row.get("attendance"),
             "attendance_until": None,
             "show_effort": False,
-            "comment_span": 5,
+            "comment_span": 4 + shows_points(row),
             "effort_label": "Effort",
             "official_notice": official_notice(row),
             "board": row.get("system") == "national",
