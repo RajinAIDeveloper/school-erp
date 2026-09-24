@@ -19,7 +19,7 @@ Open `http://127.0.0.1:8000/login/` and use one account at a time. Log out befor
 | Teacher | `demo_teacher` | `DemoPass!2026` | Employee `DEMO-T1`, Mathematics teacher |
 | Staff | `demo_staff` | `DemoPass!2026` | Employee `DEMO-S1` |
 | Student | `demo_student` | `DemoPass!2026` | Student `DEMO-001`, Class 1-A, roll 1 |
-| Guardian | `demo_guardian` | `DemoPass!2026` | Guardian of `DEMO-001` |
+| Guardian | `demo_guardian` | `DemoPass!2026` | Guardian of `DEMO-001` (Class 1) and `IG-001` (Year 10) |
 
 These are regular ERP accounts, not Django superusers. The Django `/admin/` site is intentionally reserved for a
 platform superuser. The seven accounts use the school-scoped screens under `/`.
@@ -36,6 +36,34 @@ platform superuser. The seven accounts use the school-scoped screens under `/`.
 - One pending leave request for `DEMO-S1` on **2026-09-28** to **2026-09-29**.
 - One student-visible download: **Demo mathematics study note**.
 - One holiday and one fee-reminder SMS template.
+
+- Programme classes: **Year 10 (IGCSE)** under Cambridge rules, **DP1 (IB Diploma)** and
+  **Class 9 (national)**, each with a published mock or half-yearly exam; the Cambridge **June 2027**
+  series with entries, and a confirmed **November 2025** official result for `IG-001`.
+
+## A 15-minute showing for an English-medium school
+
+Sign in as `demo_admin` unless a step says otherwise.
+
+1. **Results that follow the programme.** Results → *IGCSE Mock* → Results for *Year 10 (IGCSE)*.
+   Grades only, no GPA or pass/fail; open Zara's report card: weighted Physics parts, the
+   teacher's comment and effort, the predicted grade marked as the school's estimate, and the
+   line saying it is a school assessment, not an official Cambridge result. Scan or open the
+   QR link: the public check shows initials and a fingerprint, never the marks.
+2. **Each student's own subjects.** Students → Subject choices → *Year 10 Blue*: Nusrat takes
+   Chemistry and Business, not Physics, so she has no Physics row anywhere.
+3. **The IB Diploma.** *DP Mock* results for *DP1*: Samira meets the diploma conditions with
+   core points; Arif does not, and the staff working says which condition failed.
+4. **Before publishing.** Open any draft exam: the checklist lists what must be fixed and what
+   to check; the timetable refuses two papers at once for a student who sits both.
+5. **Exam officer.** Results → Board exam series → *June 2027*: candidates, entries, the checks
+   before sending, the entries file; *November 2025* → Official results: imported, confirmed by
+   a second person, amendments kept.
+6. **Family view.** Sign in as `demo_guardian`: two children, fees with *Pay online* (with the
+   demonstration gateway switched on), results with the official result shown apart from school
+   assessments, Privacy and consent, and the বাংলা toggle in the header.
+7. **Class 9 (national)** for a school with a Bangla-medium stream: GPA with the 4th subject,
+   groups, and the tabulation sheet under Results → Report.
 
 ## Administrator walkthrough
 
