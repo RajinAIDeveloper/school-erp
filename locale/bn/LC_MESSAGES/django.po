@@ -952,3 +952,114 @@ msgstr "পাস নম্বরের কাছাকাছি"
 
 msgid "Platform"
 msgstr "প্ল্যাটফর্ম"
+
+msgid "Progress"
+msgstr "অগ্রগতি"
+
+msgid "No published results yet. Progress appears here once the school publishes an exam."
+msgstr "এখনো কোনো প্রকাশিত ফলাফল নেই। বিদ্যালয় পরীক্ষার ফলাফল প্রকাশ করলে অগ্রগতি এখানে দেখা যাবে।"
+
+msgid "Latest exam"
+msgstr "সর্বশেষ পরীক্ষা"
+
+msgid "Overall"
+msgstr "সামগ্রিক"
+
+msgid "No subject failed"
+msgstr "কোনো বিষয়ে অকৃতকার্য নয়"
+
+msgid "Position"
+msgstr "অবস্থান"
+
+msgid "in the section"
+msgstr "শাখায়"
+
+msgid "Positions are not shown for this exam"
+msgstr "এই পরীক্ষায় অবস্থান দেখানো হয় না"
+
+msgid "Each subject in the latest exam"
+msgstr "সর্বশেষ পরীক্ষায় প্রতিটি বিষয়"
+
+msgid "Percentages; the class figures are for the whole class"
+msgstr "শতাংশ; শ্রেণির হিসাব পুরো শ্রেণির"
+
+msgid "Percent"
+msgstr "শতাংশ"
+
+msgid "Class average"
+msgstr "শ্রেণির গড়"
+
+msgid "Class highest"
+msgstr "শ্রেণির সর্বোচ্চ"
+
+msgid "highest"
+msgstr "সর্বোচ্চ"
+
+msgid "Going well"
+msgstr "ভালো করছে"
+
+msgid "No subject stands well above the class average yet."
+msgstr "এখনো কোনো বিষয়ে শ্রেণির গড়ের চেয়ে অনেক বেশি নম্বর নেই।"
+
+msgid "Needs attention"
+msgstr "মনোযোগ দরকার"
+
+msgid "Nothing needs attention in the latest exam."
+msgstr "সর্বশেষ পরীক্ষায় মনোযোগ দেওয়ার মতো কিছু নেই।"
+
+msgid "Progress over time"
+msgstr "সময়ের সাথে অগ্রগতি"
+
+msgid "Overall percentage in each exam"
+msgstr "প্রতিটি পরীক্ষায় সামগ্রিক শতাংশ"
+
+msgid "Each subject in each exam"
+msgstr "প্রতিটি পরীক্ষায় প্রতিটি বিষয়"
+
+msgid "Every published exam"
+msgstr "সব প্রকাশিত পরীক্ষা"
+
+msgid "Attendance by month"
+msgstr "মাসভিত্তিক উপস্থিতি"
+
+msgid "Days"
+msgstr "দিন"
+
+msgid "From the published results only. Class figures are for the whole class in each exam; no other student is named."
+msgstr "শুধু প্রকাশিত ফলাফল থেকে। শ্রেণির হিসাব প্রতিটি পরীক্ষায় পুরো শ্রেণির; অন্য কোনো শিক্ষার্থীর নাম দেখানো হয় না।"
+
+msgid "%(n)s subject(s) failed"
+msgstr "%(n)sটি বিষয়ে অকৃতকার্য"
+
+msgid "Progress report (PDF)"
+msgstr "অগ্রগতি প্রতিবেদন (পিডিএফ)"
+
+msgid "Student record"
+msgstr "শিক্ষার্থীর তথ্য"
+
+msgid "View progress"
+msgstr "অগ্রগতি দেখুন"
+
+msgid "Each subject in the latest exam against the class"
+msgstr "সর্বশেষ পরীক্ষায় শ্রেণির তুলনায় প্রতিটি বিষয়"
+
+msgid "Progress · %(name)s"
+msgstr "অগ্রগতি · %(name)s"
+
+msgid "Student · Class average"
+msgstr "শিক্ষার্থী · শ্রেণির গড়"
+
+msgid "Progress report"
+msgstr "অগ্রগতি প্রতিবেদন"
+
+msgid "absent"
+msgstr "অনুপস্থিত"
+
+msgid "failed"
+msgstr "অকৃতকার্য"
+
+msgid "below the class average"
+msgstr "শ্রেণির গড়ের নিচে"
+
+msgid "down since the last exam"
+msgstr "আগের পরীক্ষার চেয়ে কম"

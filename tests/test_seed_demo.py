@@ -56,7 +56,7 @@ def test_seed_demo_shows_each_programme_with_published_results(settings, tmp_pat
     from students.models import Guardian
 
     exams = {e.name: e for e in Exam.objects.filter(school__slug="seed-test", status="published")}
-    assert set(exams) == {"IGCSE Mock", "DP Mock", "Half Yearly (Class 9)"}
+    assert set(exams) == {"IGCSE Mock", "DP Mock", "First Term (Class 9)", "Half Yearly (Class 9)"}
 
     igcse = ResultSnapshot.objects.filter(exam=exams["IGCSE Mock"])
     assert igcse.count() == 4

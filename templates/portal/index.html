@@ -33,6 +33,7 @@
         <a class="btn-secondary btn-sm" href="{% url 'portal:attendance' %}?student={{ s.pk }}">{% translate "Attendance" %}</a>
         <a class="btn-secondary btn-sm" href="{% url 'portal:fees' %}?student={{ s.pk }}">{% translate "Fees" %}</a>
         <a class="btn-secondary btn-sm" href="{% url 'portal:results' %}?student={{ s.pk }}">{% translate "Results" %}</a>
+        <a class="btn-secondary btn-sm" href="{% url 'portal:progress' %}?student={{ s.pk }}">{% translate "Progress" %}</a>
         <a class="btn-secondary btn-sm" href="{% url 'students:detail' s.pk %}">{% translate "Record" %}</a>
         <a class="btn-secondary btn-sm" href="{% url 'timetable:routine' %}{% if s.current_enrollment %}?section={{ s.current_enrollment.section_id }}{% endif %}">{% translate "Routine" %}</a>
       </div>

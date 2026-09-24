@@ -52,6 +52,14 @@ def shows_rank(row):
 
 
 @register.filter
+def shade(value):
+    """A cell background for a percentage: red when low, green when high."""
+    from core.charts import shade as _shade
+
+    return _shade(value)
+
+
+@register.filter
 def has_module(school, key):
     """Whether the platform administrator has given this school a module."""
     from core.modules import has_module as _has

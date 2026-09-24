@@ -280,6 +280,19 @@ def seed_ib(school, year, admin):
     publish_exam(exam, admin)
 
 
+NATIONAL_EXAMS = (
+    # (name, start, end, pattern): two published exams, so progress over time has something to show.
+    ("First Term (Class 9)", date(2026, 3, 1), date(2026, 3, 12), 7),
+    ("Half Yearly (Class 9)", date(2026, 6, 1), date(2026, 6, 15), 5),
+)
+
+
+def _national_score(level, code, pattern):
+    """A believable spread: each student stronger in some subjects than others, never below the pass mark."""
+    number = int(code) if code.isdigit() else sum(map(ord, code))
+    return max(40, min(97, level + (number * pattern) % 17 - 8))
+
+
 def seed_national(school, year, admin):
     from academics.presets import load_national_plan
     from examinations.parts import apply_preset
@@ -293,14 +306,6 @@ def seed_national(school, year, admin):
     )
     if not ClassSubject.objects.filter(academic_year=year, class_level=level).exists():
         load_national_plan(school=school, user=admin, academic_year=year, class_level=level)
-    exam, _ = Exam.objects.get_or_create(
-        school=school,
-        academic_year=year,
-        name="Half Yearly (Class 9)",
-        defaults={"grade_scale": scale, "start_date": date(2026, 6, 1), "end_date": date(2026, 6, 15)},
-    )
-    if exam.status == "published":
-        return
     by_code = {
         row.subject.code: row.subject
         for row in ClassSubject.objects.filter(academic_year=year, class_level=level).select_related("subject")
@@ -315,27 +320,40 @@ def seed_national(school, year, admin):
         student, enrollment = _student(
             school, year, section, sid, first, last, gender, date(2011, roll, 5), roll, religion=religion
         )
-        enrollment.group = group
-        enrollment.fourth_subject = by_code[fourth]
-        enrollment.save(update_fields=["group", "fourth_subject"])
-        enrollment.chosen_subjects.set([by_code[c] for c in chosen])
+        if enrollment.group != group:
+            enrollment.group = group
+            enrollment.fourth_subject = by_code[fourth]
+            enrollment.save(update_fields=["group", "fourth_subject"])
+            enrollment.chosen_subjects.set([by_code[c] for c in chosen])
         _guardian(school, student, f"{last} family (Class 9)", f"0171300000{roll}")
         enrollments.append(enrollment)
         levels[enrollment.pk] = level_score
-    schedules = []
-    for subject in {row.subject for row in ClassSubject.objects.filter(academic_year=year, class_level=level)}:
-        schedule, _ = ExamSchedule.objects.get_or_create(
+    subjects = {row.subject for row in ClassSubject.objects.filter(academic_year=year, class_level=level)}
+    for name, start, end, pattern in NATIONAL_EXAMS:
+        exam, _ = Exam.objects.get_or_create(
             school=school,
-            exam=exam,
-            class_level=level,
-            subject=subject,
-            defaults={"full_marks": 100, "pass_marks": 33},
+            academic_year=year,
+            name=name,
+            defaults={"grade_scale": scale, "start_date": start, "end_date": end},
         )
-        schedules.append(schedule)
-        if subject.code == "101" and not schedule.components.exists():
-            apply_preset(user=admin, schedule=schedule, key="national-cq-mcq")
-    _mark_all(admin, schedules, enrollments, lambda s, e: levels[e.pk])
-    publish_exam(exam, admin)
+        if exam.status == "published":
+            continue
+        schedules = []
+        for subject in subjects:
+            schedule, _ = ExamSchedule.objects.get_or_create(
+                school=school,
+                exam=exam,
+                class_level=level,
+                subject=subject,
+                defaults={"full_marks": 100, "pass_marks": 33},
+            )
+            schedules.append(schedule)
+            if subject.code == "101" and not schedule.components.exists():
+                apply_preset(user=admin, schedule=schedule, key="national-cq-mcq")
+        _mark_all(
+            admin, schedules, enrollments, lambda s, e, p=pattern: _national_score(levels[e.pk], s.subject.code, p)
+        )
+        publish_exam(exam, admin)
 
 
 def seed_programmes(*, school, year, admin, principal, teacher, demo_guardian):

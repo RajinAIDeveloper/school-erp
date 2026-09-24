@@ -30,6 +30,10 @@ TRANSLATED_TEMPLATES = [
     "templates/examinations/marks.html",
     "templates/examinations/marks_import.html",
     "templates/examinations/comments.html",
+    # Progress, for families and staff alike.
+    "templates/analytics/_progress.html",
+    "templates/analytics/student.html",
+    "templates/portal/progress.html",
 ]
 
 

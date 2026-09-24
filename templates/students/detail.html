@@ -2,6 +2,7 @@
 {% load erp %}
 {% block header_actions %}
   <a href="{% url 'students:id_card' student.pk %}" class="btn-secondary btn-sm">ID card</a>
+  {% if perms.examinations.view_mark %}<a href="{% url 'analytics:student' student.pk %}" class="btn-secondary btn-sm">Progress</a>{% endif %}
   {% if perms.students.delete_student %}<a href="{% url 'students:retention' %}" class="btn-secondary btn-sm">Data retention</a>{% endif %}
   {% if perms.students.view_certificate %}<a href="{% url 'students:certificates' student.pk %}" class="btn-secondary btn-sm">Certificates</a>{% endif %}
   {% if perms.users.add_user and not student.user_id %}

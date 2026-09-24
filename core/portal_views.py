@@ -162,6 +162,40 @@ def results(request):
     )
 
 
+@require_permission(None)
+def progress(request):
+    """A child's progress: each subject against the class, the trend over time, attendance."""
+    from analytics.access import scope_for
+    from analytics.pdf import progress_pdf
+    from analytics.progress import student_progress
+    from analytics.views import progress_context
+
+    students, student = select_student(request)
+    if not request.GET.get("student") and len(students) > 1:
+        # Open on a child who has published results, not simply the first on the list.
+        from examinations.models import ExamResultFact
+
+        with_results = set(
+            ExamResultFact.objects.filter(school=request.school, student__in=students).values_list(
+                "student_id", flat=True
+            )
+        )
+        student = next((s for s in students if s.pk in with_results), student)
+    data = student_progress(student, scope_for(request.user, request.school)) if student else None
+    if data is not None and request.GET.get("format") == "pdf":
+        return progress_pdf(request.school, data)
+    return render(
+        request,
+        "portal/progress.html",
+        {
+            "students": students,
+            "selected": student,
+            **progress_context(data, student.first_name if student else ""),
+            "page_title": gettext("Progress"),
+        },
+    )
+
+
 def _published_combined(student):
     """The current published combined results (such as an annual result) for one child."""
     if student is None:

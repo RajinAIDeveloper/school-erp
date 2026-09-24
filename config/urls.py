@@ -44,6 +44,7 @@ urlpatterns = [
     path("sms/", include("messaging.urls")),
     path("holidays/", include("holidays.urls")),
     path("settings/", include("core.urls")),
+    path("analytics/", include("analytics.urls")),
     path("users/", include("users.urls")),
     path("reports/", include("reports.urls")),
     path("portal/", include("core.portal_urls")),

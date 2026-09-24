@@ -40,6 +40,7 @@ def source_files():
         "messaging",
         "holidays",
         "reports",
+        "analytics",
         "config",
         "templates",
     ):

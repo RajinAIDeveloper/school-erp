@@ -755,6 +755,8 @@ class ExamResultFact(SchoolScopedModel):
     gpa = models.DecimalField(max_digits=4, decimal_places=2, null=True)
     points = models.DecimalField(max_digits=6, decimal_places=2, null=True)
     result = models.CharField(max_length=12, blank=True)
+    # The result in one line, as the card gives it: "GPA 4.50", "3 A*, 1 A", "36 points".
+    headline = models.CharField(max_length=200, blank=True)
     section_rank = models.PositiveIntegerField(null=True)
     class_rank = models.PositiveIntegerField(null=True)
     # Whether the published card shows positions; a family sees a position only where it does.

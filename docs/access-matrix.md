@@ -24,6 +24,7 @@ quietly join it.
 | / | dashboard | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
 | /academics/sections.json | academics:sections_json | `academics.view_section` | - | Y | Y | Y | Y | Y | . | . | . |
 | /academics/subject-plan/ | academics:subject_plan | `academics.view_classsubject` | - | Y | Y | Y | . | . | . | . | . |
+| /analytics/student/<int:pk>/ | analytics:student | `(sign-in only)` | within the viewer's analytics: the whole school, their sections or subjects, or their own child | o | o | o | o | o | o | o | o |
 | /attendance/ | attendance:student_take | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
 | /attendance/leave/ | attendance:leave_list | `attendance.view_leaverequest` | own requests unless a manager | Y | Y | Y | . | Y | Y | . | . |
 | /attendance/leave/<int:pk>/review/ | attendance:leave_review | `attendance.change_leaverequest` | managers only | Y | Y | Y | . | . | . | . | . |
@@ -163,6 +164,7 @@ quietly join it.
 | /portal/attendance/ | portal:attendance | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
 | /portal/fees/ | portal:fees | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
 | /portal/privacy/ | portal:privacy | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
+| /portal/progress/ | portal:progress | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
 | /portal/results/ | portal:results | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
 | /reports/ | reports:hub | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
 | /reports/early-warning/ | reports:early_warning | `examinations.view_mark` | own sections unless a manager | Y | Y | Y | . | Y | . | . | . |

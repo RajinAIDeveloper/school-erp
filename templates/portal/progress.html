@@ -1,0 +1,4 @@
+{% extends "layouts/base.html" %}{% load erp i18n %}{% block content %}
+<form method="get" class="card card-body mb-4"><label class="label">{% translate "Student" %}</label><select class="input" name="student">{% for s in students %}<option value="{{ s.pk }}" {% if selected.pk == s.pk %}selected{% endif %}>{{ s.full_name }}</option>{% endfor %}</select><div class="mt-4 flex flex-wrap gap-2"><button class="btn-primary">{% translate "View progress" %}</button>{% if progress %}<a class="btn-secondary" href="?student={{ selected.pk }}&amp;format=pdf">{% translate "Progress report (PDF)" %}</a>{% endif %}</div></form>
+{% if selected %}{% include "analytics/_progress.html" %}{% endif %}
+{% endblock %}

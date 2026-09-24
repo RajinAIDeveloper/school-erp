@@ -1,0 +1,10 @@
+{% extends "layouts/base.html" %}
+{% load erp i18n %}
+{% block header_actions %}
+  {% if progress %}<a href="?format=pdf" class="btn-secondary btn-sm">{% translate "Progress report (PDF)" %}</a>{% endif %}
+  {% if perms.students.view_student %}<a href="{% url 'students:detail' student.pk %}" class="btn-secondary btn-sm">{% translate "Student record" %}</a>{% endif %}
+{% endblock %}
+{% block content %}
+<p class="mb-4 text-sm text-slate-600">{{ student.full_name }} &middot; {{ student.student_id }}</p>
+{% include "analytics/_progress.html" %}
+{% endblock %}

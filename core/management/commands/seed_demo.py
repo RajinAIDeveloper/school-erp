@@ -322,6 +322,6 @@ class Command(BaseCommand):
             user.groups.add(Group.objects.get(name="Administrator"))
         self.stdout.write(
             self.style.SUCCESS(
-                f"Demo school ready: {school.name}. Seven role accounts; Class 1 with fees, attendance, marks, leave and a download; Cambridge IGCSE, IB Diploma and national Class 9 classes with published results; no messages sent."
+                f"Demo school ready: {school.name}. Eight role accounts; Class 1 with fees, attendance, marks, leave and a download; Cambridge IGCSE, IB Diploma and national Class 9 classes with published results; no messages sent."
             )
         )

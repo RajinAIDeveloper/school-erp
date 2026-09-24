@@ -11,6 +11,7 @@ from decimal import Decimal, InvalidOperation
 
 from django.db import transaction
 
+from .grading import headline
 from .models import ExamResultFact, ResultSnapshot, SubjectResultFact
 
 
@@ -74,6 +75,7 @@ def record_exam(exam, rows, version):
             gpa=_decimal(row.get("gpa")) if row.get("has_gpa", True) else None,
             points=_decimal(row.get("points")),
             result=row.get("result") or "",
+            headline=(headline(row) or "")[:200],
             section_rank=row.get("rank"),
             class_rank=row.get("grade_rank"),
             show_rank=row.get("show_rank", True),

@@ -1,0 +1,130 @@
+{% load erp i18n %}
+{% if not progress %}
+  {% translate "No published results yet. Progress appears here once the school publishes an exam." as nothing %}
+  {% include "components/empty.html" with message=nothing %}
+{% else %}
+  {% with latest=progress.latest %}
+  <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="stat">
+      <p class="text-sm text-slate-500">{% translate "Latest exam" %}</p>
+      <p class="mt-1 text-lg font-bold">{{ latest.exam.name }}</p>
+      <p class="mt-1 text-xs text-slate-500">{{ latest.class }}</p>
+    </div>
+    {% if progress.overall_shown %}
+      <div class="stat">
+        <p class="text-sm text-slate-500">{% translate "Overall" %}</p>
+        <p class="mt-1 text-3xl font-bold">{% if latest.percent is not None %}{{ latest.percent|mark }}%{% else %}—{% endif %}</p>
+        <p class="mt-1 text-xs text-slate-500">{% translate "Class average" %} {{ latest.average|default_if_none:"—" }}% &middot; {% translate "highest" %} {{ latest.highest|default_if_none:"—" }}%</p>
+      </div>
+      <div class="stat">
+        {% if latest.gpa is not None or latest.result %}
+          <p class="text-sm text-slate-500">{% if latest.gpa is not None %}{% translate "GPA" %}{% else %}{% translate "Result" %}{% endif %}</p>
+          <p class="mt-1 text-3xl font-bold">{% if latest.gpa is not None %}{{ latest.gpa }}{% else %}{% translate latest.result %}{% endif %}</p>
+          <p class="mt-1 text-xs text-slate-500">{% if latest.failed %}{% blocktranslate with n=latest.failed trimmed %}{{ n }} subject(s) failed{% endblocktranslate %}{% elif latest.result %}{% translate "No subject failed" %}{% endif %}</p>
+        {% else %}
+          {# Programmes graded without GPA or pass/fail (Cambridge, Edexcel, IB): the grades themselves. #}
+          <p class="text-sm text-slate-500">{% translate "Grades" %}</p>
+          <p class="mt-1 text-2xl font-bold">{{ latest.headline|default:"—" }}</p>
+        {% endif %}
+      </div>
+      <div class="stat">
+        <p class="text-sm text-slate-500">{% translate "Position" %}</p>
+        <p class="mt-1 text-3xl font-bold">{{ latest.rank|default_if_none:"—" }}</p>
+        <p class="mt-1 text-xs text-slate-500">{% if latest.rank %}{% translate "in the section" %}{% else %}{% translate "Positions are not shown for this exam" %}{% endif %}</p>
+      </div>
+    {% endif %}
+  </div>
+
+  {% if subject_chart %}
+    <section class="card mt-6">
+      <div class="card-header"><h2 class="font-semibold">{% translate "Each subject in the latest exam" %}</h2>
+        <span class="text-xs text-slate-500">{% translate "Percentages; the class figures are for the whole class" %}</span></div>
+      <div class="card-body">{{ subject_chart }}</div>
+      <div class="overflow-x-auto border-t border-slate-200">
+        <table class="table table-stack">
+          <thead><tr><th>{% translate "Subject" %}</th><th class="text-right">{% translate "Marks" %}</th><th class="text-right">{% translate "Percent" %}</th><th>{% translate "Grade" %}</th><th class="text-right">{% translate "Class average" %}</th><th class="text-right">{% translate "Class highest" %}</th></tr></thead>
+          <tbody>
+            {% for row in progress.latest_subjects %}
+              <tr>
+                <td data-label="{% translate "Subject" %}" class="font-medium">{{ row.subject }}</td>
+                <td data-label="{% translate "Marks" %}" class="sm:text-right">{% if row.absent %}{% translate "Absent" %}{% else %}{{ row.score|mark }} / {{ row.full|mark }}{% endif %}</td>
+                <td data-label="{% translate "Percent" %}" class="sm:text-right" style="background: {{ row.percent|shade }}">{{ row.percent|default_if_none:"—"|mark }}</td>
+                <td data-label="{% translate "Grade" %}">{{ row.letter|default:"—" }}</td>
+                <td data-label="{% translate "Class average" %}" class="sm:text-right text-slate-600">{{ row.average|default_if_none:"—"|mark }}</td>
+                <td data-label="{% translate "Class highest" %}" class="sm:text-right text-slate-600">{{ row.highest|default_if_none:"—"|mark }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  {% endif %}
+
+  {% if progress.strengths or progress.attention %}
+    <div class="mt-6 grid gap-4 lg:grid-cols-2">
+      <section class="card card-body">
+        <h2 class="font-semibold text-emerald-700">{% translate "Going well" %}</h2>
+        {% if progress.strengths %}<ul class="mt-2 list-inside list-disc text-sm">{% for name in progress.strengths %}<li>{{ name }}</li>{% endfor %}</ul>
+        {% else %}<p class="mt-2 text-sm text-slate-500">{% translate "No subject stands well above the class average yet." %}</p>{% endif %}
+      </section>
+      <section class="card card-body">
+        <h2 class="font-semibold text-amber-700">{% translate "Needs attention" %}</h2>
+        {% if progress.attention %}<ul class="mt-2 list-inside list-disc text-sm">{% for name, reason in progress.attention %}<li>{{ name }}: {% translate reason %}</li>{% endfor %}</ul>
+        {% else %}<p class="mt-2 text-sm text-slate-500">{% translate "Nothing needs attention in the latest exam." %}</p>{% endif %}
+      </section>
+    </div>
+  {% endif %}
+
+  {% if overall_chart or subjects_chart %}
+    <section class="card mt-6">
+      <div class="card-header"><h2 class="font-semibold">{% translate "Progress over time" %}</h2></div>
+      <div class="card-body space-y-6">
+        {% if overall_chart %}<div><p class="mb-2 text-sm font-medium text-slate-700">{% translate "Overall percentage in each exam" %}</p>{{ overall_chart }}</div>{% endif %}
+        {% if subjects_chart %}<div><p class="mb-2 text-sm font-medium text-slate-700">{% translate "Each subject in each exam" %}</p>{{ subjects_chart }}</div>{% endif %}
+      </div>
+    </section>
+  {% endif %}
+
+  {% if progress.overall_shown %}
+    <section class="card mt-6 overflow-x-auto">
+      <div class="card-header"><h2 class="font-semibold">{% translate "Every published exam" %}</h2></div>
+      <table class="table table-stack">
+        <thead><tr><th>{% translate "Exam" %}</th><th class="text-right">{% translate "Percent" %}</th><th class="text-right">{% translate "GPA" %}</th><th>{% translate "Result" %}</th><th class="text-right">{% translate "Class average" %}</th><th class="text-right">{% translate "Class highest" %}</th><th class="text-right">{% translate "Position" %}</th></tr></thead>
+        <tbody>
+          {% for row in progress.exams %}
+            <tr>
+              <td data-label="{% translate "Exam" %}" class="font-medium">{{ row.exam.name }}</td>
+              <td data-label="{% translate "Percent" %}" class="sm:text-right">{{ row.percent|default_if_none:"—"|mark }}</td>
+              <td data-label="{% translate "GPA" %}" class="sm:text-right">{{ row.gpa|default_if_none:"—" }}</td>
+              <td data-label="{% translate "Result" %}">{% if row.result %}{% translate row.result %}{% else %}—{% endif %}</td>
+              <td data-label="{% translate "Class average" %}" class="sm:text-right text-slate-600">{{ row.average|default_if_none:"—"|mark }}</td>
+              <td data-label="{% translate "Class highest" %}" class="sm:text-right text-slate-600">{{ row.highest|default_if_none:"—"|mark }}</td>
+              <td data-label="{% translate "Position" %}" class="sm:text-right">{{ row.rank|default_if_none:"—" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  {% endif %}
+
+  {% if progress.attendance %}
+    <section class="card mt-6 overflow-x-auto">
+      <div class="card-header"><h2 class="font-semibold">{% translate "Attendance by month" %}</h2></div>
+      <table class="table table-stack">
+        <thead><tr><th>{% translate "Month" %}</th><th class="text-right">{% translate "Present" %}</th><th class="text-right">{% translate "Days" %}</th><th class="text-right">{% translate "Percent" %}</th></tr></thead>
+        <tbody>
+          {% for month, present, total, percent in progress.attendance %}
+            <tr>
+              <td data-label="{% translate "Month" %}">{{ month|date:"F Y" }}</td>
+              <td data-label="{% translate "Present" %}" class="sm:text-right">{{ present }}</td>
+              <td data-label="{% translate "Days" %}" class="sm:text-right">{{ total }}</td>
+              <td data-label="{% translate "Percent" %}" class="sm:text-right" style="background: {{ percent|shade }}">{{ percent|default_if_none:"—" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  {% endif %}
+  <p class="mt-4 text-xs text-slate-500">{% translate "From the published results only. Class figures are for the whole class in each exam; no other student is named." %}</p>
+  {% endwith %}
+{% endif %}
