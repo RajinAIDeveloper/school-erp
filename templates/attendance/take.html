@@ -10,6 +10,11 @@
   {% endif %}
 {% endblock %}
 {% block content %}
+{% if closed_days %}
+  <div class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+    This register is more than {{ closed_days }} day{{ closed_days|pluralize }} old, so only the school's managers can change it.
+  </div>
+{% endif %}
 <form method="get" class="card card-body mb-4">
   <div class="grid gap-4 sm:grid-cols-3">{% for field in filter_form %}{% render_field field %}{% endfor %}</div>
   <div class="mt-4"><button class="btn-secondary">Load register</button></div>

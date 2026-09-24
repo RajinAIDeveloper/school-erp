@@ -56,6 +56,34 @@ def register_state(recorded, expected):
     return "complete"
 
 
+def register_sections(user, school):
+    """
+    The sections whose daily register this person may take.
+
+    Managers take any. Otherwise it depends on the school's choice: the class teacher only,
+    or the class teacher and any teacher of the section, who can then cover.
+    """
+    from academics.models import Section
+    from core.access import is_manager
+
+    if is_manager(user):
+        return Section.objects.filter(school=school)
+    if school.register_takers == "class_teacher":
+        employee = getattr(user, "employee_profile", None)
+        if employee is None:
+            return Section.objects.none()
+        return Section.objects.filter(school=school, class_teacher=employee)
+    return sections_for(user, school)
+
+
+def register_closed(user, school, day):
+    """Whether this day's register is past the window in which teachers may change it."""
+    from core.access import is_manager
+
+    days = school.register_edit_days
+    return bool(days) and not is_manager(user) and (timezone.localdate() - day).days > days
+
+
 @transaction.atomic
 def save_register(*, school, user, day, entries, staff=False):
     assert_actor_school(user, school)
@@ -64,14 +92,19 @@ def save_register(*, school, user, day, entries, staff=False):
     permission = "attendance.change_staffattendance" if staff else "attendance.change_studentattendance"
     if not user.has_perm(permission):
         raise PermissionDenied
+    if register_closed(user, school, day):
+        raise ValidationError(
+            f"Registers older than {school.register_edit_days} day(s) can be changed only by the school's managers."
+        )
+    allowed = None if staff else set(register_sections(user, school).values_list("pk", flat=True))
     saved = 0
     absentees = []
     for obj, status, remarks, check_in, check_out in entries:
         assert_school(school, obj)
         if status not in AttendanceStatus.values:
             raise ValidationError("Invalid attendance status.")
-        if not staff and not sections_for(user, school).filter(pk=obj.section_id).exists():
-            raise PermissionDenied
+        if not staff and obj.section_id not in allowed:
+            raise PermissionDenied("This section's register is taken by its class teacher.")
         if staff and check_in and check_out and check_out <= check_in:
             raise ValidationError("Check-out must be after check-in.")
         if not staff and not (obj.academic_year.start_date <= day <= obj.academic_year.end_date):

@@ -54,9 +54,11 @@ class RegisterFilter(TailwindFormMixin, forms.Form):
     date = forms.DateField(initial=timezone.localdate, widget=forms.DateInput(attrs={"type": "date"}))
     section = forms.ModelChoiceField(queryset=None, required=False)
 
-    def __init__(self, *args, user, school, staff=False, **kwargs):
+    def __init__(self, *args, user, school, staff=False, taking=False, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["section"].queryset = sections_for(user, school)
+        from .services import register_sections
+
+        self.fields["section"].queryset = register_sections(user, school) if taking else sections_for(user, school)
         if staff:
             self.fields.pop("section")
         else:
@@ -78,10 +80,16 @@ def register(request, staff=False):
         "attendance.change_staffattendance" if staff else "attendance.change_studentattendance"
     )
     data = request.POST if request.method == "POST" else request.GET or {"date": timezone.localdate()}
-    form = RegisterFilter(data, user=request.user, school=request.school, staff=staff)
+    form = RegisterFilter(data, user=request.user, school=request.school, staff=staff, taking=True)
     rows = []
+    closed = False
     if form.is_valid():
         day = form.cleaned_data["date"]
+        from .services import register_closed
+
+        closed = register_closed(request.user, request.school, day)
+        if closed:
+            editable = False
         if staff:
             objects = Employee.objects.filter(school=request.school, status__in=["active", "on_leave"])
             if not is_manager(request.user):
@@ -122,6 +130,7 @@ def register(request, staff=False):
             "rows": rows,
             "staff": staff,
             "editable": editable,
+            "closed_days": request.school.register_edit_days if closed else 0,
             "page_title": "Staff attendance" if staff else "Student attendance",
         },
     )
@@ -274,6 +283,24 @@ def daily_summary(request):
         )
     )
     by_section = {row["enrollment__section"]: row for row in records}
+    # Who took each register, and when it was last saved: the people named, not just a count.
+    takers = {}
+    for section_id, first, last, username, saved in (
+        StudentAttendance.objects.filter(school=request.school, date=day, enrollment__section__in=sections)
+        .values_list(
+            "enrollment__section",
+            "recorded_by__first_name",
+            "recorded_by__last_name",
+            "recorded_by__username",
+            "updated_at",
+        )
+        .order_by("updated_at")
+    ):
+        names, latest = takers.get(section_id, ([], None))
+        name = f"{first} {last}".strip() or username or "Unknown"
+        if name not in names:
+            names.append(name)
+        takers[section_id] = (names, saved)
     from academics.models import AcademicYear
     from students.models import Enrollment
 
@@ -305,9 +332,11 @@ def daily_summary(request):
                 row["absent"] if row else 0,
                 row["leave"] if row else 0,
                 f"{labels[state]} ({recorded} of {expected})" if state == "partial" else labels[state],
+                ", ".join(takers[section.pk][0]) if section.pk in takers else "",
+                timezone.localtime(takers[section.pk][1]).strftime("%H:%M") if section.pk in takers else "",
             ]
         )
-    headers = ["Section", "On roll", "Recorded", "Present", "Absent", "On leave", "Register"]
+    headers = ["Section", "On roll", "Recorded", "Present", "Absent", "On leave", "Register", "Taken by", "Last saved"]
     if request.GET.get("format") in ("csv", "xlsx"):
         return spreadsheet(f"attendance-summary-{day}", headers, rows, request.GET["format"])
     return render(

@@ -75,6 +75,16 @@ def publication_checklist(exam):
                         f"({', '.join(wrong[:3])}{more}), so they would be graded on the wrong papers.",
                     )
                 )
+        if plan is None and level.rules != "own":
+            papers = [s for s in schedules if s.class_level_id == level.pk]
+            if len(papers) > 1:
+                items.append(
+                    _item(
+                        "warn",
+                        f"{level} has no subject plan for {exam.academic_year}, so every student is treated as "
+                        f"sitting all {len(papers)} papers. Set up the subject plan if students take different subjects.",
+                    )
+                )
         rows = live_class_sheet(exam, level)
         incomplete = [r["student"] for r in rows if not r["complete"]]
         if incomplete:

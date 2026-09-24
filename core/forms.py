@@ -226,6 +226,8 @@ class FinancePolicyForm(TailwindFormMixin, forms.ModelForm):
     class Meta:
         model = School
         fields = [
+            "register_takers",
+            "register_edit_days",
             "late_fee_per_day",
             "late_fee_cap",
             "sibling_discount_percent",

@@ -126,6 +126,23 @@ class School(TimeStampedModel):
         default="en",
         help_text="What people see until they choose for themselves.",
     )
+    register_takers = models.CharField(
+        "Who takes the daily register",
+        max_length=16,
+        choices=[
+            ("section_teachers", "Class teacher, or any teacher of the section as cover"),
+            ("class_teacher", "Class teacher only"),
+        ],
+        default="section_teachers",
+        help_text="The school's managers can always take a register.",
+    )
+    register_edit_days = models.PositiveSmallIntegerField(
+        "Days a register stays open to teachers",
+        default=0,
+        help_text=(
+            "After this many days only the school's managers can change a register. 0 keeps registers open to teachers."
+        ),
+    )
     retention_years = models.PositiveSmallIntegerField(
         default=7,
         help_text=(
