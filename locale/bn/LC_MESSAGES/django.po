@@ -2274,3 +2274,62 @@ msgstr "জমা পড়েনি"
 
 msgid "Counts work whose outcome is known: absent and excused are left out, and work checked in class that the teacher has not checked yet is shown apart. The section figure is the whole section's; no other student is named."
 msgstr "যে কাজের ফলাফল জানা, শুধু সেগুলো গোনা হয়েছে: অনুপস্থিত ও অব্যাহতি বাদ, আর ক্লাসে দেখার যে কাজ শিক্ষক এখনো দেখেননি তা আলাদা দেখানো হয়েছে। শাখার হিসাব পুরো শাখার; অন্য কোনো শিক্ষার্থীর নাম দেখানো হয় না।"
+
+# ---- transcripts
+
+msgid "Transcripts"
+msgstr "ট্রান্সক্রিপ্ট"
+
+msgid "Transcripts issued"
+msgstr "দেওয়া ট্রান্সক্রিপ্ট"
+
+msgid "Download"
+msgstr "ডাউনলোড"
+
+msgid "No transcript has been issued yet."
+msgstr "এখনো কোনো ট্রান্সক্রিপ্ট দেওয়া হয়নি।"
+
+msgid "Each transcript has a QR code a university can scan to check it with the school."
+msgstr "প্রতিটি ট্রান্সক্রিপ্টে একটি QR কোড আছে, যা স্ক্যান করে বিশ্ববিদ্যালয় বিদ্যালয়ের কাছে যাচাই করতে পারে।"
+
+msgid "Ask for a transcript"
+msgstr "ট্রান্সক্রিপ্টের জন্য আবেদন করুন"
+
+msgid "Your request is with the school. The transcript will appear above once it is issued."
+msgstr "আপনার আবেদন বিদ্যালয়ের কাছে আছে। ট্রান্সক্রিপ্ট দেওয়া হলে ওপরে দেখা যাবে।"
+
+msgid "What is it for?"
+msgstr "এটি কী কাজে লাগবে?"
+
+msgid "For example, a university application"
+msgstr "যেমন, বিশ্ববিদ্যালয়ে ভর্তির আবেদন"
+
+msgid "Anything the school should know (optional)"
+msgstr "বিদ্যালয়কে যা জানানো দরকার (ঐচ্ছিক)"
+
+msgid "Send the request"
+msgstr "আবেদন পাঠান"
+
+msgid "Your requests"
+msgstr "আপনার আবেদনসমূহ"
+
+msgid "Your request has been sent to the school."
+msgstr "আপনার আবেদন বিদ্যালয়ে পাঠানো হয়েছে।"
+
+msgid "Say what the transcript is for, such as a university application."
+msgstr "ট্রান্সক্রিপ্ট কী কাজে লাগবে লিখুন, যেমন বিশ্ববিদ্যালয়ে ভর্তির আবেদন।"
+
+msgid "Keep the purpose to 200 and the note to 300 characters."
+msgstr "উদ্দেশ্য 200 এবং নোট 300 অক্ষরের মধ্যে রাখুন।"
+
+msgid "A request is already with the school. You will see the transcript here once it is issued."
+msgstr "একটি আবেদন আগেই বিদ্যালয়ে আছে। ট্রান্সক্রিপ্ট দেওয়া হলে এখানে দেখতে পাবেন।"
+
+msgid "Requested"
+msgstr "আবেদন করা হয়েছে"
+
+msgid "Issued"
+msgstr "দেওয়া হয়েছে"
+
+msgid "Declined"
+msgstr "নাকচ করা হয়েছে"

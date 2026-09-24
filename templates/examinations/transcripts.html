@@ -1,0 +1,44 @@
+{% extends "layouts/base.html" %}
+{% load erp i18n %}
+{% block content %}
+<section class="card mb-6">
+  <div class="card-header"><h2 class="font-semibold">{% translate "Requests waiting" %}</h2></div>
+  <ul class="divide-y divide-slate-100 text-sm">
+    {% for item in waiting %}
+      <li class="flex flex-wrap items-center justify-between gap-2 px-5 py-3">
+        <div><p class="font-medium">{{ item.student.full_name }} <span class="text-xs text-slate-500">{{ item.student.student_id }}</span></p>
+          <p class="text-xs text-slate-500">{{ item.purpose }}{% if item.note %} · {{ item.note }}{% endif %} · {% translate "asked" %} {{ item.created_at|date:"d M Y" }}</p></div>
+        <a class="btn-primary btn-sm" href="{% url 'examinations:student_transcripts' item.student_id %}">{% translate "Open" %}</a>
+      </li>
+    {% empty %}
+      <li class="px-5 py-6 text-center text-slate-500">{% translate "No request is waiting." %}</li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section class="card overflow-x-auto">
+  <div class="card-header"><h2 class="font-semibold">{% translate "Issued lately" %}</h2>
+    <span class="text-xs text-slate-500">{% translate "To issue one without a request, open the student's record and choose Transcripts." %}</span></div>
+  <table class="table table-stack">
+    <thead><tr><th>{% translate "Serial" %}</th><th>{% translate "Student" %}</th><th>{% translate "Issued" %}</th><th>{% translate "Status" %}</th><th></th></tr></thead>
+    <tbody>
+      {% for item in recent %}
+        <tr>
+          <td data-label="{% translate "Serial" %}" class="font-mono">{{ item.serial }}</td>
+          <td data-label="{% translate "Student" %}">{{ item.student.full_name }}</td>
+          <td data-label="{% translate "Issued" %}">{{ item.created_at|date:"d M Y" }}</td>
+          <td data-label="{% translate "Status" %}">
+            {% if item.is_revoked %}<span class="text-red-700">{% translate "Revoked" %}</span>
+            {% elif item.stale.corrected %}<span class="font-semibold text-amber-700">{% translate "A result on it has been corrected" %}</span>
+            {% elif item.stale.newer %}<span class="text-indigo-700">{% translate "Newer results exist" %}</span>
+            {% else %}<span class="text-emerald-700">{% translate "Current" %}</span>{% endif %}
+          </td>
+          <td class="sm:text-right"><a class="link text-xs" href="{% url 'examinations:student_transcripts' item.student_id %}">{% translate "Open" %}</a></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5">{% translate "No transcript has been issued yet." as nothing %}{% include "components/empty.html" with message=nothing %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

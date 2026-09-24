@@ -227,6 +227,15 @@ def erase_student(*, school, user, student, confirm):
         type(certificate).objects.filter(pk=certificate.pk).update(
             payload=_scrub_payload(certificate.payload, certificate_keys)
         )
+    # Transcripts keep their serial and fingerprint; the student block goes, and so does what
+    # the family wrote when asking for one.
+    from examinations.models import Transcript, TranscriptRequest
+
+    for transcript in Transcript.objects.filter(student=student):
+        payload = dict(transcript.payload)
+        payload["student"] = {"name": ERASED, "student_id": student.student_id}
+        Transcript.objects.filter(pk=transcript.pk).update(payload=payload)
+    TranscriptRequest.objects.filter(student=student).update(purpose="", note="", decline_reason="")
     SeriesCandidate.objects.filter(student=student).update(certificate_name="", uci="")
     AccessArrangement.objects.filter(candidate__student=student).delete()
 

@@ -103,6 +103,10 @@ quietly join it.
 | /exams/series/manage/ | examinations:series_list | `examinations.view_examseries` | - | Y | Y | Y | . | . | . | . | . |
 | /exams/series/manage/<int:pk>/edit/ | examinations:series_update | `examinations.change_examseries` | - | Y | Y | Y | . | . | . | . | . |
 | /exams/series/manage/new/ | examinations:series_create | `examinations.add_examseries` | - | Y | Y | Y | . | . | . | . | . |
+| /exams/transcripts/ | examinations:transcripts | `examinations.view_transcript` | the school's managers | Y | Y | Y | . | . | . | . | . |
+| /exams/transcripts/<int:pk>/pdf/ | examinations:transcript_pdf | `examinations.view_transcript` | the school's managers | Y | Y | Y | . | . | . | . | . |
+| /exams/transcripts/student/<int:pk>/ | examinations:student_transcripts | `examinations.view_transcript` | the school's managers | Y | Y | Y | . | . | . | . | . |
+| /exams/transcripts/verify/<uuid:code>/ | examinations:transcript_verify | `(public)` | - | * | * | * | * | * | * | * | * |
 | /exams/unlocks/ | examinations:unlocks | `examinations.view_mark` | own requests unless a manager | Y | Y | Y | . | Y | . | . | . |
 | /exams/unlocks/<int:pk>/review/ | examinations:unlock_review | `examinations.change_exam` | - | Y | Y | Y | . | . | . | . | . |
 | /exams/verify/<uuid:code>/ | examinations:verify | `(public)` | - | * | * | * | * | * | * | * | * |
@@ -189,6 +193,8 @@ quietly join it.
 | /portal/privacy/ | portal:privacy | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
 | /portal/progress/ | portal:progress | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
 | /portal/results/ | portal:results | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
+| /portal/transcripts/ | portal:transcripts | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
+| /portal/transcripts/<int:pk>/pdf/ | portal:transcript_pdf | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
 | /reports/ | reports:hub | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
 | /reports/early-warning/ | reports:early_warning | `examinations.view_mark` | own sections unless a manager | Y | Y | Y | . | Y | . | . | . |
 | /reports/leave/ | reports:leave_register | `attendance.view_leaverequest` | own requests unless a manager | Y | Y | Y | . | Y | Y | . | . |

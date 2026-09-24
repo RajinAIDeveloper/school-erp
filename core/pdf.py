@@ -151,10 +151,52 @@ def data_table(headers, rows, style=None, align_right=()):
     return table
 
 
+def numbered_canvas(footer):
+    """
+    A canvas that writes `footer(page, pages)` at the foot of every page. The total is only
+    known once every page is laid out, so pages are held back and drawn at the end.
+    """
+    from reportlab.pdfgen.canvas import Canvas
+
+    class NumberedCanvas(Canvas):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self._held = []
+
+        def showPage(self):
+            self._held.append(dict(self.__dict__))
+            self._startPage()
+
+        def save(self):
+            total = len(self._held)
+            for state in self._held:
+                self.__dict__.update(state)
+                self.saveState()
+                self.setFont("Helvetica", 7.5)
+                self.setFillColor(MUTED)
+                self.drawCentredString(self._pagesize[0] / 2, 8 * mm, footer(self._pageNumber, total))
+                self.restoreState()
+                Canvas.showPage(self)
+            Canvas.save(self)
+
+    return NumberedCanvas
+
+
 def document(
-    school, title, flowables, *, subtitle="", filename="document.pdf", landscape_mode=False, as_attachment=True
+    school,
+    title,
+    flowables,
+    *,
+    subtitle="",
+    filename="document.pdf",
+    landscape_mode=False,
+    as_attachment=True,
+    footer=None,
 ):
-    """Render flowables under the school letterhead and return them as a PDF response."""
+    """
+    Render flowables under the school letterhead and return them as a PDF response. `footer`,
+    if given, is called with (page, pages) for a line at the foot of every page.
+    """
     buffer = BytesIO()
     page = landscape(A4) if landscape_mode else A4
     doc = SimpleDocTemplate(
@@ -166,7 +208,11 @@ def document(
         bottomMargin=14 * mm,
         title=title,
     )
-    doc.build(letterhead(school, title, subtitle) + list(flowables))
+    story = letterhead(school, title, subtitle) + list(flowables)
+    if footer is not None:
+        doc.build(story, canvasmaker=numbered_canvas(footer))
+    else:
+        doc.build(story)
     response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
     disposition = "attachment" if as_attachment else "inline"
     response["Content-Disposition"] = f'{disposition}; filename="{filename}"'

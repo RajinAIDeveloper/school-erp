@@ -11,6 +11,7 @@
 <a href="{% url 'portal:fees' %}" class="{{ base }} {% active request 'fees' %}"><span class="w-5 text-center">💳</span> {% translate "My fees" %}</a>
 <a href="{% url 'portal:results' %}" class="{{ base }} {% active request 'results' %}"><span class="w-5 text-center">📝</span> {% translate "My results" %}</a>
 <a href="{% url 'portal:progress' %}" class="{{ base }} {% active request 'progress' %}"><span class="w-5 text-center">📈</span> {% translate "Progress" %}</a>
+<a href="{% url 'portal:transcripts' %}" class="{{ base }} {% active request 'transcripts' 'transcript_pdf' %}"><span class="w-5 text-center">📜</span> {% translate "Transcripts" %}</a>
 {% if current_school|has_module:"homework" %}<a href="{% url 'homework:todo' %}" class="{{ base }} {% active request 'todo' 'todo_task' %}"><span class="w-5 text-center">📚</span> {% translate "Homework" %}</a>{% endif %}
 <a href="{% url 'portal:privacy' %}" class="{{ base }} {% active request 'privacy' %}"><span class="w-5 text-center">🔒</span> {% translate "Privacy and consent" %}</a>
 {% endif %}
@@ -62,6 +63,7 @@
 {% if perms.examinations.change_mark %}<a href="{% url 'examinations:marks' %}" class="{{ sub }} {% active request 'marks' %}">{% translate "Enter marks" %}</a>{% endif %}
 {% if perms.examinations.view_mark %}<a href="{% url 'examinations:results' %}" class="{{ sub }} {% active request 'results' %}">{% translate "Result sheets" %}</a>{% endif %}
 {% if perms.examinations.view_combinedresult %}<a href="{% url 'examinations:combined_list' %}" class="{{ sub }} {% active request 'combined_list' 'combined_detail' 'combined_card' %}">{% translate "Combined results" %}</a>{% endif %}
+{% if perms.examinations.view_transcript %}<a href="{% url 'examinations:transcripts' %}" class="{{ sub }} {% active request 'transcripts' 'student_transcripts' %}">{% translate "Transcripts" %}</a>{% endif %}
 {% if perms.examinations.view_examseries %}<a href="{% url 'examinations:series_list' %}" class="{{ sub }} {% active request 'series_list' 'series_detail' 'series_results' 'board_registration' %}">{% translate "Exam series" %}</a>{% endif %}
 {% endwith %}
 {% endif %}

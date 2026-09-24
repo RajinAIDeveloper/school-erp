@@ -197,6 +197,9 @@ def test_the_public_surface_is_exactly_what_we_intend(erp):
         "/fees/online/<str:tran_id>/demo/",
         # Anyone holding a certificate may check it; the page shows initials, never the record.
         "/students/certificates/verify/<uuid:code>/",
+        # A university holding a transcript checks it here: the grades to compare, the student as
+        # initials only, and whether a result on it has since been corrected.
+        "/exams/transcripts/verify/<uuid:code>/",
         # A liveness probe; a load balancer has no session.
         "/healthz/",
     }, f"unexpected public endpoints: {public}"

@@ -67,3 +67,9 @@ from .series import (  # noqa: F401
     series_list,
     series_results,
 )
+from .transcripts import (  # noqa: F401
+    student_transcripts,
+    transcript_download,
+    transcript_queue,
+    transcript_verify,
+)

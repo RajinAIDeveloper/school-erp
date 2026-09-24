@@ -806,3 +806,78 @@ class SubjectResultFact(SchoolScopedModel):
 
     def __str__(self):
         return f"{self.exam_fact} · {self.subject_name}"
+
+
+class Transcript(SchoolScopedModel):
+    """
+    A student's results across their years at the school, issued once, numbered, frozen and
+    verifiable, for a university or another school.
+
+    It copies what it prints, so a later correction never changes a transcript already issued;
+    the school reissues instead. The results it drew on are recorded, so it can say when one of
+    them has since been corrected.
+    """
+
+    student = models.ForeignKey(Student, on_delete=models.PROTECT, related_name="transcripts")
+    serial = models.CharField(max_length=30)
+    payload = models.JSONField(default=dict)
+    # What it was made from: {"snapshots": [[kind, id, version]], "official": [ids], "forecasts": [ids]}.
+    sources = models.JSONField(default=dict)
+    options = models.JSONField(default=dict)
+    fingerprint = models.CharField(max_length=20, blank=True)
+    verification_code = models.UUIDField(unique=True, default=uuid.uuid4, editable=False)
+    issued_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    revoked_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    revoke_reason = models.CharField(max_length=200, blank=True)
+    replaces = models.OneToOneField("self", null=True, blank=True, on_delete=models.PROTECT, related_name="replaced_by")
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [models.UniqueConstraint(fields=["school", "serial"], name="unique_transcript_serial")]
+
+    def __str__(self):
+        return self.serial
+
+    @property
+    def is_revoked(self):
+        return self.revoked_at is not None
+
+
+class TranscriptRequest(SchoolScopedModel):
+    """A family asking the school for a transcript. One may be waiting at a time for each student."""
+
+    class Status(models.TextChoices):
+        REQUESTED = "requested", "Requested"
+        ISSUED = "issued", "Issued"
+        DECLINED = "declined", "Declined"
+        CANCELLED = "cancelled", "Cancelled"
+
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="transcript_requests")
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
+    purpose = models.CharField(max_length=200)
+    note = models.CharField(max_length=300, blank=True)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.REQUESTED)
+    handled_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    handled_at = models.DateTimeField(null=True, blank=True)
+    decline_reason = models.CharField(max_length=200, blank=True)
+    transcript = models.ForeignKey(
+        Transcript, null=True, blank=True, on_delete=models.SET_NULL, related_name="requests"
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["student"],
+                condition=models.Q(status="requested"),
+                name="one_open_transcript_request",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.student} · {self.get_status_display()}"

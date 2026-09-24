@@ -259,3 +259,62 @@ def privacy(request):
             "page_title": gettext("Privacy and consent"),
         },
     )
+
+
+@require_permission(None)
+def transcripts(request):
+    """A family's transcripts: ask the school for one, and download those issued."""
+    from django.contrib import messages
+    from django.core.exceptions import ValidationError
+    from django.shortcuts import redirect
+
+    from examinations.models import TranscriptRequest
+    from examinations.transcripts import request_transcript
+
+    students, student = select_student(request)
+    if request.method == "POST" and student is not None:
+        try:
+            request_transcript(
+                user=request.user,
+                student=student,
+                purpose=request.POST.get("purpose", ""),
+                note=request.POST.get("note", ""),
+            )
+            messages.success(request, gettext("Your request has been sent to the school."))
+        except ValidationError as exc:
+            messages.error(request, " ".join(exc.messages))
+        return redirect(f"{request.path}?student={student.pk}")
+    issued = list(student.transcripts.filter(revoked_at__isnull=True).order_by("-created_at")) if student else []
+    asked = list(student.transcript_requests.order_by("-created_at")[:5]) if student else []
+    return render(
+        request,
+        "portal/transcripts.html",
+        {
+            "students": students,
+            "selected": student,
+            "issued": issued,
+            "asked": asked,
+            "waiting": any(item.status == TranscriptRequest.Status.REQUESTED for item in asked),
+            "page_title": gettext("Transcripts"),
+        },
+    )
+
+
+@require_permission(None)
+def transcript_pdf(request, pk):
+    """A family's own transcript, while it stands."""
+    from django.shortcuts import get_object_or_404
+
+    from examinations.models import Transcript
+    from examinations.transcript_pdf import transcript_pdf as render_pdf
+    from examinations.views.transcripts import verify_link
+
+    students, _student = select_student(request)
+    item = get_object_or_404(
+        Transcript.objects.select_related("school"),
+        school=request.school,
+        pk=pk,
+        student__in=students,
+        revoked_at__isnull=True,
+    )
+    return render_pdf(item, verify_link(request, item))

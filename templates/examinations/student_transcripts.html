@@ -1,0 +1,124 @@
+{% extends "layouts/base.html" %}
+{% load erp i18n %}
+{% block header_actions %}
+  <a href="{% url 'examinations:transcripts' %}" class="btn-secondary btn-sm">{% translate "All transcripts" %}</a>
+  {% if perms.students.view_student %}<a href="{% url 'students:detail' student.pk %}" class="btn-secondary btn-sm">{% translate "Student record" %}</a>{% endif %}
+{% endblock %}
+{% block content %}
+{% if waiting %}
+  <section class="card mb-6 border-indigo-200">
+    <div class="card-body">
+      <p class="text-sm"><span class="font-semibold">{% translate "Requested" %}</span> {{ waiting.created_at|date:"d M Y" }}{% if waiting.requested_by %} {% translate "by" %} {{ waiting.requested_by.get_full_name|default:waiting.requested_by.username }}{% endif %}: {{ waiting.purpose }}{% if waiting.note %} · {{ waiting.note }}{% endif %}</p>
+      <p class="mt-1 text-xs text-slate-500">{% translate "Issuing a transcript below answers the request." %}</p>
+      {% if perms.examinations.change_transcriptrequest %}
+        <form method="post" class="mt-3 flex flex-wrap items-end gap-2">{% csrf_token %}
+          <input type="hidden" name="request" value="{{ waiting.pk }}">
+          <div class="min-w-64 flex-1"><label class="label" for="decline_reason">{% translate "Or decline, saying why" %}</label><input class="input" id="decline_reason" name="reason" maxlength="200"></div>
+          <button class="btn-secondary btn-sm" name="action" value="decline">{% translate "Decline" %}</button>
+        </form>
+      {% endif %}
+    </div>
+  </section>
+{% endif %}
+
+{% if owed > 0 %}
+  <p class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">{% blocktranslate trimmed %}{{ owed }} in fees is unpaid. A transcript can still be issued; the audit log will say so.{% endblocktranslate %}</p>
+{% endif %}
+
+<form method="get" class="card mb-6">
+  <input type="hidden" name="options" value="1">
+  <div class="card-header"><h2 class="font-semibold">{% translate "What it will show" %}</h2>
+    <span class="text-xs text-slate-500">{% translate "For each year, choose the result that stands for it. An annual or combined result is chosen when there is one." %}</span></div>
+  <div class="card-body space-y-3">
+    {% for entry in years %}
+      <div class="flex flex-wrap items-center gap-3">
+        <span class="w-24 font-medium">{{ entry.year }}</span>
+        <select name="year_{{ entry.year.pk }}" class="input max-w-md">
+          {% for key, label, snapshot in entry.choices %}<option value="{{ key }}" {% if key == entry.chosen %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+        <span class="text-xs text-slate-500">{{ entry.enrollment.class_level }} · {{ entry.enrollment.section.name }}</span>
+      </div>
+    {% empty %}
+      <p class="text-sm text-slate-500">{% translate "No published result yet. Official results, if any, can still go on a transcript." %}</p>
+    {% endfor %}
+    <div class="flex flex-wrap gap-4 pt-2 text-sm">
+      <label class="flex items-center gap-2"><input type="checkbox" name="percent" value="1" {% if with_percent %}checked{% endif %}> {% translate "Show percentages" %}</label>
+      <label class="flex items-center gap-2"><input type="checkbox" name="predicted" value="1" {% if with_predicted %}checked{% endif %}> {% translate "Include approved predicted grades" %}</label>
+    </div>
+  </div>
+  <div class="border-t border-slate-200 px-5 py-3"><button class="btn-secondary btn-sm">{% translate "Show the preview" %}</button></div>
+</form>
+
+<section class="card mb-6 overflow-x-auto">
+  <div class="card-header"><h2 class="font-semibold">{% translate "Preview" %}</h2></div>
+  <div class="card-body space-y-5 text-sm">
+    {% for year in preview.years %}
+      <div>
+        <p class="font-semibold">{{ year.year }} · {{ year.class }}{% if year.section %} · {{ year.section }}{% endif %}{% if year.group %} · {{ year.group }}{% endif %}
+          <span class="font-normal text-slate-500">— {{ year.basis }}{% if year.in_progress %} · {% translate "year in progress" %}{% endif %}</span></p>
+        <table class="table mt-1">
+          <thead><tr><th>{% translate "Subject" %}</th><th>{% translate "Grade" %}</th><th class="text-right">{% translate "Grade point" %}</th>{% if with_percent %}<th class="text-right">%</th>{% endif %}</tr></thead>
+          <tbody>{% for s in year.subjects %}<tr><td>{{ s.name }}{% if s.fourth %} <span class="text-xs text-slate-500">(4th)</span>{% endif %}</td><td class="font-medium">{{ s.letter }}</td><td class="text-right">{{ s.grade_point|default_if_none:""|mark }}</td>{% if with_percent %}<td class="text-right">{{ s.percent|default_if_none:""|mark }}</td>{% endif %}</tr>{% endfor %}</tbody>
+        </table>
+        <p class="mt-1 text-xs text-slate-600">{% if year.gpa is not None %}GPA {{ year.gpa|mark }}{% if year.result %} · {{ year.result }}{% endif %}{% else %}{{ year.headline }}{% endif %}{% if year.attendance %} · {% translate "Attendance" %} {{ year.attendance }}{% endif %}</p>
+      </div>
+    {% endfor %}
+    {% for group in preview.board %}
+      <div><p class="font-semibold">{{ group.body }} · {{ group.series }}</p>
+        <p class="text-slate-700">{% for r in group.results %}{{ r.code }} {{ r.title }}: <b>{{ r.grade }}</b>{% if not forloop.last %} · {% endif %}{% endfor %}</p></div>
+    {% endfor %}
+    {% if preview.predicted %}
+      <div><p class="font-semibold">{% translate "Predicted grades" %}</p>
+        <p class="text-slate-700">{% for p in preview.predicted %}{{ p.subject }}: <b>{{ p.grade }}</b>{% if not forloop.last %} · {% endif %}{% endfor %}</p></div>
+    {% endif %}
+    {% if not preview.years and not preview.board %}<p class="text-slate-500">{% translate "Nothing to show yet." %}</p>{% endif %}
+  </div>
+  {% if perms.examinations.add_transcript and preview.years or perms.examinations.add_transcript and preview.board %}
+    <form method="post" class="flex items-center justify-between gap-3 border-t border-slate-200 px-5 py-4">{% csrf_token %}
+      <input type="hidden" name="options" value="1">
+      {% for entry in years %}<input type="hidden" name="year_{{ entry.year.pk }}" value="{{ entry.chosen }}">{% endfor %}
+      {% if with_percent %}<input type="hidden" name="percent" value="1">{% endif %}
+      {% if with_predicted %}<input type="hidden" name="predicted" value="1">{% endif %}
+      <p class="text-xs text-slate-500">{% translate "Issuing freezes this exactly. A later correction changes nothing on it; you reissue instead." %}</p>
+      <button class="btn-primary" name="action" value="issue">{% translate "Issue the transcript" %}</button>
+    </form>
+  {% endif %}
+</section>
+
+<section class="card overflow-x-auto">
+  <div class="card-header"><h2 class="font-semibold">{% translate "Issued" %}</h2></div>
+  <table class="table table-stack">
+    <thead><tr><th>{% translate "Serial" %}</th><th>{% translate "Issued" %}</th><th>{% translate "Status" %}</th><th></th></tr></thead>
+    <tbody>
+      {% for item in issued %}
+        <tr class="align-top">
+          <td data-label="{% translate "Serial" %}" class="font-mono">{{ item.serial }}<p class="font-sans text-xs text-slate-500">{{ item.fingerprint }}</p></td>
+          <td data-label="{% translate "Issued" %}">{{ item.created_at|date:"d M Y" }}{% if item.issued_by %}<p class="text-xs text-slate-500">{{ item.issued_by.get_full_name|default:item.issued_by.username }}</p>{% endif %}</td>
+          <td data-label="{% translate "Status" %}">
+            {% if item.is_revoked %}<span class="text-red-700">{% translate "Revoked" %}</span> <span class="text-xs text-slate-500">{{ item.revoke_reason }}</span>
+            {% else %}
+              {% for line in item.stale.corrected %}<p class="text-amber-700">{{ line }}</p>{% endfor %}
+              {% for line in item.stale.newer %}<p class="text-indigo-700">{{ line }}</p>{% endfor %}
+              {% if not item.stale.corrected and not item.stale.newer %}<span class="text-emerald-700">{% translate "Current" %}</span>{% endif %}
+            {% endif %}
+          </td>
+          <td class="space-y-2 sm:text-right">
+            <a class="btn-secondary btn-sm" href="{% url 'examinations:transcript_pdf' item.pk %}">PDF</a>
+            <a class="btn-secondary btn-sm" href="{% url 'examinations:transcript_verify' item.verification_code %}" target="_blank" rel="noopener">{% translate "Public check" %}</a>
+            {% if not item.is_revoked and perms.examinations.change_transcript %}
+              <form method="post" class="inline" data-confirm="{% translate "Issue a fresh transcript from the results as they stand now, and revoke this one?" %}">{% csrf_token %}
+                <input type="hidden" name="transcript" value="{{ item.pk }}"><button class="btn-secondary btn-sm" name="action" value="reissue">{% translate "Reissue" %}</button></form>
+              <form method="post" class="mt-2 flex items-center gap-1 sm:justify-end">{% csrf_token %}
+                <input type="hidden" name="transcript" value="{{ item.pk }}">
+                <input class="input w-40 py-1 text-xs" name="reason" maxlength="200" placeholder="{% translate "Reason" %}" aria-label="{% translate "Reason" %}">
+                <button class="btn-danger btn-sm" name="action" value="revoke">{% translate "Revoke" %}</button></form>
+            {% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="4">{% translate "No transcript issued yet." as nothing %}{% include "components/empty.html" with message=nothing %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

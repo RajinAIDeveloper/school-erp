@@ -1,0 +1,55 @@
+{% extends "layouts/base.html" %}
+{% load erp i18n %}
+{% block content %}
+{% if students|length > 1 %}
+<form method="get" class="card card-body mb-4 flex flex-wrap items-end gap-3">
+  <div class="min-w-48 flex-1"><label class="label" for="student">{% translate "Student" %}</label>
+    <select id="student" class="input" name="student">{% for s in students %}<option value="{{ s.pk }}" {% if selected.pk == s.pk %}selected{% endif %}>{{ s.full_name }}</option>{% endfor %}</select></div>
+  <button class="btn-secondary">{% translate "Show" %}</button>
+</form>
+{% endif %}
+
+<section class="card mb-6">
+  <div class="card-header"><h2 class="font-semibold">{% translate "Transcripts issued" %}</h2></div>
+  <ul class="divide-y divide-slate-100 text-sm">
+    {% for item in issued %}
+      <li class="flex flex-wrap items-center justify-between gap-2 px-5 py-3">
+        <span><span class="font-mono font-medium">{{ item.serial }}</span> <span class="text-xs text-slate-500">· {{ item.created_at|date:"d M Y" }}</span></span>
+        <a class="btn-primary btn-sm" href="{% url 'portal:transcript_pdf' item.pk %}">{% translate "Download" %}</a>
+      </li>
+    {% empty %}
+      <li class="px-5 py-6 text-center text-slate-500">{% translate "No transcript has been issued yet." %}</li>
+    {% endfor %}
+  </ul>
+  <p class="px-5 pb-4 text-xs text-slate-500">{% translate "Each transcript has a QR code a university can scan to check it with the school." %}</p>
+</section>
+
+{% if selected %}
+<section class="card mb-6">
+  <div class="card-header"><h2 class="font-semibold">{% translate "Ask for a transcript" %}</h2></div>
+  {% if waiting %}
+    <p class="card-body text-sm text-slate-600">{% translate "Your request is with the school. The transcript will appear above once it is issued." %}</p>
+  {% else %}
+    <form method="post" class="card-body space-y-3">{% csrf_token %}
+      <div><label class="label" for="purpose">{% translate "What is it for?" %}</label>
+        <input class="input" id="purpose" name="purpose" maxlength="200" required placeholder="{% translate "For example, a university application" %}"></div>
+      <div><label class="label" for="note">{% translate "Anything the school should know (optional)" %}</label>
+        <textarea class="input" id="note" name="note" rows="2" maxlength="300"></textarea></div>
+      <button class="btn-primary">{% translate "Send the request" %}</button>
+    </form>
+  {% endif %}
+</section>
+{% endif %}
+
+{% if asked %}
+<section class="card">
+  <div class="card-header"><h2 class="font-semibold">{% translate "Your requests" %}</h2></div>
+  <ul class="divide-y divide-slate-100 text-sm">
+    {% for item in asked %}
+      <li class="px-5 py-3"><span class="font-medium">{{ item.purpose }}</span> <span class="text-xs text-slate-500">· {{ item.created_at|date:"d M Y" }} · {% translate item.get_status_display %}</span>
+        {% if item.status == "declined" and item.decline_reason %}<p class="text-xs text-red-700">{{ item.decline_reason }}</p>{% endif %}</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+{% endblock %}
