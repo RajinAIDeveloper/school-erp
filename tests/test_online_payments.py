@@ -244,3 +244,58 @@ def test_the_portal_offers_to_pay_online_only_when_switched_on(erp, invoice):
     erp.school.payment_gateway = "sslcommerz"
     erp.school.save()
     assert "Pay online" in family.get(f"/portal/fees/?student={erp.student.pk}").content.decode()
+
+
+def test_an_unreachable_gateway_is_explained_and_holds_no_lock(erp, invoice, ssl, monkeypatch):
+    def down(url, data):
+        raise OSError("timed out")
+
+    monkeypatch.setattr(online_module, "http_post", down)
+    response = login(erp.parent).post(f"/fees/{invoice.pk}/pay-online/", {"amount": "400"}, follow=True)
+    assert "could not be reached" in response.content.decode()
+    attempt = OnlinePayment.objects.get()
+    assert attempt.status == "failed"
+
+
+def test_a_return_during_a_gateway_outage_shows_the_attempt_as_waiting(erp, invoice, ssl, monkeypatch):
+    login(erp.parent).post(f"/fees/{invoice.pk}/pay-online/", {"amount": "400"})
+    attempt = OnlinePayment.objects.get()
+
+    def down(url, params):
+        raise OSError("timed out")
+
+    monkeypatch.setattr(online_module, "http_get", down)
+    page = Client().post(f"/fees/online/{attempt.tran_id}/success/", {"val_id": "V1"})
+    assert page.status_code == 200 and b"Waiting for the payment to be confirmed" in page.content
+    assert not FeePayment.objects.exists()
+
+
+def test_registering_a_section_takes_only_this_years_students(erp):
+    from datetime import date
+
+    from academics.models import AcademicYear
+    from examinations.models import ExamSeries, SeriesCandidate
+    from students.models import Enrollment, Student
+
+    old_year = AcademicYear.objects.create(
+        school=erp.school, name="2025", start_date=date(2025, 1, 1), end_date=date(2025, 12, 31)
+    )
+    gone = Student.objects.create(
+        school=erp.school,
+        student_id="OLD1",
+        first_name="Gone",
+        gender="M",
+        date_of_birth=date(2015, 1, 1),
+        admission_date=date(2025, 1, 1),
+    )
+    Enrollment.objects.create(
+        school=erp.school,
+        student=gone,
+        academic_year=old_year,
+        class_level=erp.level,
+        section=erp.section,
+        roll_number=9,
+    )
+    series = ExamSeries.objects.create(school=erp.school, body="cambridge", name="June 2027")
+    login(erp.admin).post(f"/exams/series/{series.pk}/", {"action": "add_candidates", "section": erp.section.pk})
+    assert list(SeriesCandidate.objects.values_list("student__student_id", flat=True)) == ["S1"]

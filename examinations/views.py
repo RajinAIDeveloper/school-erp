@@ -1339,10 +1339,13 @@ def series_detail(request, pk):
             if action == "add_candidates":
                 section = get_object_or_404(Section, school=request.school, pk=request.POST.get("section") or 0)
                 start = request.POST.get("first_number", "").strip()
+                from academics.models import AcademicYear
+
                 students = list(
                     Student.objects.filter(
                         school=request.school,
                         enrollments__section=section,
+                        enrollments__academic_year=AcademicYear.current_for(request.school),
                         enrollments__status=Enrollment.Status.ENROLLED,
                     ).distinct()
                 )

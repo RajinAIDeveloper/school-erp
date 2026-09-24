@@ -63,14 +63,23 @@ def may_pay(user, invoice):
     return students_for(user, invoice.school).filter(pk=invoice.student_id).exists()
 
 
-@transaction.atomic
 def start_online_payment(*, user, invoice, amount, urls):
     """
     Open a payment and return the address to send the payer to.
 
     `urls` maps success, fail, cancel, ipn and demo to absolute addresses for a transaction
-    ID; the view builds them from the request.
+    ID; the view builds them from the request. The attempt is recorded in a short
+    transaction and the gateway is called after it, so a slow gateway never holds the locks
+    that receipts and invoices also need.
     """
+    online = _open_attempt(user=user, invoice=invoice, amount=amount)
+    if online.gateway == "demo":
+        return urls["demo"](online.tran_id)
+    return _hand_to_gateway(online, user, urls)
+
+
+@transaction.atomic
+def _open_attempt(*, user, invoice, amount):
     school = School.objects.select_for_update().get(pk=invoice.school_id)
     if school.payment_gateway == "none":
         raise ValidationError("Online payment is not switched on for this school.")
@@ -98,11 +107,28 @@ def start_online_payment(*, user, invoice, amount, urls):
     AuditLog.objects.create(
         school=school, user=user, action="online_payment.started", description=f"{online.tran_id}: {amount}"
     )
-    if school.payment_gateway == "demo":
-        return urls["demo"](online.tran_id)
+    return online
+
+
+def _hand_to_gateway(online, user, urls):
+    school, invoice, amount = online.school, online.invoice, online.amount
     student = invoice.student
     guardian = student.primary_guardian
-    reply = http_post(
+    try:
+        reply = _start_session(school, invoice, student, guardian, online, user, amount, urls)
+    except (OSError, ValueError):
+        online.status, online.note = OnlinePayment.Status.FAILED, "The gateway could not be reached."
+        online.save(update_fields=["status", "note", "updated_at"])
+        raise ValidationError("The payment gateway could not be reached. Try again in a few minutes.") from None
+    if reply.get("status") != "SUCCESS" or not reply.get("GatewayPageURL"):
+        online.status, online.note = OnlinePayment.Status.FAILED, str(reply.get("failedreason") or "Not started")[:200]
+        online.save(update_fields=["status", "note", "updated_at"])
+        raise ValidationError(f"The payment gateway did not start the payment: {online.note}")
+    return reply["GatewayPageURL"]
+
+
+def _start_session(school, invoice, student, guardian, online, user, amount, urls):
+    return http_post(
         f"{BASES[school.sslcommerz_sandbox]}/gwprocess/v4/api.php",
         {
             "store_id": school.sslcommerz_store_id,
@@ -130,11 +156,6 @@ def start_online_payment(*, user, invoice, amount, urls):
             "value_b": invoice.invoice_no,
         },
     )
-    if reply.get("status") != "SUCCESS" or not reply.get("GatewayPageURL"):
-        online.status, online.note = OnlinePayment.Status.FAILED, str(reply.get("failedreason") or "Not started")[:200]
-        online.save(update_fields=["status", "note", "updated_at"])
-        raise ValidationError(f"The payment gateway did not start the payment: {online.note}")
-    return reply["GatewayPageURL"]
 
 
 # ------------------------------------------------------------------ confirming it

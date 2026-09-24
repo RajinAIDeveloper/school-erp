@@ -505,8 +505,12 @@ def online_return(request, tran_id, outcome):
     except Exception:  # noqa: BLE001 - a gateway fault must not lose the payer's page
         import logging
 
+        from .models import OnlinePayment
+
         logging.getLogger(__name__).exception("Online payment return failed for %s", tran_id)
-        online = None
+        # Show the attempt as it stands ("waiting to be confirmed"); the gateway's notification
+        # or a later return will settle it.
+        online = OnlinePayment.objects.select_related("school").filter(tran_id=tran_id).first()
     if online is None:
         from django.http import Http404
 
