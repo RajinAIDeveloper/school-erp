@@ -408,3 +408,43 @@ msgstr "এটি বিদ্যালয়ের মূল্যায়ন,
 
 msgid "Pay online"
 msgstr "অনলাইনে পরিশোধ করুন"
+
+msgid "Privacy and consent"
+msgstr "গোপনীয়তা ও সম্মতি"
+
+msgid "Your choice has been recorded."
+msgstr "আপনার সিদ্ধান্ত লিপিবদ্ধ হয়েছে।"
+
+msgid "Keeping and using the child's school records"
+msgstr "সন্তানের বিদ্যালয়ের তথ্য সংরক্ষণ ও ব্যবহার"
+
+msgid "Text messages about the child"
+msgstr "সন্তান সম্পর্কে এসএমএস"
+
+msgid "Photos of the child in school publications"
+msgstr "বিদ্যালয়ের প্রকাশনায় সন্তানের ছবি"
+
+msgid "Sharing entry and result data with awarding bodies outside Bangladesh"
+msgstr "বাংলাদেশের বাইরের পরীক্ষা বোর্ডের সাথে নিবন্ধন ও ফলাফলের তথ্য শেয়ার"
+
+msgid "Sharing health or access-arrangement information with an awarding body"
+msgstr "পরীক্ষা বোর্ডের সাথে স্বাস্থ্য বা বিশেষ ব্যবস্থার তথ্য শেয়ার"
+
+msgid "Given"
+msgstr "সম্মতি দেওয়া হয়েছে"
+
+msgid "Not given"
+msgstr "সম্মতি দেওয়া হয়নি"
+
+msgid "Not yet asked"
+msgstr "এখনো জানতে চাওয়া হয়নি"
+
+msgid "Give consent"
+msgstr "সম্মতি দিন"
+
+msgid "Withdraw"
+msgstr "প্রত্যাহার করুন"
+
+msgid "The school uses your child's information only for the purposes below. You can give or withdraw consent for each at any time; the school records the date."
+msgstr "বিদ্যালয় আপনার সন্তানের তথ্য শুধু নিচের উদ্দেশ্যে ব্যবহার করে। যেকোনো সময় প্রতিটির জন্য সম্মতি দিতে বা প্রত্যাহার করতে পারবেন; বিদ্যালয় তারিখ লিপিবদ্ধ রাখে।"
+

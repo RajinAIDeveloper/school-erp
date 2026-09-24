@@ -166,3 +166,42 @@ def _published_combined(student):
             version=F("combined__publication_version"),
         ).select_related("combined")
     )
+
+
+@require_permission(None)
+def privacy(request):
+    """Families see, give and withdraw their consent for each use of their child's data."""
+    from django.contrib import messages
+    from django.core.exceptions import PermissionDenied, ValidationError
+    from django.shortcuts import redirect
+
+    from students.models import GuardianConsent
+    from students.privacy import current_consents, record_consent
+
+    students, student = select_student(request)
+    if request.method == "POST" and student is not None:
+        try:
+            record_consent(
+                user=request.user,
+                student=student,
+                purpose=request.POST.get("purpose", ""),
+                given=request.POST.get("given") == "1",
+                method=GuardianConsent.Method.PORTAL,
+            )
+            messages.success(request, gettext("Your choice has been recorded."))
+        except (ValidationError, PermissionDenied) as exc:
+            messages.error(request, " ".join(getattr(exc, "messages", [str(exc)])))
+        return redirect(f"{request.path}?student={student.pk}")
+    consents = current_consents(student) if student else {}
+    rows = [(value, label, consents.get(value)) for value, label in GuardianConsent.Purpose.choices]
+    return render(
+        request,
+        "portal/privacy.html",
+        {
+            "students": students,
+            "selected": student,
+            "rows": rows,
+            "is_guardian": hasattr(request.user, "guardian_profile"),
+            "page_title": gettext("Privacy and consent"),
+        },
+    )

@@ -126,6 +126,13 @@ class School(TimeStampedModel):
         default="en",
         help_text="What people see until they choose for themselves.",
     )
+    retention_years = models.PositiveSmallIntegerField(
+        default=7,
+        help_text=(
+            "Years after a student leaves before their personal data may be erased. Fee and "
+            "accounting records are kept either way, without the personal details."
+        ),
+    )
     public_results_enabled = models.BooleanField(
         "Publish results online",
         default=False,

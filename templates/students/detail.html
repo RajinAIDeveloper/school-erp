@@ -2,6 +2,7 @@
 {% load erp %}
 {% block header_actions %}
   <a href="{% url 'students:id_card' student.pk %}" class="btn-secondary btn-sm">ID card</a>
+  {% if perms.students.delete_student %}<a href="{% url 'students:retention' %}" class="btn-secondary btn-sm">Data retention</a>{% endif %}
   {% if perms.students.view_certificate %}<a href="{% url 'students:certificates' student.pk %}" class="btn-secondary btn-sm">Certificates</a>{% endif %}
   {% if perms.users.add_user and not student.user_id %}
     <form method="post" action="{% url 'users:provision' 'student' student.pk %}" class="inline">
@@ -32,7 +33,7 @@
         {% if student.blood_group %}<div class="flex gap-2"><dt class="text-slate-500">Blood group</dt><dd>{{ student.blood_group }}</dd></div>{% endif %}
         {% if student.religion %}<div class="flex gap-2"><dt class="text-slate-500">Religion</dt><dd>{{ student.get_religion_display }}</dd></div>{% endif %}
         {% if student.phone %}<div class="flex gap-2"><dt class="text-slate-500">Phone</dt><dd>{{ student.phone }}</dd></div>{% endif %}
-        {% if student.birth_registration_no %}<div class="flex gap-2"><dt class="text-slate-500">Birth reg.</dt><dd>{{ student.birth_registration_no }}</dd></div>{% endif %}
+        {% if student.birth_registration_no %}<div class="flex gap-2"><dt class="text-slate-500">Birth reg.</dt><dd>{% if may_see_identity %}{{ student.birth_registration_no }}{% else %}<span class="text-slate-400">Recorded (managers only)</span>{% endif %}</dd></div>{% endif %}
         <div class="flex gap-2"><dt class="text-slate-500">Admitted</dt><dd>{{ student.admission_date|date:"d M Y" }}</dd></div>
       </dl>
       {% if student.present_address %}<p class="mt-2 text-sm text-slate-600">{{ student.present_address }}</p>{% endif %}
@@ -143,6 +144,33 @@
     </ul>
   </section>
 </div>
+<section class="card mt-6">
+  <div class="card-header"><h3 class="font-semibold">Guardian consent</h3><span class="text-xs text-slate-500">Personal Data Protection Act 2026</span></div>
+  <table class="table">
+    <tbody>
+      {% for value, label in consent_purposes %}
+        <tr>
+          <td>{{ label }}</td>
+          <td class="text-sm">
+            {% for key, record in consents.items %}{% if key == value %}
+              {% if record.given %}<span class="text-emerald-700">Given</span>{% else %}<span class="text-red-700">Not given</span>{% endif %}
+              <span class="text-xs text-slate-500">{{ record.created_at|date:"d M Y" }} · {{ record.get_method_display }}</span>
+            {% endif %}{% endfor %}
+          </td>
+          <td class="text-right">
+            {% if perms.students.change_student %}
+              <form method="post" action="{% url 'students:consent' student.pk %}" class="inline-flex gap-1">
+                {% csrf_token %}<input type="hidden" name="purpose" value="{{ value }}">
+                <button name="given" value="1" class="btn-secondary btn-sm">Given</button>
+                <button name="given" value="0" class="btn-secondary btn-sm">Withdrawn</button>
+              </form>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
 {% if public_results and perms.students.change_student %}
   <section class="card card-body mt-6 flex flex-wrap items-center justify-between gap-3 text-sm">
     <div>

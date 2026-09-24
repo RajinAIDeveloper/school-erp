@@ -1,0 +1,18 @@
+{% extends "layouts/base.html" %}{% load i18n %}{% block content %}
+<form method="get" class="card card-body mb-4"><label class="label">{% translate "Student" %}</label><select class="input" name="student">{% for s in students %}<option value="{{ s.pk }}" {% if selected.pk == s.pk %}selected{% endif %}>{{ s.full_name }}</option>{% endfor %}</select><button class="btn-primary mt-4">{% translate "View" %}</button></form>
+{% if selected %}
+<p class="mb-3 text-sm text-slate-600">{% translate "The school uses your child's information only for the purposes below. You can give or withdraw consent for each at any time; the school records the date." %}</p>
+<div class="card overflow-x-auto"><table class="table"><tbody>
+{% for value, label, record in rows %}
+<tr>
+  <td>{% translate label %}</td>
+  <td class="text-sm">{% if record %}{% if record.given %}<span class="text-emerald-700">{% translate "Given" %}</span>{% else %}<span class="text-red-700">{% translate "Not given" %}</span>{% endif %} <span class="text-xs text-slate-500">{{ record.created_at|date:"d M Y" }}</span>{% else %}<span class="text-slate-400">{% translate "Not yet asked" %}</span>{% endif %}</td>
+  <td class="text-right">{% if is_guardian %}<form method="post" class="inline-flex gap-1">{% csrf_token %}<input type="hidden" name="purpose" value="{{ value }}">
+    {% if not record or not record.given %}<button name="given" value="1" class="btn-primary btn-sm">{% translate "Give consent" %}</button>{% endif %}
+    {% if not record or record.given %}<button name="given" value="0" class="btn-secondary btn-sm">{% translate "Withdraw" %}</button>{% endif %}
+  </form>{% endif %}</td>
+</tr>
+{% endfor %}
+</tbody></table></div>
+{% endif %}
+{% endblock %}

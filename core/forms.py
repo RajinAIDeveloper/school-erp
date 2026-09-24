@@ -161,6 +161,7 @@ class SchoolForm(TailwindFormMixin, forms.ModelForm):
             "assessment_system",
             "bangla_enabled",
             "default_language",
+            "retention_years",
         ]
         widgets = {"address": forms.Textarea(attrs={"rows": 3})}
 

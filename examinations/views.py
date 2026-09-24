@@ -1413,6 +1413,10 @@ def series_detail(request, pk):
     from .models import AccessArrangement
 
     sees_arrangements = is_manager(request.user) and request.user.has_perm("examinations.view_accessarrangement")
+    if sees_arrangements:
+        from students.privacy import log_sensitive
+
+        log_sensitive(request, "Access arrangements", str(series))
     return render(
         request,
         "examinations/series_detail.html",
@@ -1773,6 +1777,14 @@ def board_registration(request):
     raw = request.GET.get("class_level", "")
     level = levels.filter(pk=int(raw)).first() if raw.isdigit() else None
     headers, rows, checks = registration_rows(year, level) if (year and level) else ([], [], [])
+    if level:
+        from students.privacy import log_sensitive
+
+        log_sensitive(
+            request,
+            "Board registration data",
+            f"{level} ({request.GET.get('format') or 'screen'})",
+        )
     if level and request.GET.get("format") in ("csv", "xlsx"):
         return spreadsheet(
             f"board-registration-{level.pk}",

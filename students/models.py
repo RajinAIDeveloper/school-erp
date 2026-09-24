@@ -321,3 +321,40 @@ class Certificate(SchoolScopedModel):
     @property
     def is_revoked(self):
         return self.revoked_at is not None
+
+
+class GuardianConsent(SchoolScopedModel):
+    """
+    A guardian's consent for one use of a child's data, or its withdrawal.
+
+    The Personal Data Protection Act 2026 (section 9) lets a school process a child's data
+    with a parent's or guardian's consent, and section 29 allows sending it abroad (to
+    Cambridge, Pearson or the IB) with consent. Each record is dated and kept; the latest
+    record for a purpose is the one that stands.
+    """
+
+    class Purpose(models.TextChoices):
+        RECORDS = "records", "Keeping and using the child's school records"
+        SMS = "sms", "Text messages about the child"
+        PHOTOS = "photos", "Photos of the child in school publications"
+        ABROAD = "abroad", "Sharing entry and result data with awarding bodies outside Bangladesh"
+        SENSITIVE = "sensitive", "Sharing health or access-arrangement information with an awarding body"
+
+    class Method(models.TextChoices):
+        FORM = "form", "Signed form"
+        PORTAL = "portal", "Family portal"
+        OTHER = "other", "Other (recorded by staff)"
+
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="consents")
+    purpose = models.CharField(max_length=10, choices=Purpose.choices)
+    given = models.BooleanField(help_text="Ticked for consent given, clear for consent refused or withdrawn.")
+    method = models.CharField(max_length=10, choices=Method.choices, default=Method.FORM)
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
+    note = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+        indexes = [models.Index(fields=["student", "purpose"])]
+
+    def __str__(self):
+        return f"{self.student} {self.purpose}: {'given' if self.given else 'refused'}"

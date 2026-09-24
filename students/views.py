@@ -24,7 +24,8 @@ from .forms import (
     StatusChangeForm,
     StudentForm,
 )
-from .models import Enrollment, Student, StudentDocument, StudentGuardian
+from .models import Enrollment, GuardianConsent, Student, StudentDocument, StudentGuardian
+from .privacy import current_consents, may_see_identity
 from .services import admit, change_status, import_students, read_import_rows, validate_import
 
 IMPORT_SESSION_KEY = "student_import_rows"
@@ -201,6 +202,9 @@ def detail(request, pk):
             "published_exams": published,
             "official_results": _official_for_staff(request.user, student),
             "public_results": request.school.public_results_enabled,
+            "may_see_identity": may_see_identity(request.user),
+            "consents": current_consents(student),
+            "consent_purposes": GuardianConsent.Purpose.choices,
             "status_form": StatusChangeForm(),
         },
     )
@@ -701,3 +705,62 @@ def reissue_result_code(request, pk):
     code = reissue_code(user=request.user, student=student)
     messages.success(request, f"New result code for {student}: {code}. Print new admit cards to hand it over.")
     return redirect("students:detail", pk=student.pk)
+
+
+@require_POST
+@require_permission("students.change_student")
+def consent(request, pk):
+    """Record a guardian's consent, or its withdrawal, from a signed form."""
+    from .privacy import record_consent
+
+    student = get_object_or_404(Student, school=request.school, pk=pk)
+    try:
+        record_consent(
+            user=request.user,
+            student=student,
+            purpose=request.POST.get("purpose", ""),
+            given=request.POST.get("given") == "1",
+            method=request.POST.get("method") or "form",
+            note=request.POST.get("note", ""),
+        )
+        messages.success(request, "Consent recorded.")
+    except ValidationError as exc:
+        messages.error(request, " ".join(exc.messages))
+    return redirect("students:detail", pk=student.pk)
+
+
+@require_permission("students.delete_student", also="managers only")
+def retention(request):
+    """
+    Former students whose retention period has passed, and erasing their personal data.
+
+    Marks, attendance, fees and the ledger are kept, tied to the student ID; names and
+    personal details are removed from every record, including published results.
+    """
+    from django.core.exceptions import PermissionDenied
+
+    from core.access import is_manager
+
+    from .privacy import due_for_erasure, erase_student
+
+    if not is_manager(request.user):
+        raise PermissionDenied
+    if request.method == "POST":
+        student = get_object_or_404(Student, school=request.school, pk=request.POST.get("student") or 0)
+        try:
+            erase_student(
+                school=request.school, user=request.user, student=student, confirm=request.POST.get("confirm", "")
+            )
+            messages.success(request, f"Erased the personal data of {student.student_id}.")
+        except ValidationError as exc:
+            messages.error(request, " ".join(exc.messages))
+        return redirect("students:retention")
+    return render(
+        request,
+        "students/retention.html",
+        {
+            "due": due_for_erasure(request.school),
+            "years": request.school.retention_years,
+            "page_title": "Data retention",
+        },
+    )

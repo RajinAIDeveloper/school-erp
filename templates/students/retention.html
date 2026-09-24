@@ -1,0 +1,33 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<div class="mx-auto max-w-4xl space-y-4">
+  <div class="rounded-md border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+    Former students whose last school year ended more than {{ years }} year{{ years|pluralize }} ago
+    (change this in the school settings). Erasing removes the name, contact and identity details,
+    documents, photo and consent records, from published results and certificates too. Marks,
+    attendance, fees and the ledger are kept under the student ID. Guardians are erased as well
+    unless another child at the school still links to them. It cannot be undone.
+  </div>
+  <div class="card overflow-x-auto">
+    <table class="table">
+      <thead><tr><th>Student ID</th><th>Name</th><th>Status</th><th class="text-right">Erase</th></tr></thead>
+      <tbody>
+        {% for s in due %}
+          <tr>
+            <td class="font-mono">{{ s.student_id }}</td><td>{{ s.full_name }}</td><td>{{ s.get_status_display }}</td>
+            <td class="text-right">
+              <form method="post" class="inline-flex gap-2" data-confirm="Erase the personal data of {{ s.student_id }}? This cannot be undone.">
+                {% csrf_token %}<input type="hidden" name="student" value="{{ s.pk }}">
+                <input name="confirm" placeholder="Type {{ s.student_id }}" class="input w-40 py-1 text-sm" autocomplete="off" required>
+                <button class="btn-secondary btn-sm">Erase</button>
+              </form>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="4">{% include "components/empty.html" with message="No former student is past the retention period." %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -69,6 +69,9 @@ def entry_problems(series):
     if not series.centre_number:
         problems.append("The series has no centre number.")
     four_digits = series.body in ("cambridge", "pearson")
+    abroad = series.body in ("cambridge", "pearson", "ib")
+    from students.privacy import has_consent
+
     for candidate in series.candidates.select_related("student").prefetch_related("entries"):
         who = f"{candidate.candidate_number} {candidate.student.full_name}"
         name = certificate_name(candidate)
@@ -80,6 +83,10 @@ def entry_problems(series):
             problems.append(f"{who}: candidate numbers are four digits for this body.")
         if not [e for e in candidate.entries.all() if e.status == "entered"]:
             problems.append(f"{who}: registered but not entered for any syllabus.")
+        if abroad and not has_consent(candidate.student, "abroad"):
+            problems.append(
+                f"{who}: no recorded guardian consent to share data with an awarding body outside Bangladesh."
+            )
     return problems
 
 

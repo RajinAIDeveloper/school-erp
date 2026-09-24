@@ -156,6 +156,7 @@ quietly join it.
 | /portal/ | portal:index | `(sign-in only)` | - | o | o | o | o | o | o | o |
 | /portal/attendance/ | portal:attendance | `(sign-in only)` | - | o | o | o | o | o | o | o |
 | /portal/fees/ | portal:fees | `(sign-in only)` | - | o | o | o | o | o | o | o |
+| /portal/privacy/ | portal:privacy | `(sign-in only)` | - | o | o | o | o | o | o | o |
 | /portal/results/ | portal:results | `(sign-in only)` | - | o | o | o | o | o | o | o |
 | /reports/ | reports:hub | `(sign-in only)` | - | o | o | o | o | o | o | o |
 | /reports/leave/ | reports:leave_register | `attendance.view_leaverequest` | own requests unless a manager | Y | Y | . | Y | Y | . | . |
@@ -229,6 +230,7 @@ quietly join it.
 | /students/ | students:list | `students.view_student` | - | Y | Y | Y | Y | . | . | . |
 | /students/<int:pk>/ | students:detail | `(sign-in only)` | own children or your own sections | o | o | o | o | o | o | o |
 | /students/<int:pk>/certificates/ | students:certificates | `students.view_certificate` | - | Y | Y | . | . | . | . | . |
+| /students/<int:pk>/consent/ | students:consent | `students.change_student` | - | Y | Y | . | . | . | . | . |
 | /students/<int:pk>/documents/new/ | students:document_upload | `students.add_studentdocument` | - | Y | Y | . | . | . | . | . |
 | /students/<int:pk>/edit/ | students:update | `students.change_student` | - | Y | Y | . | . | . | . | . |
 | /students/<int:pk>/id-card.pdf | students:id_card | `(sign-in only)` | - | o | o | o | o | o | o | o |
@@ -248,6 +250,7 @@ quietly join it.
 | /students/import/ | students:import | `students.add_student` | - | Y | Y | . | . | . | . | . |
 | /students/new/ | students:create | `students.add_student` | - | Y | Y | . | . | . | . | . |
 | /students/promote/ | students:promote | `students.change_enrollment` | - | Y | Y | . | . | . | . | . |
+| /students/retention/ | students:retention | `students.delete_student` | managers only | Y | Y | . | . | . | . | . |
 | /users/ | users:list | `users.view_user` | - | Y | Y | . | . | . | . | . |
 | /users/<int:pk>/ | users:detail | `users.view_user` | - | Y | Y | . | . | . | . | . |
 | /users/<int:pk>/edit/ | users:update | `users.change_user` | - | Y | . | . | . | . | . | . |
