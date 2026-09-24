@@ -130,7 +130,8 @@ class School(TimeStampedModel):
         "Publish results online",
         default=False,
         help_text=(
-            "Families can look up a published result with the student ID and date of birth, without signing in."
+            "Families can look up a published result without signing in, with the student ID and the "
+            "result code printed on the admit card."
         ),
     )
     # Online fees. Money settles straight into the school's own merchant account; the software

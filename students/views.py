@@ -7,6 +7,7 @@ from django.http import FileResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from academics.models import ClassLevel, Section
 from core.access import require_permission, students_for
@@ -199,6 +200,7 @@ def detail(request, pk):
             "recent_attendance": attendance.order_by("-date")[:14],
             "published_exams": published,
             "official_results": _official_for_staff(request.user, student),
+            "public_results": request.school.public_results_enabled,
             "status_form": StatusChangeForm(),
         },
     )
@@ -687,3 +689,15 @@ def _official_for_staff(user, student):
     from examinations.official import official_results_for
 
     return official_results_for(student, confirmed_only=False)
+
+
+@require_POST
+@require_permission("students.change_student")
+def reissue_result_code(request, pk):
+    """A new result code for the public lookup, when the old one is lost or has been shared."""
+    from examinations.public import reissue_code
+
+    student = get_object_or_404(Student, school=request.school, pk=pk)
+    code = reissue_code(user=request.user, student=student)
+    messages.success(request, f"New result code for {student}: {code}. Print new admit cards to hand it over.")
+    return redirect("students:detail", pk=student.pk)

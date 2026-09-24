@@ -19,6 +19,7 @@ from core.generic import ERPListView
 from core.pdf import table_document
 from students.models import Enrollment
 
+from .documents import card_rows
 from .exports import about, filter_rows
 from .grading import headline
 from .models import Exam, ExamSchedule, GradeRule, GradeScale, Mark, ResultSnapshot, UnlockRequest
@@ -849,6 +850,10 @@ def admit_cards(request):
     from .subjects import papers_for
 
     plan = subject_plan(exam.academic_year, section.class_level)
+    if request.school.public_results_enabled:
+        from .public import ensure_codes
+
+        ensure_codes([e.student for e in enrollments])
     # The same eligibility rule as mark entry and results: a card lists only that student's papers.
     return admit_cards_pdf(
         request.school,
@@ -1794,3 +1799,58 @@ def board_registration(request):
             "page_title": "Board registration data",
         },
     )
+
+
+def public_results(request, slug):
+    """
+    Families look up a published result without signing in, when the school allows it.
+
+    The student ID and the result code from the admit card must both match. A wrong pair
+    says only that nothing matched, and too many from one address are turned away.
+    """
+    from core.models import School
+
+    from .public import lookup, published_results, throttled
+
+    school = get_object_or_404(School, slug=slug, is_active=True)
+    if not school.public_results_enabled:
+        from django.http import Http404
+
+        raise Http404
+    address = request.META.get("REMOTE_ADDR", "")
+    context = {"school": school, "student": None, "error": "", "page_title": "Results"}
+    if request.method == "POST":
+        if throttled(address, school):
+            context["error"] = "Too many attempts. Try again in 15 minutes."
+        else:
+            student = lookup(school, request.POST.get("student_id", ""), request.POST.get("code", ""), address)
+            if student is None:
+                context["error"] = "No result matches that student ID and result code. Check both and try again."
+            else:
+                exams, combined = published_results(student)
+                context.update(
+                    {
+                        "student": student,
+                        "results": [
+                            {
+                                "title": f"{s.exam.name} ({s.exam.academic_year})",
+                                "row": s.payload,
+                                "lines": card_rows(s.payload),
+                                "notice": official_notice(s.payload),
+                            }
+                            for s in exams
+                        ]
+                        + [
+                            {
+                                "title": f"{s.combined.name} ({s.combined.academic_year})",
+                                "row": s.payload,
+                                "lines": card_rows(s.payload),
+                                "notice": official_notice(s.payload),
+                            }
+                            for s in combined
+                        ],
+                    }
+                )
+    response = render(request, "examinations/public_results.html", context)
+    response["Cache-Control"] = "no-store"
+    return response

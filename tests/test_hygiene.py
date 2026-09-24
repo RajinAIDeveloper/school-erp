@@ -184,6 +184,9 @@ def test_the_public_surface_is_exactly_what_we_intend(erp):
         "/exams/verify/<uuid:code>/",
         # The same check for a combined result, such as an annual result.
         "/exams/combined/verify/<uuid:code>/",
+        # Families look up a published result with the student ID and the admit card's result
+        # code, when the school switches it on; rate limited, published results only.
+        "/results/<slug:slug>/",
         # Anyone holding a certificate may check it; the page shows initials, never the record.
         "/students/certificates/verify/<uuid:code>/",
         # A liveness probe; a load balancer has no session.

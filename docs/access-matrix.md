@@ -158,6 +158,7 @@ quietly join it.
 | /reports/payroll/ | reports:payroll_register | `finance.view_payroll` | - | Y | . | Y | . | . | . | . |
 | /reports/strength/ | reports:strength | `students.view_student` | - | Y | Y | Y | Y | . | . | . |
 | /reports/teacher-load/ | reports:teacher_load | `timetable.view_routineslot` | timetable editors only | Y | Y | . | Y | Y | Y | Y |
+| /results/<slug:slug>/ | public_results | `(public)` | - | * | * | * | * | * | * | * |
 | /routine/ | timetable:routine | `timetable.view_routineslot` | own class or children unless a manager | Y | Y | . | Y | Y | Y | Y |
 | /routine/edit/ | timetable:grid_edit | `timetable.change_routineslot` | - | Y | Y | . | . | . | . | . |
 | /routine/free-teachers.json | timetable:free_teachers | `timetable.view_routineslot` | timetable editors only | Y | Y | . | Y | Y | Y | Y |
@@ -226,6 +227,7 @@ quietly join it.
 | /students/<int:pk>/edit/ | students:update | `students.change_student` | - | Y | Y | . | . | . | . | . |
 | /students/<int:pk>/id-card.pdf | students:id_card | `(sign-in only)` | - | o | o | o | o | o | o | o |
 | /students/<int:pk>/leaving/ | students:leaving | `students.change_student` | - | Y | Y | . | . | . | . | . |
+| /students/<int:pk>/result-code/ | students:reissue_result_code | `students.change_student` | - | Y | Y | . | . | . | . | . |
 | /students/<int:student_pk>/guardian/ | students:guardian_create | `students.add_guardian` | - | Y | Y | . | . | . | . | . |
 | /students/admit/ | students:admission | `students.add_student` | - | Y | Y | . | . | . | . | . |
 | /students/certificates/<int:pk>/ | students:certificate | `students.view_certificate` | - | Y | Y | . | . | . | . | . |

@@ -5,6 +5,7 @@ from django.urls import include, path
 from core import views
 from core.media import image
 from core.security import RateLimitedAuthenticationForm
+from examinations import views as exam_views
 
 # Django admin is reserved for platform superusers. School admins use scoped ERP views.
 admin.site.has_permission = lambda request: request.user.is_active and request.user.is_superuser
@@ -29,6 +30,7 @@ urlpatterns = [
     path("healthz/", views.healthz, name="healthz"),
     path("", views.dashboard, name="dashboard"),
     path("language/", views.set_language, name="set_language"),
+    path("results/<slug:slug>/", exam_views.public_results, name="public_results"),
     path("academics/", include("academics.urls")),
     path("students/", include("students.urls")),
     path("employees/", include("employees.urls")),

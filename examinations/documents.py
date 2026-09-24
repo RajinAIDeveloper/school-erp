@@ -417,7 +417,12 @@ def admit_cards_pdf(school, exam, enrollments, schedules, papers_for_student=Non
                     ("Roll", enrollment.roll_number),
                     ("Examination", exam.name),
                     ("Starts", exam.start_date.strftime("%d %b %Y") if exam.start_date else "To be announced"),
-                ],
+                ]
+                + (
+                    [("Result code", student.result_code)]
+                    if school.public_results_enabled and student.result_code
+                    else []
+                ),
                 style,
             )
         )

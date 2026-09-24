@@ -77,6 +77,11 @@ class Student(SchoolScopedModel):
     board_registration_no = models.CharField("Board registration no.", max_length=30, blank=True)
     unique_id = models.CharField("Student unique ID", max_length=30, blank=True, help_text="The government student ID.")
     admission_date = models.DateField()
+    result_code = models.CharField(
+        max_length=9,
+        blank=True,
+        help_text="Printed on the admit card; with the student ID it opens the public result lookup.",
+    )
     status = models.CharField(max_length=15, choices=Status.choices, default=Status.ACTIVE)
     notes = models.TextField(blank=True)
 
@@ -84,6 +89,11 @@ class Student(SchoolScopedModel):
         ordering = ["student_id"]
         constraints = [
             models.UniqueConstraint(fields=["school", "student_id"], name="unique_student_id_per_school"),
+            models.UniqueConstraint(
+                fields=["school", "result_code"],
+                condition=~models.Q(result_code=""),
+                name="unique_result_code_per_school",
+            ),
         ]
 
     @property

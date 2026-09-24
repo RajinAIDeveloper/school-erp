@@ -1,0 +1,53 @@
+{% load static erp %}<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>Results · {{ school.name }}</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body class="min-h-full bg-slate-100 px-4 py-10">
+  <main class="mx-auto w-full max-w-2xl space-y-4">
+    <div class="rounded-xl bg-white p-8 shadow-lg">
+      <p class="text-sm uppercase tracking-wide text-slate-500">Published results</p>
+      <h1 class="mt-1 text-xl font-semibold text-slate-900">{{ school.name }}</h1>
+      {% if not student %}
+        <form method="post" class="mt-6 space-y-4">
+          {% csrf_token %}
+          {% if error %}<p class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{{ error }}</p>{% endif %}
+          <label class="label">Student ID<input name="student_id" required autocomplete="off" class="input"></label>
+          <label class="label">Result code<input name="code" required autocomplete="off" class="input font-mono uppercase" placeholder="ABCD-2345"></label>
+          <p class="text-xs text-slate-500">The result code is printed on the student's admit card. Ask the school office if it is lost.</p>
+          <button class="btn-primary w-full">Show results</button>
+        </form>
+      {% else %}
+        <p class="mt-4 text-sm text-slate-600">{{ student.full_name }} · {{ student.student_id }}</p>
+        <form method="get" class="mt-2"><button class="link text-sm">Look up another student</button></form>
+      {% endif %}
+    </div>
+
+    {% if student %}
+      {% for r in results %}
+        <section class="rounded-xl bg-white p-6 shadow">
+          <h2 class="font-semibold">{{ r.title }}</h2>
+          <p class="text-sm text-slate-600">{{ r.row.section }} · Roll {{ r.row.roll }} · <b>{{ r.row|result_headline }}</b></p>
+          <table class="table mt-3">
+            <thead><tr><th>Subject</th><th class="text-right">Obtained</th><th>Grade</th></tr></thead>
+            <tbody>
+              {% for line in r.lines %}
+                <tr class="{% if line.combined %}font-semibold{% endif %}"><td>{{ line.subject }}</td><td class="text-right">{{ line.obtained }}</td><td>{{ line.letter }}</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% if r.row.rulebook %}<p class="mt-2 text-xs text-slate-500">Worked out by: {{ r.row.rulebook }}</p>{% endif %}
+          {% if r.notice %}<p class="mt-1 text-xs font-medium text-slate-600">{{ r.notice }}</p>{% endif %}
+        </section>
+      {% empty %}
+        <p class="rounded-xl bg-white p-6 text-sm text-slate-600 shadow">No results have been published for this student yet.</p>
+      {% endfor %}
+      <p class="text-center text-xs text-slate-500">These are the school's own published results. The printed report card is available from the school.</p>
+    {% endif %}
+  </main>
+</body>
+</html>

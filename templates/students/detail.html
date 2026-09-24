@@ -143,6 +143,17 @@
     </ul>
   </section>
 </div>
+{% if public_results and perms.students.change_student %}
+  <section class="card card-body mt-6 flex flex-wrap items-center justify-between gap-3 text-sm">
+    <div>
+      <p class="font-semibold">Result code for the public lookup</p>
+      <p class="text-slate-600">{% if student.result_code %}<span class="font-mono">{{ student.result_code }}</span>, printed on admit cards.{% else %}Issued when admit cards are next printed.{% endif %}</p>
+    </div>
+    <form method="post" action="{% url 'students:reissue_result_code' student.pk %}" data-confirm="Issue a new code? The old one stops working.">
+      {% csrf_token %}<button class="btn-secondary btn-sm">{% if student.result_code %}Issue a new code{% else %}Issue a code now{% endif %}</button>
+    </form>
+  </section>
+{% endif %}
 {% if official_results is not None %}
   <section class="card mt-6">
     <div class="card-header"><h3 class="font-semibold">Official results</h3><span class="text-xs text-slate-500">As issued by the awarding body</span></div>

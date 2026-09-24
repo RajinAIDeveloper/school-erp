@@ -15,6 +15,7 @@ urlpatterns = [
     path("<int:pk>/edit/", views.StudentUpdateView.as_view(), name="update"),
     path("<int:pk>/leaving/", views.leaving, name="leaving"),
     path("<int:pk>/certificates/", views.certificates, name="certificates"),
+    path("<int:pk>/result-code/", views.reissue_result_code, name="reissue_result_code"),
     path("certificates/<int:pk>/", views.certificate, name="certificate"),
     path("certificates/verify/<uuid:code>/", views.certificate_verify, name="certificate_verify"),
     path("<int:student_pk>/guardian/", views.guardian, name="guardian_create"),
