@@ -10,7 +10,7 @@ from django.views.generic import ListView, UpdateView
 from academics.models import AcademicYear
 
 from .access import require_permission
-from .forms import FinancePolicyForm, NotificationSettingsForm, SchoolForm, SMSSettingsForm
+from .forms import FinancePolicyForm, NotificationSettingsForm, PaymentSettingsForm, SchoolForm, SMSSettingsForm
 from .mixins import ERPPermissionMixin
 from .models import AuditLog, audit
 
@@ -70,6 +70,16 @@ class SchoolSettingsView(ERPPermissionMixin, UpdateView):
 class SMSSettingsView(SchoolSettingsView):
     form_class = SMSSettingsForm
     template_name = "core/settings_sms.html"
+
+
+class PaymentSettingsView(SchoolSettingsView):
+    form_class = PaymentSettingsForm
+    template_name = "core/settings_payments.html"
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        audit(self.request, "settings.payments_changed", self.request.school)
+        return response
 
 
 class NotificationSettingsView(SchoolSettingsView):
@@ -187,6 +197,12 @@ SETTINGS_CARDS = [
         "title": "Notifications",
         "description": "Which events text a family, and the wording each message uses.",
         "url": "settings:notifications",
+        "permission": "core.change_school",
+    },
+    {
+        "title": "Online payments",
+        "description": "The school's SSLCommerz account, or the demonstration gateway for a showcase.",
+        "url": "settings:payments",
         "permission": "core.change_school",
     },
     {

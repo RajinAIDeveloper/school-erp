@@ -1,0 +1,38 @@
+{% load static erp %}<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>Payment · {{ school.name }}</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body class="flex min-h-full items-center justify-center bg-slate-100 px-4 py-10">
+  <main class="w-full max-w-md rounded-xl bg-white p-8 shadow-lg">
+    <p class="text-sm uppercase tracking-wide text-slate-500">Online payment</p>
+    <h1 class="mt-1 text-xl font-semibold text-slate-900">{{ school.name }}</h1>
+    {% if online.status == "paid" %}
+      <div class="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 px-5 py-4">
+        <p class="font-medium text-emerald-800">Payment received.</p>
+        <p class="mt-1 text-sm text-slate-700">{% money online.amount %} · receipt {{ online.payment.receipt_no }}</p>
+      </div>
+    {% elif online.status == "review" %}
+      <div class="mt-6 rounded-lg border border-amber-200 bg-amber-50 px-5 py-4">
+        <p class="font-medium text-amber-800">The payment went through, and the school office will check it.</p>
+        <p class="mt-1 text-sm text-slate-700">Keep your transaction number: {{ online.tran_id }}</p>
+      </div>
+    {% elif online.status == "started" %}
+      <div class="mt-6 rounded-lg border border-sky-200 bg-sky-50 px-5 py-4">
+        <p class="font-medium text-sky-800">Waiting for the payment to be confirmed.</p>
+        <p class="mt-1 text-sm text-slate-700">If money has left your account, it will appear on the invoice once the gateway confirms it.</p>
+      </div>
+    {% else %}
+      <div class="mt-6 rounded-lg border border-red-200 bg-red-50 px-5 py-4">
+        <p class="font-medium text-red-800">The payment was not completed.</p>
+        <p class="mt-1 text-sm text-slate-700">No receipt was issued. You can try again from the fees page.</p>
+      </div>
+    {% endif %}
+    <p class="mt-6 text-sm"><a class="link" href="{% url 'portal:fees' %}">Back to fees</a></p>
+  </main>
+</body>
+</html>

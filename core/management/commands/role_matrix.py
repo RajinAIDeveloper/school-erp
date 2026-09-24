@@ -33,6 +33,8 @@ def view_permission(callback):
     declared = getattr(callback, "erp_permission", None)
     if declared:
         return declared
+    if getattr(callback, "erp_public", False):
+        return "(public)"
     # login_required and friends wrap with functools.wraps, so a wrapper means a sign-in.
     return "(sign-in only)" if hasattr(callback, "__wrapped__") else "(public)"
 

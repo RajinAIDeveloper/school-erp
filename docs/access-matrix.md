@@ -100,6 +100,7 @@ quietly join it.
 | /fees/<int:pk>/ | fees:invoice_detail | `(sign-in only)` | own invoices unless you hold fees | o | o | o | o | o | o | o |
 | /fees/<int:pk>/cancel/ | fees:invoice_cancel | `fees.change_feeinvoice` | - | Y | . | Y | . | . | . | . |
 | /fees/<int:pk>/edit/ | fees:invoice_edit | `fees.change_feeinvoice` | - | Y | . | Y | . | . | . | . |
+| /fees/<int:pk>/pay-online/ | fees:pay_online | `(sign-in only)` | the family's own invoices, or fee staff | o | o | o | o | o | o | o |
 | /fees/category/ | fees:category_list | `fees.view_feecategory` | - | Y | . | Y | . | . | . | . |
 | /fees/category/<int:pk>/edit/ | fees:category_update | `fees.change_feecategory` | - | Y | . | Y | . | . | . | . |
 | /fees/category/new/ | fees:category_create | `fees.add_feecategory` | - | Y | . | Y | . | . | . | . |
@@ -111,6 +112,10 @@ quietly join it.
 | /fees/due/remind/ | fees:remind | `messaging.add_smsmessage` | - | Y | Y | Y | . | . | . | . |
 | /fees/generate/ | fees:generate | `fees.add_feeinvoice` | - | Y | . | Y | . | . | . | . |
 | /fees/new/ | fees:invoice_create | `fees.add_feeinvoice` | - | Y | . | Y | . | . | . | . |
+| /fees/online/ | fees:online_payments | `fees.view_feepayment` | - | Y | Y | Y | . | . | . | . |
+| /fees/online/<str:tran_id>/<str:outcome>/ | fees:online_return | `(public)` | - | * | * | * | * | * | * | * |
+| /fees/online/<str:tran_id>/demo/ | fees:online_demo | `(public)` | - | * | * | * | * | * | * | * |
+| /fees/online/notify/ | fees:online_ipn | `(public)` | - | * | * | * | * | * | * | * |
 | /fees/payments/<int:pk>/cancel/ | fees:cancel | `fees.change_feepayment` | - | Y | . | Y | . | . | . | . |
 | /fees/receipts/<int:pk>.pdf | fees:receipt | `(sign-in only)` | own receipts unless you hold fees | o | o | o | o | o | o | o |
 | /fees/reports/ | fees:report | `fees.view_feepayment` | - | Y | Y | Y | . | . | . | . |
@@ -191,6 +196,7 @@ quietly join it.
 | /settings/leave-type/<int:pk>/edit/ | settings:leave_type_update | `attendance.change_leavetype` | - | Y | Y | . | . | . | . | . |
 | /settings/leave-type/new/ | settings:leave_type_create | `attendance.add_leavetype` | - | Y | Y | . | . | . | . | . |
 | /settings/notifications/ | settings:notifications | `core.change_school` | - | Y | . | . | . | . | . | . |
+| /settings/payments/ | settings:payments | `core.change_school` | - | Y | . | . | . | . | . | . |
 | /settings/policy/ | settings:policy | `core.change_school` | - | Y | . | . | . | . | . | . |
 | /settings/school/ | settings:school | `core.change_school` | - | Y | . | . | . | . | . | . |
 | /settings/section/ | settings:section_list | `academics.view_section` | - | Y | Y | Y | Y | . | . | . |

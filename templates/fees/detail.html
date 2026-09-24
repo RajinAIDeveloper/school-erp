@@ -42,6 +42,22 @@
   </div>
 </div>
 
+{% if online_payments %}
+<section class="card mb-6">
+  <div class="card-header"><h3 class="font-semibold">Online payment attempts</h3></div>
+  <table class="table">
+    <thead><tr><th>Started</th><th>Transaction</th><th class="text-right">Amount</th><th>Status</th><th>Receipt</th></tr></thead>
+    <tbody>
+      {% for o in online_payments %}
+        <tr><td>{{ o.created_at|date:"d M Y H:i" }}</td><td class="font-mono text-xs">{{ o.tran_id }}</td><td class="text-right">{% money o.amount %}</td>
+          <td>{{ o.get_status_display }}{% if o.note %}<br><span class="text-xs text-slate-500">{{ o.note }}</span>{% endif %}</td>
+          <td>{{ o.payment.receipt_no|default:"—" }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
 {% if perms.fees.add_feepayment and invoice.balance > 0 and invoice.status != "cancelled" %}
 <form method="post" class="card mb-6">
   {% csrf_token %}

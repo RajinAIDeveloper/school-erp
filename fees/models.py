@@ -398,3 +398,41 @@ class FeePayment(SchoolScopedModel):
         if self.journal_entry_id and self.journal_entry.status == "posted":
             self.journal_entry.reverse(user=user, narration=f"Cancelled receipt {self.receipt_no}: {reason}")
         self.invoice.refresh_status()
+
+
+class OnlinePayment(SchoolScopedModel):
+    """
+    One attempt to pay an invoice through the payment gateway.
+
+    A payment counts only when the gateway itself confirms it, server to server, for exactly
+    this amount in taka. The browser's return and the gateway's notification may both arrive,
+    in either order and more than once; the receipt is written once.
+    """
+
+    class Status(models.TextChoices):
+        STARTED = "started", "Started"
+        PAID = "paid", "Paid"
+        FAILED = "failed", "Failed"
+        CANCELLED = "cancelled", "Cancelled"
+        REVIEW = "review", "Needs review"
+
+    invoice = models.ForeignKey(FeeInvoice, on_delete=models.PROTECT, related_name="online_payments")
+    tran_id = models.CharField(max_length=40, unique=True)
+    gateway = models.CharField(max_length=12)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.STARTED)
+    val_id = models.CharField(max_length=80, blank=True)
+    bank_tran_id = models.CharField(max_length=80, blank=True)
+    card_type = models.CharField(max_length=60, blank=True)
+    note = models.CharField(max_length=200, blank=True)
+    started_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    payment = models.OneToOneField(
+        FeePayment, null=True, blank=True, on_delete=models.PROTECT, related_name="online_payment"
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.tran_id} {self.amount} {self.status}"

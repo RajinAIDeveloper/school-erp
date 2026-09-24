@@ -187,6 +187,12 @@ def test_the_public_surface_is_exactly_what_we_intend(erp):
         # Families look up a published result with the student ID and the admit card's result
         # code, when the school switches it on; rate limited, published results only.
         "/results/<slug:slug>/",
+        # The payment gateway returns the payer and notifies the school here, without a session;
+        # a payment is believed only after asking the gateway itself. The demonstration gateway's
+        # page works only where the demonstration gateway is allowed.
+        "/fees/online/notify/",
+        "/fees/online/<str:tran_id>/<str:outcome>/",
+        "/fees/online/<str:tran_id>/demo/",
         # Anyone holding a certificate may check it; the page shows initials, never the record.
         "/students/certificates/verify/<uuid:code>/",
         # A liveness probe; a load balancer has no session.

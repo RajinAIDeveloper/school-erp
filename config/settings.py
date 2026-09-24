@@ -14,6 +14,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-only-insecure-key-change-me-in-production")
 DEBUG = os.environ.get("DJANGO_DEBUG", "1") == "1"
+# The demonstration payment gateway moves no money. It runs in development, and on a
+# production server only when this is set deliberately, for a showcase installation.
+ALLOW_DEMO_PAYMENTS = os.environ.get("ALLOW_DEMO_PAYMENTS", "0") == "1"
 ALLOWED_HOSTS = [h for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h]
 CSRF_TRUSTED_ORIGINS = [o for o in os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",") if o]
 

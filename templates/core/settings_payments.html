@@ -1,0 +1,21 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block header %}Basic Settings{% endblock %}
+{% block content %}
+{% include "core/settings_nav.html" %}
+<div class="card max-w-3xl">
+  <form method="post" class="card-body">{% csrf_token %}
+    <h2 class="font-semibold">Online payments</h2>
+    <p class="mb-4 mt-1 text-sm text-slate-500">
+      Families pay from their fees page through the school's own SSLCommerz account (bKash, Nagad,
+      Rocket, cards and banks). Money goes from SSLCommerz to the school's bank under the school's
+      contract with them; this system never holds it. A payment is recorded only when SSLCommerz
+      confirms it, and lands in the "Online Payments Clearing" account until it settles.
+      Start with the sandbox, and switch it off only with live store details.
+      The demonstration gateway moves no money and is for showing the system.
+    </p>
+    {% render_form form %}
+    <div class="mt-6 flex justify-end border-t pt-4"><button class="btn-primary">Save</button></div>
+  </form>
+</div>
+{% endblock %}

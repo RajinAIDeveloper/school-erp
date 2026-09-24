@@ -5,7 +5,7 @@ from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
-from core.access import require_permission, students_for
+from core.access import public, require_permission, students_for
 from core.exports import spreadsheet
 from core.generic import ERPListView
 from core.pdf import table_document
@@ -58,6 +58,7 @@ class InvoiceListView(ERPListView):
         ("Structures", "fees:structure_list", "fees.view_feestructure"),
         ("Concessions", "fees:concession_list", "fees.view_feeconcession"),
         ("Collection report", "fees:report", "fees.view_feepayment"),
+        ("Online payments", "fees:online_payments", "fees.view_feepayment"),
     )
 
     def get_queryset(self):
@@ -113,6 +114,7 @@ def detail(request, pk):
             "form": form,
             "page_title": inv.invoice_no,
             "items": inv.items.select_related("category"),
+            "online_payments": inv.online_payments.select_related("payment"),
             "payments": inv.payments.all(),
             "can_edit": (
                 request.user.has_perm("fees.change_feeinvoice")
@@ -430,5 +432,130 @@ def late_fees(request):
                 f"Charges {request.school.currency_symbol}{request.school.late_fee_per_day} per overdue day. "
                 "The fee is recalculated from the overdue days, so running this twice never stacks charges."
             ),
+        },
+    )
+
+
+# ------------------------------------------------------------------ paying online
+
+
+def _callback_urls(request):
+    from django.urls import reverse
+
+    def build(name, **kwargs):
+        return lambda tran_id: request.build_absolute_uri(reverse(name, kwargs={"tran_id": tran_id, **kwargs}))
+
+    return {
+        "success": build("fees:online_return", outcome="success"),
+        "fail": build("fees:online_return", outcome="fail"),
+        "cancel": build("fees:online_return", outcome="cancel"),
+        "ipn": lambda tran_id: request.build_absolute_uri(reverse("fees:online_ipn")),
+        "demo": build("fees:online_demo"),
+    }
+
+
+@require_POST
+@require_permission(None, also="the family's own invoices, or fee staff")
+def pay_online(request, pk):
+    """Start paying an invoice online and hand the payer to the gateway."""
+    from .online import start_online_payment
+
+    invoice = get_object_or_404(FeeInvoice, school=request.school, pk=pk)
+    try:
+        target = start_online_payment(
+            user=request.user,
+            invoice=invoice,
+            amount=request.POST.get("amount") or invoice.balance,
+            urls=_callback_urls(request),
+        )
+    except ValidationError as exc:
+        messages.error(request, " ".join(exc.messages))
+        return redirect(request.POST.get("back") or "portal:fees")
+    return redirect(target)
+
+
+def _result_page(request, online):
+    return render(
+        request,
+        "fees/online_result.html",
+        {"online": online, "school": online.school if online else None, "page_title": "Payment"},
+    )
+
+
+from django.views.decorators.csrf import csrf_exempt  # noqa: E402
+
+
+@public
+@csrf_exempt
+def online_return(request, tran_id, outcome):
+    """
+    Where the gateway sends the payer back. Public, because the payer's session cookie does
+    not travel on the gateway's cross-site return; the transaction ID is unguessable, and a
+    success is believed only after asking the gateway itself.
+    """
+    from .online import finish
+
+    if outcome not in ("success", "fail", "cancel"):
+        from django.http import Http404
+
+        raise Http404
+    val_id = request.POST.get("val_id") or request.GET.get("val_id") or ""
+    try:
+        online = finish(tran_id, outcome, val_id)
+    except Exception:  # noqa: BLE001 - a gateway fault must not lose the payer's page
+        import logging
+
+        logging.getLogger(__name__).exception("Online payment return failed for %s", tran_id)
+        online = None
+    if online is None:
+        from django.http import Http404
+
+        raise Http404
+    return _result_page(request, online)
+
+
+@public
+@csrf_exempt
+@require_POST
+def online_ipn(request):
+    """The gateway's server-to-server notification. Confirmed with the gateway before anything is written."""
+    from django.http import HttpResponse
+
+    from .online import notification
+
+    notification(request.POST.get("tran_id", ""), request.POST.get("val_id", ""))
+    return HttpResponse("OK")
+
+
+@public
+def online_demo(request, tran_id):
+    """The demonstration gateway: a page standing in for the bank's, in which no money moves."""
+    from django.core.exceptions import PermissionDenied
+
+    from .models import OnlinePayment
+    from .online import demo_allowed, demo_finish
+
+    online = get_object_or_404(OnlinePayment.objects.select_related("invoice", "school"), tran_id=tran_id)
+    if online.gateway != "demo" or not demo_allowed():
+        raise PermissionDenied
+    if request.method == "POST":
+        demo_finish(tran_id, "success" if request.POST.get("outcome") == "pay" else "cancel")
+        return _result_page(request, OnlinePayment.objects.select_related("school", "payment").get(pk=online.pk))
+    return render(request, "fees/online_demo.html", {"online": online, "page_title": "Demonstration payment"})
+
+
+@require_permission("fees.view_feepayment")
+def online_payments(request):
+    """Online payment attempts, with any that need a person to look at them first."""
+    from .models import OnlinePayment
+
+    attempts = OnlinePayment.objects.filter(school=request.school).select_related("invoice__student", "payment")
+    return render(
+        request,
+        "fees/online_payments.html",
+        {
+            "attempts": attempts[:200],
+            "review": attempts.filter(status=OnlinePayment.Status.REVIEW),
+            "page_title": "Online payments",
         },
     )

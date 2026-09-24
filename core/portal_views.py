@@ -113,7 +113,13 @@ def fees(request):
     return render(
         request,
         "portal/fees.html",
-        {"students": students, "selected": student, "invoices": invoices, "page_title": gettext("My fees")},
+        {
+            "students": students,
+            "selected": student,
+            "invoices": invoices,
+            "pay_online": request.school.payment_gateway != "none",
+            "page_title": gettext("My fees"),
+        },
     )
 
 

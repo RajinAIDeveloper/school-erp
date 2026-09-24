@@ -13,6 +13,7 @@ urlpatterns = [
     path("school/", views.SchoolSettingsView.as_view(), name="school"),
     path("initialise/", views.initialise_defaults, name="initialise"),
     path("sms/", views.SMSSettingsView.as_view(), name="sms"),
+    path("payments/", views.PaymentSettingsView.as_view(), name="payments"),
     path("notifications/", views.NotificationSettingsView.as_view(), name="notifications"),
     path("policy/", views.PolicySettingsView.as_view(), name="policy"),
     path("audit/", views.AuditLogListView.as_view(), name="audit"),

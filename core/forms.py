@@ -171,6 +171,37 @@ class SMSSettingsForm(TailwindFormMixin, forms.ModelForm):
         fields = ["sms_sender_id", "sms_api_url", "sms_api_key", "sms_extra_params"]
 
 
+class PaymentSettingsForm(TailwindFormMixin, forms.ModelForm):
+    """The school's own gateway account. The password is never shown back; leave it blank to keep it."""
+
+    sslcommerz_store_password = forms.CharField(
+        label="SSLCommerz store password",
+        required=False,
+        widget=forms.PasswordInput(render_value=False),
+        help_text="Leave blank to keep the saved password.",
+    )
+
+    class Meta:
+        model = School
+        fields = ["payment_gateway", "sslcommerz_store_id", "sslcommerz_store_password", "sslcommerz_sandbox"]
+
+    def clean_sslcommerz_store_password(self):
+        return self.cleaned_data.get("sslcommerz_store_password") or self.instance.sslcommerz_store_password
+
+    def clean(self):
+        data = super().clean()
+        if data.get("payment_gateway") == "sslcommerz" and not (
+            data.get("sslcommerz_store_id") and data.get("sslcommerz_store_password")
+        ):
+            raise forms.ValidationError("Enter the SSLCommerz store ID and password to switch SSLCommerz on.")
+        if data.get("payment_gateway") == "demo":
+            from fees.online import demo_allowed
+
+            if not demo_allowed():
+                self.add_error("payment_gateway", "The demonstration gateway is switched off on this server.")
+        return data
+
+
 class NotificationSettingsForm(TailwindFormMixin, forms.ModelForm):
     """
     Which events text a family.

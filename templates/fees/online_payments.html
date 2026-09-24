@@ -1,0 +1,29 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block content %}
+{% if review %}
+  <div class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+    <p class="font-medium">{{ review|length }} payment{{ review|length|pluralize }} need{{ review|length|pluralize:"s," }} a person to look at them</p>
+    <p class="mt-1">The gateway took the money but it could not be applied automatically. Refund it through the gateway, or record it by hand against the right invoice.</p>
+  </div>
+{% endif %}
+<div class="card overflow-x-auto">
+  <table class="table">
+    <thead><tr><th>Started</th><th>Student</th><th>Invoice</th><th class="text-right">Amount</th><th>Status</th><th>Receipt</th></tr></thead>
+    <tbody>
+      {% for o in attempts %}
+        <tr class="{% if o.status == 'review' %}bg-amber-50{% endif %}">
+          <td class="text-sm">{{ o.created_at|date:"d M Y H:i" }}</td>
+          <td>{{ o.invoice.student.full_name }}</td>
+          <td><a href="{% url 'fees:invoice_detail' o.invoice_id %}" class="link">{{ o.invoice.invoice_no }}</a></td>
+          <td class="text-right">{% money o.amount %}</td>
+          <td class="text-sm">{{ o.get_status_display }}{% if o.note %}<br><span class="text-xs text-slate-500">{{ o.note }}</span>{% endif %}</td>
+          <td class="text-sm">{{ o.payment.receipt_no|default:"—" }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="6">{% include "components/empty.html" with message="No online payments yet." %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

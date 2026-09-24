@@ -405,3 +405,6 @@ msgstr "এটি বিদ্যালয়ের মূল্যায়ন,
 
 msgid "A school assessment, not an official result. Official results are issued only by the International Baccalaureate."
 msgstr "এটি বিদ্যালয়ের মূল্যায়ন, দাপ্তরিক ফলাফল নয়। দাপ্তরিক ফলাফল শুধু International Baccalaureate প্রকাশ করে।"
+
+msgid "Pay online"
+msgstr "অনলাইনে পরিশোধ করুন"

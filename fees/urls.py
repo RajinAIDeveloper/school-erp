@@ -20,6 +20,11 @@ urlpatterns = [
     path("payments/<int:pk>/cancel/", views.cancel, name="cancel"),
     path("reports/", views.report, name="report"),
     path("statement/<int:student_pk>/", views.statement, name="statement"),
+    path("<int:pk>/pay-online/", views.pay_online, name="pay_online"),
+    path("online/", views.online_payments, name="online_payments"),
+    path("online/notify/", views.online_ipn, name="online_ipn"),
+    path("online/<str:tran_id>/demo/", views.online_demo, name="online_demo"),
+    path("online/<str:tran_id>/<str:outcome>/", views.online_return, name="online_return"),
 ]
 for model, key, fields, columns in [
     (

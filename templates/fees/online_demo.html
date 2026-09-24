@@ -1,0 +1,25 @@
+{% load static erp %}<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>Demonstration payment</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body class="flex min-h-full items-center justify-center bg-slate-100 px-4 py-10">
+  <main class="w-full max-w-md rounded-xl bg-white p-8 shadow-lg">
+    <p class="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-center text-sm font-semibold text-amber-800">
+      Demonstration only: no money moves.
+    </p>
+    <h1 class="mt-4 text-xl font-semibold text-slate-900">{{ online.school.name }}</h1>
+    <p class="mt-2 text-sm text-slate-600">Invoice {{ online.invoice.invoice_no }} · {{ online.invoice.student.full_name }}</p>
+    <p class="mt-4 text-3xl font-bold">{% money online.amount %}</p>
+    <form method="post" class="mt-6 flex gap-3">
+      {% csrf_token %}
+      <button name="outcome" value="pay" class="btn-primary flex-1">Pay (demonstration)</button>
+      <button name="outcome" value="cancel" class="btn-secondary flex-1">Cancel</button>
+    </form>
+  </main>
+</body>
+</html>

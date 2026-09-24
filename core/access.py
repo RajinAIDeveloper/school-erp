@@ -9,6 +9,17 @@ from django.db.models import Q
 from core.roles import has_role
 
 
+def public(view):
+    """
+    Mark a view as reachable without signing in, on purpose.
+
+    The access matrix otherwise takes any wrapped view (csrf_exempt, require_POST) as
+    needing a sign-in; a view that a payment gateway or a stranger must reach says so here.
+    """
+    view.erp_public = True
+    return view
+
+
 def require_permission(permission, *, also=""):
     """
     Guard a view with a Django permission.
