@@ -46,6 +46,8 @@ urlpatterns = [
     path("settings/", include("core.urls")),
     path("analytics/", include("analytics.urls")),
     path("homework/", include("homework.urls")),
+    path("admissions/", include("admissions.urls")),
+    path("apply/", include("admissions.public_urls")),
     path("users/", include("users.urls")),
     path("reports/", include("reports.urls")),
     path("portal/", include("core.portal_urls")),

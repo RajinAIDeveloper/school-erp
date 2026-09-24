@@ -35,6 +35,7 @@ FULL_APP_ACCESS = {
         "messaging",
         "holidays",
         "homework",
+        "admissions",
         "auth",
     ],
     PRINCIPAL: [
@@ -48,6 +49,7 @@ FULL_APP_ACCESS = {
         "messaging",
         "holidays",
         "homework",
+        "admissions",
     ],
     ACCOUNTANT: ["fees", "finance"],
 }
@@ -78,6 +80,13 @@ EXPLICIT_PERMS = {
         ("holidays", "view_holiday"),
         ("downloads", "view_downloaditem"),
         ("downloads", "view_notice"),
+        # The application fee at the counter. Only a school given admissions ever reaches these.
+        ("admissions", "view_admissionround"),
+        ("admissions", "view_roundclass"),
+        ("admissions", "view_application"),
+        ("admissions", "view_applicationpayment"),
+        ("admissions", "add_applicationpayment"),
+        ("admissions", "change_applicationpayment"),
     ],
     TEACHER: [
         ("students", "view_student"),
@@ -130,6 +139,16 @@ EXPLICIT_PERMS = {
         ("downloads", "view_downloaditem"),
         ("holidays", "view_holiday"),
         ("timetable", "view_routineslot"),
+        # The front office: walk-in applications, documents, siblings and the family's link.
+        # Offering places is the managers' decision. Only a school given admissions reaches these.
+        ("admissions", "view_admissionround"),
+        ("admissions", "view_roundclass"),
+        ("admissions", "view_application"),
+        ("admissions", "add_application"),
+        ("admissions", "change_application"),
+        ("admissions", "view_applicationdocument"),
+        ("admissions", "add_applicationdocument"),
+        ("admissions", "change_applicationdocument"),
     ],
     STUDENT: [
         ("downloads", "view_downloaditem"),

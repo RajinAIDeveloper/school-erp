@@ -20,6 +20,9 @@
 <p class="mt-4 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{% translate "People" %}</p>
 <a href="{% url 'students:list' %}" class="{{ base }} {% active request 'students' %}"><span class="w-5 text-center">🎓</span> {% translate "Students" %}</a>
 {% endif %}
+{% if perms.admissions.view_application and current_school|has_module:"admissions" %}
+<a href="{% url 'admissions:home' %}" class="{{ base }} {% active request 'admissions' %}"><span class="w-5 text-center">📝</span> {% translate "Admissions" %}</a>
+{% endif %}
 {% if perms.employees.view_employee %}
 <a href="{% url 'employees:list' %}" class="{{ base }} {% active request 'employees' %}"><span class="w-5 text-center">👩‍🏫</span> {% translate "Teachers & Staff" %}</a>
 {% endif %}

@@ -1,0 +1,32 @@
+{% load static i18n %}<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE|default:'en' }}" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>{% block title %}{% translate "Admissions" %}{% endblock %} · {{ school.name }}</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <style>@font-face { font-family: "Noto Sans Bengali"; src: url("{% static 'fonts/NotoSansBengali-Regular.ttf' %}") format("truetype"); font-display: swap; }</style>
+  <script src="{% static 'js/app.js' %}" defer></script>
+</head>
+<body class="min-h-full bg-slate-100 px-4 py-6 text-slate-800 antialiased sm:py-10"{% if LANGUAGE_CODE == "bn" %} style="font-family: 'Noto Sans Bengali', ui-sans-serif, system-ui, sans-serif;"{% endif %}>
+  <main class="mx-auto w-full max-w-2xl space-y-4">
+    <header class="flex items-start justify-between gap-3">
+      <a href="{% url 'apply:landing' school.slug %}" class="min-w-0">
+        <p class="text-xs uppercase tracking-wide text-slate-500">{% translate "Admissions" %}</p>
+        <p class="text-lg font-semibold text-slate-900">{{ school.name }}</p>
+      </a>
+      {% if bangla %}
+        <p class="shrink-0 text-sm">{% if LANGUAGE_CODE == "bn" %}<a class="link" href="?lang=en" lang="en">English</a>{% else %}<a class="link" href="?lang=bn" lang="bn">বাংলা</a>{% endif %}</p>
+      {% endif %}
+    </header>
+    {% for message in messages %}
+      <p class="rounded-lg border px-4 py-3 text-sm {% if message.tags == 'error' %}border-red-200 bg-red-50 text-red-800{% elif message.tags == 'success' %}border-emerald-200 bg-emerald-50 text-emerald-800{% else %}border-slate-200 bg-white text-slate-700{% endif %}" role="status">{{ message }}</p>
+    {% endfor %}
+    {% block content %}{% endblock %}
+    <footer class="px-2 pt-4 text-center text-xs text-slate-500">
+      {{ school.name }}{% if school.address %} · {{ school.address|linebreaksbr }}{% endif %}{% if school.phone %} · {% translate "Office" %} {{ school.phone }}{% endif %}
+    </footer>
+  </main>
+</body>
+</html>

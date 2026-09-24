@@ -1,0 +1,48 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block header_actions %}
+  <a href="{% url 'admissions:round' row.admission_round_id %}" class="btn-secondary btn-sm">{{ row.admission_round }}</a>
+  {% if perms.admissions.add_application %}<a href="{% url 'admissions:office_entry' row.pk %}" class="btn-primary btn-sm">Walk-in application</a>{% endif %}
+{% endblock %}
+{% block content %}
+<section class="card mb-4">
+  <div class="card-body flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+    <span><b>{{ row.seats }}</b> seats</span>
+    <span class="{% if taken >= row.seats %}font-semibold text-red-700{% endif %}"><b>{{ taken }}</b> taken or held by an open offer</span>
+    <span><b>{{ total }}</b> applications</span>
+  </div>
+  <div class="flex flex-wrap gap-2 border-t border-slate-200 px-5 py-3 text-xs">
+    <a href="?" class="rounded-full px-3 py-1 {% if not wanted %}bg-indigo-600 text-white{% else %}bg-slate-100 text-slate-700{% endif %}">All</a>
+    {% for value, label, n in statuses %}{% if n %}
+      <a href="?status={{ value }}" class="rounded-full px-3 py-1 {% if wanted == value %}bg-indigo-600 text-white{% else %}bg-slate-100 text-slate-700{% endif %}">{{ label }} · {{ n }}</a>
+    {% endif %}{% endfor %}
+  </div>
+</section>
+
+<section class="card overflow-x-auto">
+  <table class="table table-stack">
+    <thead><tr><th>Number</th><th>Child</th><th>Born</th><th>Status</th><th>Fee</th><th>Documents</th><th>Flags</th><th></th></tr></thead>
+    <tbody>
+      {% for r in rows %}{% with a=r.application %}
+        <tr>
+          <td data-label="Number" class="font-mono">{{ a.reference }}</td>
+          <td data-label="Child" class="font-medium">{{ a.child_name }}<p class="text-xs font-normal text-slate-500">{{ a.guardian_name }} · {{ a.guardian_phone }}</p></td>
+          <td data-label="Born">{{ a.date_of_birth|date:"d M Y" }}</td>
+          <td data-label="Status">{{ a.get_current_status_display }}</td>
+          <td data-label="Fee">{% if r.fee.waived %}Waived{% elif r.fee.settled %}{% if r.fee.due %}Paid{% else %}—{% endif %}{% else %}<span class="text-amber-700">{{ current_school.currency_symbol }}{{ r.fee.outstanding }} owed</span>{% endif %}</td>
+          <td data-label="Documents">{% if r.missing %}<span class="text-amber-700">{{ r.missing }} missing</span>{% else %}Complete{% endif %}</td>
+          <td data-label="Flags" class="text-xs">
+            {% if a.possible_duplicate_of_id %}<span class="rounded bg-red-100 px-1.5 py-0.5 text-red-800">Possible duplicate</span>{% endif %}
+            {% if a.sibling_claimed %}<span class="rounded {% if a.sibling_id %}bg-emerald-100 text-emerald-800{% else %}bg-amber-100 text-amber-900{% endif %} px-1.5 py-0.5">Sibling{% if not a.sibling_id %} to check{% endif %}</span>{% endif %}
+            {% if a.age_override_reason %}<span class="rounded bg-slate-100 px-1.5 py-0.5 text-slate-700">Age accepted</span>{% endif %}
+            {% if a.channel == "office" %}<span class="rounded bg-slate-100 px-1.5 py-0.5 text-slate-700">Office</span>{% endif %}
+          </td>
+          <td class="sm:text-right"><a class="link" href="{% url 'admissions:application' a.pk %}">Open</a></td>
+        </tr>
+      {% endwith %}{% empty %}
+        <tr><td colspan="8">{% include "components/empty.html" with message="No application here yet." %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

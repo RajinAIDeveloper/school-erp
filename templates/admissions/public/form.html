@@ -1,0 +1,66 @@
+{% extends "admissions/public/base.html" %}
+{% load i18n erp %}
+{% block title %}{% translate "Apply" %}{% endblock %}
+{% block content %}
+<form method="post" class="space-y-4" novalidate>
+  {% csrf_token %}
+  <input type="hidden" name="started" value="{{ started }}">
+  <div class="hidden" aria-hidden="true"><label>{% translate "Leave this empty" %}<input type="text" name="hp_confirm" tabindex="-1" autocomplete="off"></label></div>
+
+  <section class="rounded-xl bg-white p-5 shadow sm:p-6">
+    <p class="text-sm text-slate-500">{{ round_class.admission_round.name }}</p>
+    <h1 class="text-xl font-semibold text-slate-900">{% blocktranslate trimmed with level=round_class.class_level %}Apply for {{ level }}{% endblocktranslate %}</h1>
+    {% if rule %}<p class="mt-1 text-sm text-slate-600">{% blocktranslate trimmed %}For children {{ rule }}.{% endblocktranslate %}</p>{% endif %}
+    <p class="mt-1 text-sm text-slate-600">{% translate "It takes about five minutes. Documents are uploaded afterwards, on your application's own page." %}</p>
+    {% if error %}<p class="mt-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">{{ error }}</p>{% endif %}
+    {% if form.errors and not error %}<p class="mt-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">{% translate "Some details need another look. They are marked below." %}</p>{% endif %}
+    {% for e in form.non_field_errors %}<p class="mt-2 text-sm text-red-700">{{ e }}</p>{% endfor %}
+  </section>
+
+  <section class="rounded-xl bg-white p-5 shadow sm:p-6">
+    <h2 class="font-semibold text-slate-900">{% translate "About the child" %}</h2>
+    <div class="mt-3 grid gap-4 sm:grid-cols-2">
+      {% render_field form.first_name %}
+      {% render_field form.last_name %}
+      {% render_field form.name_bn %}
+      {% render_field form.gender %}
+      {% render_field form.date_of_birth %}
+      {% render_field form.religion %}
+      {% render_field form.birth_registration_no %}
+      {% render_field form.previous_school %}
+      {% render_field form.previous_class %}
+    </div>
+  </section>
+
+  <section class="rounded-xl bg-white p-5 shadow sm:p-6">
+    <h2 class="font-semibold text-slate-900">{% translate "About you" %}</h2>
+    <div class="mt-3 grid gap-4 sm:grid-cols-2">
+      {% render_field form.guardian_name %}
+      {% render_field form.guardian_relation %}
+      {% render_field form.guardian_phone %}
+      {% render_field form.guardian_email %}
+      {% render_field form.guardian_occupation %}
+      {% render_field form.father_name %}
+      {% render_field form.mother_name %}
+      {% render_field form.address %}
+    </div>
+  </section>
+
+  <section class="rounded-xl bg-white p-5 shadow sm:p-6">
+    <h2 class="font-semibold text-slate-900">{% translate "Anything else" %}</h2>
+    <div class="mt-3 grid gap-4 sm:grid-cols-2">
+      {% render_field form.sibling_claimed %}
+      {% render_field form.sibling_details %}
+      {% render_field form.heard_from %}
+    </div>
+  </section>
+
+  <section class="rounded-xl bg-white p-5 shadow sm:p-6">
+    <h2 class="font-semibold text-slate-900">{% translate "Your consent" %}</h2>
+    <label class="mt-3 flex items-start gap-3 text-sm text-slate-700">{{ form.consent }} <span>{{ form.consent.label }}</span></label>
+    {% for e in form.consent.errors %}<p class="mt-1 text-xs text-red-600">{{ e }}</p>{% endfor %}
+    <p class="mt-3 text-xs text-slate-500">{% translate "Nothing here is shared outside the school. After you send the form you get an application number and a private link to follow the application." %}</p>
+    <button class="btn-primary mt-4 w-full sm:w-auto">{% translate "Send the application" %}</button>
+  </section>
+</form>
+{% endblock %}

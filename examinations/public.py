@@ -90,11 +90,9 @@ def throttled(address, school, student_id=""):
 
 
 def _count(key):
-    cache.add(key, 0, WINDOW)
-    try:
-        cache.incr(key)
-    except ValueError:
-        cache.set(key, 1, WINDOW)
+    from core.ratelimit import count
+
+    count(key, WINDOW)
 
 
 def _failed(address, school, student_id=""):

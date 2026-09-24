@@ -196,6 +196,13 @@ SETTINGS_CARDS = [
         "module": "homework",
     },
     {
+        "title": "Admissions",
+        "description": "Admission rounds, and how long applications that did not lead to a place are kept.",
+        "url": "admissions:settings",
+        "permission": "admissions.change_admissionround",
+        "module": "admissions",
+    },
+    {
         "title": "Periods and rooms",
         "description": "The school day's periods, breaks and teaching rooms.",
         "url": "timetable:period_list",

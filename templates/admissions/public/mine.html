@@ -1,0 +1,75 @@
+{% extends "admissions/public/base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Your application" %}{% endblock %}
+{% block content %}
+{% for card in cards %}
+  {% with a=card.application %}
+  <section class="rounded-xl bg-white p-5 shadow sm:p-6">
+    <div class="flex flex-wrap items-start justify-between gap-2">
+      <div>
+        <h1 class="text-lg font-semibold text-slate-900">{{ a.child_name }}</h1>
+        <p class="text-sm text-slate-600">{{ a.round_class.class_level }} · {{ a.round_class.admission_round.name }} · <span class="font-mono">{{ a.reference }}</span></p>
+      </div>
+      <span class="rounded-full px-3 py-1 text-sm font-semibold {% if card.tone == 'emerald' %}bg-emerald-100 text-emerald-800{% elif card.tone == 'amber' %}bg-amber-100 text-amber-900{% elif card.tone == 'slate' %}bg-slate-100 text-slate-700{% else %}bg-indigo-100 text-indigo-800{% endif %}">{{ card.status_label }}</span>
+    </div>
+    <p class="mt-3 text-sm text-slate-800">{{ card.next }}</p>
+
+    {% if card.offer %}
+      <div class="mt-4 flex flex-col gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-4 sm:flex-row">
+        <form method="post" data-confirm="{% translate "Accept the place for your child?" %}">{% csrf_token %}<input type="hidden" name="application" value="{{ a.pk }}"><input type="hidden" name="action" value="accept"><button class="btn-primary w-full">{% translate "Accept the place" %}</button></form>
+        <form method="post" data-confirm="{% translate "Decline the place? This cannot be undone." %}">{% csrf_token %}<input type="hidden" name="application" value="{{ a.pk }}"><input type="hidden" name="action" value="decline"><button class="btn-secondary w-full">{% translate "Decline the place" %}</button></form>
+      </div>
+    {% endif %}
+
+    {% if card.fee.due %}
+      <div class="mt-4 rounded-lg border border-slate-200 px-4 py-3 text-sm">
+        <p class="font-medium text-slate-900">{% translate "Application fee" %}</p>
+        {% if card.fee.waived %}<p class="text-slate-700">{% translate "The school has waived the fee." %}</p>
+        {% elif card.fee.settled %}<p class="text-emerald-700">{% translate "Paid. Thank you." %}</p>
+        {% else %}<p class="text-slate-700">{% blocktranslate trimmed with amount=card.fee.outstanding|floatformat:0 currency=school.currency_symbol %}{{ currency }}{{ amount }} to pay at the school office. Bring the application number.{% endblocktranslate %}</p>{% endif %}
+      </div>
+    {% endif %}
+
+    <div class="mt-4">
+      <h2 class="text-sm font-semibold text-slate-900">{% translate "Documents" %}</h2>
+      {% if card.missing %}
+        <p class="mt-1 text-sm text-amber-800">{% translate "Still needed:" %} {% for kind, label in card.missing %}{{ label }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+      {% endif %}
+      <ul class="mt-2 divide-y divide-slate-100 rounded-lg border border-slate-200 text-sm">
+        {% for d in card.documents %}
+          <li class="flex flex-wrap items-center justify-between gap-2 px-4 py-2">
+            <span>{{ d.get_kind_display }}</span>
+            <span class="{% if d.status == 'accepted' %}text-emerald-700{% elif d.status == 'rejected' %}text-red-700{% else %}text-slate-500{% endif %}">{{ d.get_status_display }}{% if d.rejection_reason %}: {{ d.rejection_reason }}{% endif %}</span>
+          </li>
+        {% empty %}
+          <li class="px-4 py-3 text-slate-500">{% translate "No document uploaded yet." %}</li>
+        {% endfor %}
+      </ul>
+      {% if card.can_upload %}
+        <form method="post" enctype="multipart/form-data" class="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+          {% csrf_token %}<input type="hidden" name="application" value="{{ a.pk }}"><input type="hidden" name="action" value="upload">
+          <label class="text-sm">{% translate "Which document" %}
+            <select name="kind" class="input mt-1">{% for kind, label in card.kinds %}<option value="{{ kind }}"{% if kind == card.next_kind %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+          <label class="text-sm">{% translate "File (a PDF or a photo, up to 10 MB)" %}
+            <input type="file" name="file" accept="application/pdf,image/jpeg,image/png,image/webp" required class="mt-1 block w-full text-sm"></label>
+          <button class="btn-primary">{% translate "Upload" %}</button>
+        </form>
+      {% endif %}
+    </div>
+
+    <div class="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4 text-sm">
+      <a class="link" href="{% url 'apply:slip' school.slug a.pk %}">{% translate "Save the slip again (PDF)" %}</a>
+      {% if card.can_withdraw %}
+        <form method="post" data-confirm="{% translate "Withdraw this application? This cannot be undone." %}">{% csrf_token %}<input type="hidden" name="application" value="{{ a.pk }}"><input type="hidden" name="action" value="withdraw"><button class="text-red-700 hover:underline">{% translate "Withdraw the application" %}</button></form>
+      {% endif %}
+    </div>
+  </section>
+  {% endwith %}
+{% empty %}
+  <section class="rounded-xl bg-white p-6 shadow">
+    <p class="font-semibold text-slate-900">{% translate "Open your application with its private link." %}</p>
+    <p class="mt-2 text-sm text-slate-600">{% translate "The link is on the slip you saved when you applied; scanning its code with a phone camera opens it. Lost it? Contact the school office with your application number for a new one." %}</p>
+    <p class="mt-4 text-sm"><a class="link" href="{% url 'apply:landing' school.slug %}">{% translate "See the admissions that are open" %}</a></p>
+  </section>
+{% endfor %}
+{% endblock %}

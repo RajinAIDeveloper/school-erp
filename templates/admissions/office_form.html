@@ -1,0 +1,20 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block header_actions %}
+  {% if application %}<a href="{% url 'admissions:application' application.pk %}" class="btn-secondary btn-sm">{{ application.reference }}</a>
+  {% else %}<a href="{% url 'admissions:pipeline' row.pk %}" class="btn-secondary btn-sm">{{ row.class_level }} applications</a>{% endif %}
+{% endblock %}
+{% block content %}
+<form method="post" class="card max-w-3xl">
+  {% csrf_token %}
+  <div class="card-body">
+    {% if application %}
+      <p class="mb-4 text-sm text-slate-600">Put right what the family mistyped. The application's timeline records which details were changed.</p>
+    {% else %}
+      <p class="mb-4 text-sm text-slate-600">For a family applying at the counter. {% if rule %}This class admits children {{ rule }}. {% endif %}Afterwards, print the family's slip: it holds their private link, and it is shown only once.</p>
+    {% endif %}
+    {% render_form form %}
+  </div>
+  <div class="flex justify-end border-t border-slate-200 px-5 py-4"><button class="btn-primary">Save</button></div>
+</form>
+{% endblock %}

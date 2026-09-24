@@ -1,0 +1,49 @@
+{% extends "admissions/public/base.html" %}
+{% load i18n %}
+{% block content %}
+{% if held %}
+  <a href="{% url 'apply:mine' school.slug %}" class="flex items-center justify-between gap-3 rounded-xl border border-indigo-200 bg-indigo-50 px-5 py-4 text-sm text-indigo-900">
+    <span>{% translate "You have an application with the school. See where it stands." %}</span><span aria-hidden="true">→</span>
+  </a>
+{% endif %}
+
+{% for item in rounds %}
+  <section class="rounded-xl bg-white p-5 shadow sm:p-6">
+    <h1 class="text-xl font-semibold text-slate-900">{{ item.round.name }}</h1>
+    <p class="mt-1 text-sm text-slate-600">{% blocktranslate trimmed with start=item.round.opens_on|date:"j M Y" end=item.round.closes_on|date:"j M Y" %}Applications open from {{ start }} to {{ end }}.{% endblocktranslate %}</p>
+    {% if item.round.application_fee %}
+      <p class="mt-1 text-sm text-slate-600">{% blocktranslate trimmed with fee=item.round.application_fee|floatformat:0 currency=school.currency_symbol %}Application fee: {{ currency }}{{ fee }}, paid at the school office.{% endblocktranslate %}</p>
+    {% endif %}
+    {% if item.instructions %}<div class="mt-3 whitespace-pre-line text-sm text-slate-700">{{ item.instructions }}</div>{% endif %}
+    <ul class="mt-4 divide-y divide-slate-100 rounded-lg border border-slate-200">
+      {% for c in item.classes %}
+        <li class="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+          <div class="min-w-0 text-sm">
+            <p class="font-semibold text-slate-900">{{ c.row.class_level }}</p>
+            {% if c.rule %}<p class="text-slate-600">{% blocktranslate trimmed with rule=c.rule %}For children {{ rule }}.{% endblocktranslate %}</p>{% endif %}
+            <p class="text-slate-600">{{ c.row.get_assessment_display }}{% if c.left %} · {% blocktranslate trimmed with seats=c.left %}Places left: {{ seats }}{% endblocktranslate %}{% else %} · {% translate "All places are taken; you can still apply for the waiting list." %}{% endif %}</p>
+            {% if c.row.document_labels %}<p class="text-xs text-slate-500">{% translate "Documents to upload after applying:" %} {{ c.row.document_labels|join:", " }}</p>{% endif %}
+          </div>
+          <a href="{% url 'apply:form' school.slug c.row.pk %}" class="btn-primary">{% translate "Apply" %}</a>
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+{% endfor %}
+
+{% for item in upcoming %}
+  <section class="rounded-xl bg-white p-5 shadow sm:p-6">
+    <h2 class="font-semibold text-slate-900">{{ item.round.name }}</h2>
+    <p class="mt-1 text-sm text-slate-600">{% blocktranslate trimmed with start=item.round.opens_on|date:"j M Y" %}Applications open on {{ start }}.{% endblocktranslate %}</p>
+  </section>
+{% endfor %}
+
+{% if not rounds and not upcoming %}
+  <section class="rounded-xl bg-white p-6 text-center shadow">
+    <p class="font-medium text-slate-900">{% translate "Applications are not open at the moment." %}</p>
+    <p class="mt-1 text-sm text-slate-600">{% translate "Contact the school office to ask when the next admission opens." %}</p>
+  </section>
+{% endif %}
+
+<p class="px-2 text-center text-sm"><a class="link" href="{% url 'apply:mine' school.slug %}">{% translate "Already applied? Open your application" %}</a></p>
+{% endblock %}

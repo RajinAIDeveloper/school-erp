@@ -169,6 +169,12 @@ class School(TimeStampedModel):
     admissions_enabled = models.BooleanField(
         "Online admissions module", default=False, help_text="Set by the platform administrator only."
     )
+    admissions_keep_months = models.PositiveSmallIntegerField(
+        "Keep unsuccessful applications for (months)",
+        default=6,
+        validators=[MinValueValidator(1), MaxValueValidator(36)],
+        help_text="How long after a round closes the applications that did not lead to a place are kept.",
+    )
     public_results_enabled = models.BooleanField(
         "Publish results online",
         default=False,

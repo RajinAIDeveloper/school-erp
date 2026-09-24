@@ -1,0 +1,13 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block header_actions %}<a href="{% url 'admissions:round' round.pk %}" class="btn-secondary btn-sm">{{ round }}</a>{% endblock %}
+{% block content %}
+<form method="post" class="card max-w-3xl">
+  {% csrf_token %}
+  <div class="card-body">
+    <p class="mb-4 text-sm text-slate-600">Give the seats, how applicants are assessed, and the dates of birth the class admits. To work the dates out from ages instead, give the youngest and oldest age and the date they are counted on; the dates are then filled in for you. The national policy counts ages on 1 January of the year the child joins.</p>
+    {% render_form form %}
+  </div>
+  <div class="flex justify-end border-t border-slate-200 px-5 py-4"><button class="btn-primary">Save</button></div>
+</form>
+{% endblock %}

@@ -2333,3 +2333,488 @@ msgstr "দেওয়া হয়েছে"
 
 msgid "Declined"
 msgstr "নাকচ করা হয়েছে"
+
+# ---- online admissions
+
+msgid "I am the child's parent or guardian. I agree to the school keeping these details, and the documents I upload, to consider this application. If the child is not offered a place, the school deletes them within the period it states; if the child joins, they become part of the school record."
+msgstr "আমি শিশুটির মা-বাবা বা অভিভাবক। এই আবেদন বিবেচনার জন্য বিদ্যালয় এই তথ্য এবং আমার আপলোড করা কাগজপত্র রাখতে পারবে, এতে আমি সম্মত। শিশুটি ভর্তির সুযোগ না পেলে বিদ্যালয় তার জানানো সময়ের মধ্যে এগুলো মুছে ফেলবে; শিশুটি ভর্তি হলে এগুলো বিদ্যালয়ের রেকর্ডের অংশ হবে।"
+
+msgid "Girl"
+msgstr "মেয়ে"
+
+msgid "Boy"
+msgstr "ছেলে"
+
+msgid "Islam"
+msgstr "ইসলাম"
+
+msgid "Hinduism"
+msgstr "হিন্দু"
+
+msgid "Buddhism"
+msgstr "বৌদ্ধ"
+
+msgid "Christianity"
+msgstr "খ্রিস্টান"
+
+msgid "Grandparent"
+msgstr "দাদা-দাদি বা নানা-নানি"
+
+msgid "Brother or sister"
+msgstr "ভাই বা বোন"
+
+msgid "Uncle or aunt"
+msgstr "চাচা, মামা, খালা বা ফুফু"
+
+msgid "Give a mobile number, such as 01712345678."
+msgstr "একটি মোবাইল নম্বর দিন, যেমন 01712345678।"
+
+msgid "Child's first name"
+msgstr "শিশুর নামের প্রথম অংশ"
+
+msgid "Child's last name"
+msgstr "শিশুর নামের শেষ অংশ"
+
+msgid "Child's name in Bangla"
+msgstr "শিশুর নাম (বাংলায়)"
+
+msgid "Girl or boy"
+msgstr "মেয়ে না ছেলে"
+
+msgid "Date of birth"
+msgstr "জন্মতারিখ"
+
+msgid "Religion"
+msgstr "ধর্ম"
+
+msgid "Birth registration number"
+msgstr "জন্ম নিবন্ধন নম্বর"
+
+msgid "The 17 digits on the online birth registration."
+msgstr "অনলাইন জন্ম নিবন্ধনের 17 অঙ্কের নম্বর।"
+
+msgid "School the child attends now"
+msgstr "শিশুটি এখন যে বিদ্যালয়ে পড়ে"
+
+msgid "Class there"
+msgstr "সেখানে কোন শ্রেণিতে"
+
+msgid "Your name"
+msgstr "আপনার নাম"
+
+msgid "You are the child's"
+msgstr "শিশুটির সঙ্গে আপনার সম্পর্ক"
+
+msgid "Your mobile number"
+msgstr "আপনার মোবাইল নম্বর"
+
+msgid "Your email (optional)"
+msgstr "আপনার ইমেইল (ঐচ্ছিক)"
+
+msgid "Your occupation"
+msgstr "আপনার পেশা"
+
+msgid "Father's name"
+msgstr "পিতার নাম"
+
+msgid "Mother's name"
+msgstr "মাতার নাম"
+
+msgid "Home address"
+msgstr "বাসার ঠিকানা"
+
+msgid "A brother or sister studies at this school"
+msgstr "শিশুটির ভাই বা বোন এই বিদ্যালয়ে পড়ে"
+
+msgid "Their name and class"
+msgstr "তার নাম ও শ্রেণি"
+
+msgid "The school checks this; it can matter when places are given."
+msgstr "বিদ্যালয় এটি যাচাই করবে; ভর্তির সুযোগ দেওয়ার সময় এটি বিবেচনায় আসতে পারে।"
+
+msgid "How did you hear about the school?"
+msgstr "বিদ্যালয়ের কথা কীভাবে জানলেন?"
+
+msgid "A birth registration number has 17 digits."
+msgstr "জন্ম নিবন্ধন নম্বরে 17টি অঙ্ক থাকে।"
+
+msgid "Give the brother's or sister's name and class."
+msgstr "ভাই বা বোনের নাম ও শ্রেণি লিখুন।"
+
+msgid "Birth registration certificate"
+msgstr "জন্ম নিবন্ধন সনদ"
+
+msgid "Recent photo of the child"
+msgstr "শিশুর সাম্প্রতিক ছবি"
+
+msgid "Last report card"
+msgstr "সর্বশেষ রিপোর্ট কার্ড"
+
+msgid "Transfer certificate"
+msgstr "ছাড়পত্র (ট্রান্সফার সার্টিফিকেট)"
+
+msgid "Guardian's national ID card"
+msgstr "অভিভাবকের জাতীয় পরিচয়পত্র"
+
+msgid "Other document"
+msgstr "অন্য কাগজ"
+
+msgid "No test or interview"
+msgstr "কোনো পরীক্ষা বা সাক্ষাৎকার নেই"
+
+msgid "Admission test"
+msgstr "ভর্তি পরীক্ষা"
+
+msgid "Interview"
+msgstr "সাক্ষাৎকার"
+
+msgid "Admission test and interview"
+msgstr "ভর্তি পরীক্ষা ও সাক্ষাৎকার"
+
+msgid "Submitted"
+msgstr "জমা হয়েছে"
+
+msgid "Under review"
+msgstr "যাচাই চলছে"
+
+msgid "Offered a place"
+msgstr "ভর্তির সুযোগ দেওয়া হয়েছে"
+
+msgid "On the waiting list"
+msgstr "অপেক্ষমাণ তালিকায়"
+
+msgid "Not offered a place"
+msgstr "ভর্তির সুযোগ দেওয়া হয়নি"
+
+msgid "Offer lapsed"
+msgstr "সুযোগের মেয়াদ শেষ"
+
+msgid "Place accepted"
+msgstr "ভর্তির সুযোগ গ্রহণ করা হয়েছে"
+
+msgid "Place declined"
+msgstr "ভর্তির সুযোগ ফিরিয়ে দেওয়া হয়েছে"
+
+msgid "Enrolled"
+msgstr "ভর্তি হয়েছে"
+
+msgid "A brother or sister studies here"
+msgstr "ভাই বা বোন এখানে পড়ে"
+
+msgid "Family or friends"
+msgstr "পরিবার বা বন্ধুবান্ধব"
+
+msgid "The school's website"
+msgstr "বিদ্যালয়ের ওয়েবসাইট"
+
+msgid "Social media"
+msgstr "সামাজিক যোগাযোগমাধ্যম"
+
+msgid "A newspaper or poster"
+msgstr "পত্রিকা বা পোস্টার"
+
+msgid "An open day or event"
+msgstr "খোলা দিবস বা কোনো অনুষ্ঠান"
+
+msgid "Somewhere else"
+msgstr "অন্য কোথাও"
+
+msgid "Waiting to be checked"
+msgstr "যাচাইয়ের অপেক্ষায়"
+
+msgid "Accepted"
+msgstr "গৃহীত"
+
+msgid "Not accepted"
+msgstr "গৃহীত হয়নি"
+
+msgid "The form could not be sent. Please try again."
+msgstr "ফরমটি পাঠানো যায়নি। অনুগ্রহ করে আবার চেষ্টা করুন।"
+
+msgid "The form was open too long. Check the details and send it again."
+msgstr "ফরমটি অনেকক্ষণ খোলা ছিল। তথ্যগুলো দেখে আবার পাঠান।"
+
+msgid "Applications for this class are not open."
+msgstr "এই শ্রেণিতে এখন আবেদন নেওয়া হচ্ছে না।"
+
+msgid "Too many applications have been sent from here. Try again in an hour, or apply at the school office."
+msgstr "এখান থেকে অনেক বেশি আবেদন পাঠানো হয়েছে। এক ঘণ্টা পরে আবার চেষ্টা করুন, অথবা বিদ্যালয়ের অফিসে গিয়ে আবেদন করুন।"
+
+msgid "The school has your application and will look at it soon."
+msgstr "বিদ্যালয় আপনার আবেদন পেয়েছে এবং শিগগিরই দেখবে।"
+
+msgid "The school is looking at your application."
+msgstr "বিদ্যালয় আপনার আবেদন যাচাই করছে।"
+
+msgid "Your child is offered a place. Accept or decline it by %(date)s."
+msgstr "আপনার সন্তানকে ভর্তির সুযোগ দেওয়া হয়েছে। %(date)s-এর মধ্যে গ্রহণ করুন বা ফিরিয়ে দিন।"
+
+msgid "Your child is on the waiting list. If a place comes free, the school offers it here."
+msgstr "আপনার সন্তান অপেক্ষমাণ তালিকায় আছে। কোনো আসন খালি হলে বিদ্যালয় এখানেই সুযোগ দেবে।"
+
+msgid "The school cannot offer your child a place this time. For more, contact the school office."
+msgstr "এবার বিদ্যালয় আপনার সন্তানকে ভর্তির সুযোগ দিতে পারছে না। বিস্তারিত জানতে বিদ্যালয়ের অফিসে যোগাযোগ করুন।"
+
+msgid "The offer was not answered in time and has lapsed. Contact the school office."
+msgstr "সময়মতো উত্তর না দেওয়ায় ভর্তির সুযোগের মেয়াদ শেষ হয়ে গেছে। বিদ্যালয়ের অফিসে যোগাযোগ করুন।"
+
+msgid "You have accepted the place. The school will tell you about joining."
+msgstr "আপনি ভর্তির সুযোগ গ্রহণ করেছেন। ভর্তির পরের ধাপ বিদ্যালয় আপনাকে জানাবে।"
+
+msgid "You declined the place."
+msgstr "আপনি ভর্তির সুযোগ ফিরিয়ে দিয়েছেন।"
+
+msgid "The application was withdrawn."
+msgstr "আবেদনটি প্রত্যাহার করা হয়েছে।"
+
+msgid "Your child has joined the school. Welcome!"
+msgstr "আপনার সন্তান বিদ্যালয়ে ভর্তি হয়েছে। স্বাগতম!"
+
+msgid "That file is too large. Each file can be at most 10 MB."
+msgstr "ফাইলটি খুব বড়। প্রতিটি ফাইল সর্বোচ্চ 10 MB হতে পারে।"
+
+msgid "Choose a file to upload."
+msgstr "আপলোড করার জন্য একটি ফাইল বাছুন।"
+
+msgid "Thank you. The document is with the school to check."
+msgstr "ধন্যবাদ। কাগজটি যাচাইয়ের জন্য বিদ্যালয়ের কাছে পৌঁছেছে।"
+
+msgid "The application is withdrawn."
+msgstr "আবেদনটি প্রত্যাহার করা হলো।"
+
+msgid "You have accepted the place. The school will be in touch."
+msgstr "আপনি ভর্তির সুযোগ গ্রহণ করেছেন। বিদ্যালয় আপনার সঙ্গে যোগাযোগ করবে।"
+
+msgid "You have declined the place."
+msgstr "আপনি ভর্তির সুযোগ ফিরিয়ে দিয়েছেন।"
+
+msgid "born between %(start)s and %(end)s"
+msgstr "যাদের জন্ম %(start)s থেকে %(end)s-এর মধ্যে"
+
+msgid "born on or after %(start)s"
+msgstr "যাদের জন্ম %(start)s বা তার পরে"
+
+msgid "born on or before %(end)s"
+msgstr "যাদের জন্ম %(end)s বা তার আগে"
+
+msgid "For %(class)s in this round, children must be %(rule)s."
+msgstr "এবার %(class)s-এ শুধু সেই শিশুরা আবেদন করতে পারবে, %(rule)s।"
+
+msgid "This application has been cleared."
+msgstr "এই আবেদনের তথ্য মুছে ফেলা হয়েছে।"
+
+msgid "This offer lapsed after %(date)s. Contact the school office."
+msgstr "%(date)s-এর পর এই সুযোগের মেয়াদ শেষ হয়েছে। বিদ্যালয়ের অফিসে যোগাযোগ করুন।"
+
+msgid "An application that is %(status)s cannot be moved to %(to)s."
+msgstr "যে আবেদনের অবস্থা “%(status)s”, তা “%(to)s” করা যায় না।"
+
+msgid "Choose which document this is."
+msgstr "এটি কোন কাগজ, তা বাছুন।"
+
+msgid "Documents can no longer be added to this application."
+msgstr "এই আবেদনে আর কাগজ যোগ করা যাবে না।"
+
+msgid "An application can have at most 12 documents."
+msgstr "একটি আবেদনে সর্বোচ্চ 12টি কাগজ দেওয়া যায়।"
+
+msgid "Application number"
+msgstr "আবেদন নম্বর"
+
+msgid "Child"
+msgstr "শিশু"
+
+msgid "Class applied for"
+msgstr "যে শ্রেণির জন্য আবেদন"
+
+msgid "Applied on"
+msgstr "আবেদনের তারিখ"
+
+msgid "Scan the code or open the link to see where the application stands, upload documents and answer an offer."
+msgstr "আবেদনের অবস্থা দেখতে, কাগজ আপলোড করতে এবং ভর্তির সুযোগের উত্তর দিতে কোডটি স্ক্যান করুন বা লিংকটি খুলুন।"
+
+msgid "Keep this slip safe. Anyone with the link can see the application, so do not share it."
+msgstr "এই স্লিপটি যত্ন করে রাখুন। লিংকটি যার কাছে থাকবে সে-ই আবেদনটি দেখতে পারবে, তাই কাউকে দেবেন না।"
+
+msgid "If you lose it, contact the school office with the application number for a new one."
+msgstr "হারিয়ে গেলে আবেদন নম্বর নিয়ে নতুন লিংকের জন্য বিদ্যালয়ের অফিসে যোগাযোগ করুন।"
+
+msgid "Application slip"
+msgstr "আবেদনের স্লিপ"
+
+msgid "%(name)s is not a PDF or a photo."
+msgstr "%(name)s কোনো PDF বা ছবি নয়।"
+
+msgid "Admissions"
+msgstr "ভর্তি"
+
+msgid "Office"
+msgstr "অফিস"
+
+msgid "Application sent"
+msgstr "আবেদন পাঠানো হয়েছে"
+
+msgid "The school has your application."
+msgstr "বিদ্যালয় আপনার আবেদন পেয়েছে।"
+
+msgid "Your private link"
+msgstr "আপনার ব্যক্তিগত লিংক"
+
+msgid "Save the slip now: it has the number, the link and a code your phone camera can scan. The link opens your application's page, where you upload documents, see where the application stands and answer an offer."
+msgstr "স্লিপটি এখনই সংরক্ষণ করুন: এতে আবেদন নম্বর, লিংক এবং ফোনের ক্যামেরায় স্ক্যান করার মতো একটি কোড আছে। লিংকটি আপনার আবেদনের পাতা খোলে, যেখানে কাগজ আপলোড করবেন, আবেদনের অবস্থা দেখবেন এবং ভর্তির সুযোগের উত্তর দেবেন।"
+
+msgid "Anyone with the link can see the application, so keep it private. The school does not send it again by text message."
+msgstr "লিংকটি যার কাছে থাকবে সে-ই আবেদনটি দেখতে পারবে, তাই এটি গোপন রাখুন। বিদ্যালয় এটি আবার এসএমএসে পাঠায় না।"
+
+msgid "Save the slip (PDF)"
+msgstr "স্লিপ সংরক্ষণ করুন (PDF)"
+
+msgid "Go to your application"
+msgstr "আপনার আবেদনে যান"
+
+msgid "%(name)s, for %(level)s."
+msgstr "%(name)s, %(level)s-এর জন্য।"
+
+msgid "Apply"
+msgstr "আবেদন করুন"
+
+msgid "Leave this empty"
+msgstr "এটি ফাঁকা রাখুন"
+
+msgid "It takes about five minutes. Documents are uploaded afterwards, on your application's own page."
+msgstr "প্রায় পাঁচ মিনিট লাগবে। কাগজপত্র পরে আপনার আবেদনের নিজস্ব পাতায় আপলোড করবেন।"
+
+msgid "Some details need another look. They are marked below."
+msgstr "কিছু তথ্য আবার দেখতে হবে। নিচে সেগুলো চিহ্নিত করা আছে।"
+
+msgid "About the child"
+msgstr "শিশুর তথ্য"
+
+msgid "About you"
+msgstr "আপনার তথ্য"
+
+msgid "Anything else"
+msgstr "অন্যান্য"
+
+msgid "Your consent"
+msgstr "আপনার সম্মতি"
+
+msgid "Nothing here is shared outside the school. After you send the form you get an application number and a private link to follow the application."
+msgstr "এখানকার কোনো তথ্য বিদ্যালয়ের বাইরে দেওয়া হয় না। ফরম পাঠানোর পর আবেদন নম্বর এবং আবেদনের খোঁজ রাখার জন্য একটি ব্যক্তিগত লিংক পাবেন।"
+
+msgid "Send the application"
+msgstr "আবেদন পাঠান"
+
+msgid "Apply for %(level)s"
+msgstr "%(level)s-এর জন্য আবেদন"
+
+msgid "For children %(rule)s."
+msgstr "শিশুদের জন্য, %(rule)s।"
+
+msgid "You have an application with the school. See where it stands."
+msgstr "বিদ্যালয়ে আপনার একটি আবেদন আছে। এর অবস্থা দেখুন।"
+
+msgid "All places are taken; you can still apply for the waiting list."
+msgstr "সব আসন পূর্ণ; তবু অপেক্ষমাণ তালিকার জন্য আবেদন করতে পারেন।"
+
+msgid "Documents to upload after applying:"
+msgstr "আবেদনের পর যে কাগজগুলো আপলোড করতে হবে:"
+
+msgid "Applications are not open at the moment."
+msgstr "এই মুহূর্তে আবেদন নেওয়া হচ্ছে না।"
+
+msgid "Contact the school office to ask when the next admission opens."
+msgstr "পরের ভর্তি কবে শুরু হবে জানতে বিদ্যালয়ের অফিসে যোগাযোগ করুন।"
+
+msgid "Already applied? Open your application"
+msgstr "আগেই আবেদন করেছেন? আপনার আবেদন খুলুন"
+
+msgid "Applications open from %(start)s to %(end)s."
+msgstr "আবেদন নেওয়া হবে %(start)s থেকে %(end)s পর্যন্ত।"
+
+msgid "Application fee: %(currency)s%(fee)s, paid at the school office."
+msgstr "আবেদন ফি: %(currency)s%(fee)s, বিদ্যালয়ের অফিসে জমা দিতে হবে।"
+
+msgid "Places left: %(seats)s"
+msgstr "খালি আসন: %(seats)s"
+
+msgid "Applications open on %(start)s."
+msgstr "আবেদন শুরু হবে %(start)s তারিখে।"
+
+msgid "Link not recognised"
+msgstr "লিংকটি চেনা যায়নি"
+
+msgid "Too many links have been tried from here. Try again in 15 minutes."
+msgstr "এখান থেকে অনেকগুলো লিংক চেষ্টা করা হয়েছে। 15 মিনিট পরে আবার চেষ্টা করুন।"
+
+msgid "This link does not open an application."
+msgstr "এই লিংকে কোনো আবেদন খোলে না।"
+
+msgid "It may be mistyped, or the school may have given you a newer link, which replaces the old one."
+msgstr "হয়তো লিংকটি ভুল লেখা হয়েছে, অথবা বিদ্যালয় আপনাকে নতুন লিংক দিয়েছে, যা পুরোনোটির জায়গা নিয়েছে।"
+
+msgid "Contact the school office with your application number; they can give you a new link."
+msgstr "আবেদন নম্বর নিয়ে বিদ্যালয়ের অফিসে যোগাযোগ করুন; তারা নতুন লিংক দিতে পারবে।"
+
+msgid "Your application"
+msgstr "আপনার আবেদন"
+
+msgid "Accept the place for your child?"
+msgstr "আপনার সন্তানের ভর্তির সুযোগ গ্রহণ করবেন?"
+
+msgid "Accept the place"
+msgstr "ভর্তির সুযোগ গ্রহণ করুন"
+
+msgid "Decline the place? This cannot be undone."
+msgstr "ভর্তির সুযোগ ফিরিয়ে দেবেন? এটি আর বদলানো যাবে না।"
+
+msgid "Decline the place"
+msgstr "ভর্তির সুযোগ ফিরিয়ে দিন"
+
+msgid "Application fee"
+msgstr "আবেদন ফি"
+
+msgid "The school has waived the fee."
+msgstr "বিদ্যালয় ফি মওকুফ করেছে।"
+
+msgid "Paid. Thank you."
+msgstr "পরিশোধিত। ধন্যবাদ।"
+
+msgid "Documents"
+msgstr "কাগজপত্র"
+
+msgid "Still needed:"
+msgstr "এখনো দরকার:"
+
+msgid "No document uploaded yet."
+msgstr "এখনো কোনো কাগজ আপলোড করা হয়নি।"
+
+msgid "Which document"
+msgstr "কোন কাগজ"
+
+msgid "File (a PDF or a photo, up to 10 MB)"
+msgstr "ফাইল (PDF বা ছবি, সর্বোচ্চ 10 MB)"
+
+msgid "Upload"
+msgstr "আপলোড"
+
+msgid "Save the slip again (PDF)"
+msgstr "স্লিপ আবার সংরক্ষণ করুন (PDF)"
+
+msgid "Withdraw this application? This cannot be undone."
+msgstr "আবেদনটি প্রত্যাহার করবেন? এটি আর বদলানো যাবে না।"
+
+msgid "Withdraw the application"
+msgstr "আবেদন প্রত্যাহার করুন"
+
+msgid "Open your application with its private link."
+msgstr "ব্যক্তিগত লিংক দিয়ে আপনার আবেদন খুলুন।"
+
+msgid "The link is on the slip you saved when you applied; scanning its code with a phone camera opens it. Lost it? Contact the school office with your application number for a new one."
+msgstr "আবেদনের সময় সংরক্ষণ করা স্লিপে লিংকটি আছে; ফোনের ক্যামেরায় এর কোড স্ক্যান করলেই খুলবে। হারিয়ে গেছে? আবেদন নম্বর নিয়ে নতুন লিংকের জন্য বিদ্যালয়ের অফিসে যোগাযোগ করুন।"
+
+msgid "See the admissions that are open"
+msgstr "চলমান ভর্তির তথ্য দেখুন"
+
+msgid "%(currency)s%(amount)s to pay at the school office. Bring the application number."
+msgstr "বিদ্যালয়ের অফিসে %(currency)s%(amount)s জমা দিতে হবে। আবেদন নম্বরটি সঙ্গে আনুন।"

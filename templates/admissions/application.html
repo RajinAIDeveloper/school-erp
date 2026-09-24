@@ -1,0 +1,187 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block header_actions %}
+  <a href="{% url 'admissions:pipeline' application.round_class_id %}" class="btn-secondary btn-sm">{{ application.round_class.class_level }} applications</a>
+  {% if perms.admissions.change_application %}<a href="{% url 'admissions:application_edit' application.pk %}" class="btn-secondary btn-sm">Correct details</a>{% endif %}
+{% endblock %}
+{% block content %}
+<div class="grid gap-6 lg:grid-cols-3">
+<div class="space-y-6 lg:col-span-2">
+
+  <section class="card">
+    <div class="card-body">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p class="font-mono text-sm text-slate-500">{{ application.reference }}</p>
+          <h2 class="text-lg font-semibold text-slate-900">{{ application.child_name }}{% if application.name_bn %} <span class="font-normal text-slate-600">· {{ application.name_bn }}</span>{% endif %}</h2>
+          <p class="text-sm text-slate-600">{{ application.round_class.class_level }} · {{ application.round_class.admission_round }} · {{ application.get_channel_display }} · {{ application.submitted_at|date:"d M Y H:i" }}</p>
+        </div>
+        <span class="rounded-full bg-indigo-100 px-3 py-1 text-sm font-semibold text-indigo-800">{{ application.get_current_status_display }}</span>
+      </div>
+      {% if application.offer_expires_on and status == S.OFFERED %}<p class="mt-2 text-sm text-slate-600">Offer open until {{ application.offer_expires_on|date:"d M Y" }}.</p>{% endif %}
+      {% if application.decision_reason %}<p class="mt-2 text-sm text-slate-600">Reason on record: {{ application.decision_reason }}</p>{% endif %}
+      {% if application.possible_duplicate_of %}
+        <p class="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">This may be the same child as <a class="link" href="{% url 'admissions:application' application.possible_duplicate_of_id %}">{{ application.possible_duplicate_of.reference }}</a>. Check before deciding; one of them may need withdrawing.</p>
+      {% endif %}
+      {% if outside_window %}
+        <p class="mt-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">Born outside this class's window ({{ rule }}).{% if application.age_override_reason %} Accepted at the office: {{ application.age_override_reason }}{% endif %}</p>
+      {% endif %}
+    </div>
+    {% if moves and perms.admissions.change_application %}
+      <div class="flex flex-wrap items-end gap-3 border-t border-slate-200 px-5 py-4">
+        {% if S.UNDER_REVIEW in moves %}
+          <form method="post">{% csrf_token %}<input type="hidden" name="action" value="review"><button class="btn-primary btn-sm">Start reviewing</button></form>
+        {% endif %}
+        {% if S.ACCEPTED in moves %}
+          <form method="post" data-confirm="Record that the family accepted the place?">{% csrf_token %}<input type="hidden" name="action" value="accepted"><button class="btn-secondary btn-sm">Family accepted (told the office)</button></form>
+          <form method="post" data-confirm="Record that the family declined the place?">{% csrf_token %}<input type="hidden" name="action" value="declined"><button class="btn-secondary btn-sm">Family declined</button></form>
+        {% endif %}
+        {% if S.NOT_OFFERED in moves and perms.admissions.decide_application %}
+          <form method="post" class="flex flex-wrap items-end gap-2" data-confirm="Turn down this application?">{% csrf_token %}<input type="hidden" name="action" value="not_offered">
+            <input class="input w-64" name="reason" maxlength="300" required placeholder="Reason, kept on the application"><button class="btn-secondary btn-sm">Not offered a place</button></form>
+        {% endif %}
+        {% if S.WITHDRAWN in moves %}
+          <form method="post" class="flex flex-wrap items-end gap-2" data-confirm="Withdraw this application for the family?">{% csrf_token %}<input type="hidden" name="action" value="withdraw">
+            <input class="input w-56" name="reason" maxlength="300" placeholder="Why (optional)"><button class="text-sm text-red-700 hover:underline">Withdraw</button></form>
+        {% endif %}
+      </div>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <div class="card-header"><h2 class="font-semibold">Child and family</h2></div>
+    <dl class="card-body grid gap-3 text-sm sm:grid-cols-2">
+      <div><dt class="text-xs text-slate-500">Born</dt><dd>{{ application.date_of_birth|date:"d M Y" }} · {{ application.get_gender_display }}{% if application.religion %} · {{ application.religion|capfirst }}{% endif %}</dd></div>
+      <div><dt class="text-xs text-slate-500">Birth registration</dt><dd class="font-mono">{{ application.birth_registration_no|default:"—" }}</dd></div>
+      <div><dt class="text-xs text-slate-500">Now at</dt><dd>{{ application.previous_school|default:"—" }}{% if application.previous_class %} · {{ application.previous_class }}{% endif %}</dd></div>
+      <div><dt class="text-xs text-slate-500">Heard about the school</dt><dd>{{ application.get_heard_from_display|default:"—" }}</dd></div>
+      <div><dt class="text-xs text-slate-500">Guardian</dt><dd>{{ application.guardian_name }} ({{ application.get_guardian_relation_display|lower }}){% if application.guardian_occupation %} · {{ application.guardian_occupation }}{% endif %}</dd></div>
+      <div><dt class="text-xs text-slate-500">Contact</dt><dd>{{ application.guardian_phone }}{% if application.guardian_email %} · {{ application.guardian_email }}{% endif %}</dd></div>
+      <div><dt class="text-xs text-slate-500">Parents</dt><dd>{{ application.father_name|default:"—" }} · {{ application.mother_name|default:"—" }}</dd></div>
+      <div><dt class="text-xs text-slate-500">Address</dt><dd>{{ application.address|linebreaksbr|default:"—" }}</dd></div>
+      <div class="sm:col-span-2"><dt class="text-xs text-slate-500">Consent</dt><dd>Given {{ application.consent_at|date:"d M Y H:i" }}, wording version {{ application.consent_version }}</dd></div>
+    </dl>
+  </section>
+
+  <section class="card">
+    <div class="card-header"><h2 class="font-semibold">Documents</h2>
+      {% if missing %}<span class="text-xs text-amber-700">Missing: {% for kind, label in missing %}{{ label }}{% if not forloop.last %}, {% endif %}{% endfor %}</span>{% endif %}</div>
+    <ul class="divide-y divide-slate-100 text-sm">
+      {% for d in documents %}
+        <li class="flex flex-wrap items-center justify-between gap-2 px-5 py-3">
+          <div>
+            {% if perms.admissions.view_applicationdocument %}<a class="link font-medium" href="{% url 'admissions:document' d.pk %}" target="_blank" rel="noopener">{{ d.get_kind_display }}</a>{% else %}<span class="font-medium">{{ d.get_kind_display }}</span>{% endif %}
+            <span class="text-xs text-slate-500">· {{ d.created_at|date:"d M Y" }} · {% if d.uploaded_by %}office{% else %}family{% endif %} · {{ d.size|filesizeformat }}</span>
+            <p class="text-xs {% if d.status == 'accepted' %}text-emerald-700{% elif d.status == 'rejected' %}text-red-700{% else %}text-slate-500{% endif %}">{{ d.get_status_display }}{% if d.rejection_reason %}: {{ d.rejection_reason }}{% endif %}{% if d.checked_by %} · {{ d.checked_by }}{% endif %}</p>
+          </div>
+          {% if perms.admissions.change_applicationdocument and d.status == 'waiting' %}
+            <div class="flex flex-wrap items-center gap-2">
+              <form method="post">{% csrf_token %}<input type="hidden" name="action" value="accept_document"><input type="hidden" name="document" value="{{ d.pk }}"><button class="btn-primary btn-sm">Accept</button></form>
+              <form method="post" class="flex items-center gap-2">{% csrf_token %}<input type="hidden" name="action" value="reject_document"><input type="hidden" name="document" value="{{ d.pk }}">
+                <input class="input w-48" name="reason" maxlength="200" required placeholder="Why, for the family"><button class="btn-secondary btn-sm">Not accepted</button></form>
+            </div>
+          {% endif %}
+        </li>
+      {% empty %}
+        <li class="px-5 py-4 text-slate-500">No document yet. The family uploads them on their page, or scan them here.</li>
+      {% endfor %}
+    </ul>
+    {% if perms.admissions.add_applicationdocument %}
+      <form method="post" enctype="multipart/form-data" class="flex flex-wrap items-end gap-2 border-t border-slate-200 px-5 py-4 text-sm">
+        {% csrf_token %}<input type="hidden" name="action" value="upload">
+        <label>Document<select name="kind" class="input mt-1">{% for kind, label in kinds %}<option value="{{ kind }}">{{ label }}</option>{% endfor %}</select></label>
+        <label>File (PDF or photo)<input type="file" name="file" required accept="application/pdf,image/jpeg,image/png,image/webp" class="mt-1 block text-sm"></label>
+        <button class="btn-secondary btn-sm">Add</button>
+      </form>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <div class="card-header"><h2 class="font-semibold">Timeline</h2></div>
+    {% if perms.admissions.change_application %}
+      <form method="post" class="flex flex-col gap-2 px-5 pt-4 sm:flex-row">{% csrf_token %}<input type="hidden" name="action" value="note">
+        <input class="input flex-1" name="text" maxlength="500" required placeholder="A note for staff; families never see it"><button class="btn-secondary btn-sm">Add note</button></form>
+    {% endif %}
+    <ul class="divide-y divide-slate-100 text-sm">
+      {% for item in events %}{% with e=item.event %}
+        <li class="px-5 py-3">
+          <p class="text-xs text-slate-500">{{ e.created_at|date:"d M Y H:i" }} · {{ e.by|default:"The family" }} · {{ e.get_kind_display }}</p>
+          <p>{% if item.to %}<b>{% if item.was %}{{ item.was }} → {% endif %}{{ item.to }}.</b> {% endif %}{{ e.text }}</p>
+        </li>
+      {% endwith %}{% endfor %}
+    </ul>
+  </section>
+</div>
+
+<div class="space-y-6">
+  <section class="card">
+    <div class="card-header"><h2 class="font-semibold">Brother or sister</h2></div>
+    <div class="card-body text-sm">
+      {% if not application.sibling_claimed %}
+        <p class="text-slate-500">None named by the family.</p>
+      {% else %}
+        <p>The family says: <b>{{ application.sibling_details }}</b></p>
+        {% if application.sibling %}
+          <p class="mt-2 text-emerald-700">Confirmed: {{ application.sibling }}, by {{ application.sibling_verified_by }} on {{ application.sibling_verified_at|date:"d M Y" }}.</p>
+          {% if perms.admissions.change_application %}<form method="post" class="mt-2">{% csrf_token %}<input type="hidden" name="action" value="clear_sibling"><button class="link text-xs">Clear</button></form>{% endif %}
+        {% elif perms.admissions.change_application %}
+          <form method="get" class="mt-3 flex gap-2"><input class="input" name="sibling" value="{{ sibling_term }}" placeholder="Student ID or name"><button class="btn-secondary btn-sm">Find</button></form>
+          {% for s in sibling_matches %}
+            <form method="post" class="mt-2 flex items-center justify-between gap-2">{% csrf_token %}<input type="hidden" name="action" value="sibling"><input type="hidden" name="student" value="{{ s.pk }}">
+              <span>{{ s }}</span><button class="btn-primary btn-sm">This one</button></form>
+          {% empty %}{% if sibling_term %}<p class="mt-2 text-slate-500">No student at the school matches.</p>{% endif %}{% endfor %}
+          <p class="mt-2 text-xs text-slate-500">Confirm only once the family's details match the student's record; a confirmed sibling can count when places are given.</p>
+        {% endif %}
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-header"><h2 class="font-semibold">Application fee</h2></div>
+    <div class="card-body space-y-3 text-sm">
+      {% if not fee.due %}<p class="text-slate-500">This round has no application fee.</p>
+      {% elif fee.waived %}<p>Waived: {{ application.fee_waived_reason }} <span class="text-xs text-slate-500">({{ application.fee_waived_by }}, {{ application.fee_waived_at|date:"d M Y" }})</span></p>
+      {% else %}<p>{{ current_school.currency_symbol }}{{ fee.due }} due · {{ current_school.currency_symbol }}{{ fee.paid }} paid · <b class="{% if fee.outstanding %}text-amber-700{% else %}text-emerald-700{% endif %}">{{ current_school.currency_symbol }}{{ fee.outstanding }} owed</b></p>{% endif %}
+      {% for p in payments %}
+        <div class="rounded border border-slate-200 px-3 py-2">
+          <p><span class="font-mono">{{ p.receipt_no }}</span> · {{ current_school.currency_symbol }}{{ p.amount }} · {{ p.get_method_display }} · {{ p.date|date:"d M Y" }}
+            {% if perms.admissions.view_applicationpayment %}· <a class="link" href="{% url 'admissions:receipt' p.pk %}" target="_blank" rel="noopener">Receipt</a>{% endif %}</p>
+          {% if p.is_voided %}<p class="text-xs text-red-700">Void: {{ p.void_reason }}</p>
+          {% elif perms.admissions.change_applicationpayment %}
+            <form method="post" class="mt-2 flex gap-2" data-confirm="Void this receipt and reverse it in the ledger?">{% csrf_token %}<input type="hidden" name="action" value="void"><input type="hidden" name="payment" value="{{ p.pk }}">
+              <input class="input" name="reason" maxlength="200" required placeholder="Why it is void"><button class="btn-secondary btn-sm">Void</button></form>
+          {% endif %}
+        </div>
+      {% endfor %}
+      {% if fee.outstanding and perms.admissions.add_applicationpayment %}
+        <form method="post" class="space-y-2 border-t border-slate-100 pt-3">{% csrf_token %}<input type="hidden" name="action" value="pay">
+          <p class="font-medium">Record a payment at the counter</p>
+          <div class="grid grid-cols-2 gap-2">
+            <label>Amount<input class="input mt-1" name="amount" type="number" step="0.01" min="0.01" value="{{ fee.outstanding }}" required></label>
+            <label>Date<input class="input mt-1" name="date" type="date" value="{{ today|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}"></label>
+          </div>
+          <label class="block">Method<select class="input mt-1" name="method">{% for value, label in methods %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></label>
+          <label class="block">Transaction ID or cheque no. (not for cash)<input class="input mt-1" name="reference" maxlength="100"></label>
+          <button class="btn-primary btn-sm">Record and write the receipt</button>
+        </form>
+      {% endif %}
+      {% if fee.due and not fee.waived and not fee.paid and perms.admissions.change_applicationpayment %}
+        <form method="post" class="flex gap-2 border-t border-slate-100 pt-3" data-confirm="Waive this family's application fee?">{% csrf_token %}<input type="hidden" name="action" value="waive">
+          <input class="input" name="reason" maxlength="200" required placeholder="Why the fee is waived"><button class="btn-secondary btn-sm">Waive</button></form>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-header"><h2 class="font-semibold">The family's private link</h2></div>
+    <div class="card-body space-y-3 text-sm">
+      <p class="text-slate-600">The family follows the application with a private link on their slip. It is never shown again. If they lose it, give them a new one; the old one stops working at once.</p>
+      {% if slip_ready %}<a class="btn-primary btn-sm" href="{% url 'admissions:slip' application.pk %}" target="_blank" rel="noopener">Print the family's slip</a>{% endif %}
+      {% if perms.admissions.change_application %}
+        <form method="post" data-confirm="Give a new link? The family's old link will stop working.">{% csrf_token %}<input type="hidden" name="action" value="reissue"><button class="btn-secondary btn-sm">Give a new link</button></form>
+      {% endif %}
+    </div>
+  </section>
+</div>
+</div>
+{% endblock %}

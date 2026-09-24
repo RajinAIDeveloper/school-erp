@@ -86,6 +86,7 @@ class JournalEntry(SchoolScopedModel):
         SALARY = "salary", "Salary"
         REVERSAL = "reversal", "Reversal"
         OPENING = "opening", "Opening balance"
+        ADMISSION = "admission", "Application fee"
 
     entry_no = models.PositiveIntegerField()
     date = models.DateField()

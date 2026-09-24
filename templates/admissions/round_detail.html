@@ -1,0 +1,46 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block header_actions %}
+  <a href="{% url 'admissions:home' %}" class="btn-secondary btn-sm">Admissions</a>
+  {% if perms.admissions.change_admissionround %}<a href="{% url 'admissions:round_edit' round.pk %}" class="btn-secondary btn-sm">Edit round</a>{% endif %}
+{% endblock %}
+{% block content %}
+<section class="card mb-6">
+  <div class="card-body grid gap-3 text-sm sm:grid-cols-4">
+    <div><p class="text-xs text-slate-500">For the year</p><p class="font-semibold">{{ round.academic_year }}</p></div>
+    <div><p class="text-xs text-slate-500">Open</p><p class="font-semibold">{{ round.opens_on|date:"d M Y" }} – {{ round.closes_on|date:"d M Y" }}</p>
+      <p class="text-xs {% if is_open %}text-emerald-700{% else %}text-slate-500{% endif %}">{% if is_open %}Open to families now{% elif not round.is_published %}Not published: families cannot see it{% else %}Not open today{% endif %}</p></div>
+    <div><p class="text-xs text-slate-500">Application fee</p><p class="font-semibold">{% if round.application_fee %}{{ current_school.currency_symbol }}{{ round.application_fee }}{% else %}None{% endif %}</p></div>
+    <div><p class="text-xs text-slate-500">Brothers and sisters</p><p class="font-semibold">{{ round.get_sibling_rule_display }}</p>
+      <p class="text-xs text-slate-500">Offers open for {{ round.offer_days }} days</p></div>
+  </div>
+</section>
+
+<section class="card overflow-x-auto">
+  <div class="card-header"><h2 class="font-semibold">Classes in this round</h2>
+    {% if perms.admissions.add_roundclass %}<a href="{% url 'admissions:class_new' round.pk %}" class="btn-primary btn-sm">Add a class</a>{% endif %}</div>
+  <table class="table table-stack">
+    <thead><tr><th>Class</th><th>Who may apply</th><th>Assessment</th><th class="text-right">Seats</th><th class="text-right">Taken or offered</th><th class="text-right">Applications</th><th class="text-right">To look at</th><th></th></tr></thead>
+    <tbody>
+      {% for c in classes %}
+        <tr>
+          <td data-label="Class" class="font-medium">{{ c.row.class_level }}</td>
+          <td data-label="Who may apply">{% if c.rule %}Children {{ c.rule }}{% else %}Any age{% endif %}
+            {% if c.documents %}<p class="text-xs text-slate-500">Documents: {{ c.documents|join:", " }}</p>{% endif %}</td>
+          <td data-label="Assessment">{{ c.row.get_assessment_display }}{% if c.row.pass_score is not None %} <span class="text-xs text-slate-500">(pass {{ c.row.pass_score|mark }} of {{ c.row.max_score|mark }})</span>{% endif %}</td>
+          <td data-label="Seats" class="sm:text-right">{{ c.row.seats }}</td>
+          <td data-label="Taken or offered" class="sm:text-right {% if c.taken >= c.row.seats %}font-semibold text-red-700{% endif %}">{{ c.taken }}</td>
+          <td data-label="Applications" class="sm:text-right">{{ c.total }}</td>
+          <td data-label="To look at" class="sm:text-right">{{ c.waiting }}</td>
+          <td class="whitespace-nowrap sm:text-right">
+            <a class="link" href="{% url 'admissions:pipeline' c.row.pk %}">Applications</a>
+            {% if perms.admissions.change_roundclass %} · <a class="link" href="{% url 'admissions:class_edit' c.row.pk %}">Edit</a>{% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="8">{% include "components/empty.html" with message="No class yet. Add the classes families can apply for, with their seats and age window." %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

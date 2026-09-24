@@ -1,0 +1,45 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block header_actions %}{% if perms.admissions.add_admissionround %}<a href="{% url 'admissions:round_new' %}" class="btn-primary btn-sm">New round</a>{% endif %}{% endblock %}
+{% block content %}
+<form method="get" class="card mb-6">
+  <div class="card-body flex flex-col gap-2 sm:flex-row sm:items-end">
+    <label class="flex-1 text-sm font-medium text-slate-700">Find an application
+      <input class="input mt-1" name="q" value="{{ query }}" placeholder="Application number, child's name, guardian's name or phone"></label>
+    <button class="btn-secondary">Find</button>
+  </div>
+  {% if query %}
+    <ul class="divide-y divide-slate-100 border-t border-slate-200 text-sm">
+      {% for a in found %}
+        <li class="flex flex-wrap items-center justify-between gap-2 px-5 py-3">
+          <span><span class="font-mono">{{ a.reference }}</span> · <b>{{ a.child_name }}</b> · {{ a.round_class.class_level }} · {{ a.get_current_status_display }}</span>
+          <a class="link" href="{% url 'admissions:application' a.pk %}">Open</a>
+        </li>
+      {% empty %}
+        <li class="px-5 py-4 text-slate-500">Nothing matches “{{ query }}”.</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+</form>
+
+<section class="card overflow-x-auto">
+  <div class="card-header"><h2 class="font-semibold">Admission rounds</h2>
+    <span class="text-xs text-slate-500">Families apply at <a class="link" href="{{ public_url }}" target="_blank" rel="noopener">{{ public_url }}</a></span></div>
+  <table class="table table-stack">
+    <thead><tr><th>Round</th><th>For the year</th><th>Open</th><th>Applications</th><th></th></tr></thead>
+    <tbody>
+      {% for item, count, is_open in rounds %}
+        <tr>
+          <td data-label="Round" class="font-medium">{{ item.name }}{% if not item.is_published %} <span class="text-xs text-slate-500">(not published)</span>{% endif %}</td>
+          <td data-label="For the year">{{ item.academic_year }}</td>
+          <td data-label="Open">{{ item.opens_on|date:"d M Y" }} – {{ item.closes_on|date:"d M Y" }}{% if is_open %} <span class="text-xs font-semibold text-emerald-700">open now</span>{% endif %}</td>
+          <td data-label="Applications">{{ count }}</td>
+          <td class="sm:text-right"><a class="link" href="{% url 'admissions:round' item.pk %}">Open</a></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5">{% include "components/empty.html" with message="No admission round yet. A round sets the dates, the fee and the classes families can apply for." %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

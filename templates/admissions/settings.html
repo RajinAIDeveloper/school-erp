@@ -1,0 +1,14 @@
+{% extends "layouts/base.html" %}
+{% block header_actions %}<a href="{% url 'admissions:home' %}" class="btn-secondary btn-sm">Admissions</a>{% endblock %}
+{% block content %}
+<form method="post" class="card max-w-2xl">
+  {% csrf_token %}
+  <div class="card-header"><h2 class="font-semibold">Keeping applications</h2></div>
+  <div class="card-body">
+    <label class="label" for="keep_months">Keep applications that did not lead to a place for (months after the round closes)</label>
+    <input class="input mt-1 w-28" type="number" min="1" max="36" id="keep_months" name="keep_months" value="{{ keep_months }}">
+    <p class="mt-2 text-xs text-slate-500">After that, the child's and the family's details and the documents are deleted; only anonymous counts stay for the admissions report. An application that led to a place becomes part of the student's record. Children's data should be kept no longer than needed (PDPA 2026).</p>
+  </div>
+  <div class="flex justify-end border-t border-slate-200 px-5 py-4"><button class="btn-primary">Save</button></div>
+</form>
+{% endblock %}

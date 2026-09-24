@@ -56,6 +56,13 @@ TRANSLATED_TEMPLATES = [
     "templates/homework/export.html",
     "templates/homework/insights.html",
     "templates/homework/insights_grid.html",
+    # Online admissions: everything a family sees without an account.
+    "templates/admissions/public/base.html",
+    "templates/admissions/public/landing.html",
+    "templates/admissions/public/form.html",
+    "templates/admissions/public/done.html",
+    "templates/admissions/public/mine.html",
+    "templates/admissions/public/link_invalid.html",
     "templates/homework/_student_analytics.html",
 ]
 

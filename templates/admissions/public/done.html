@@ -1,0 +1,23 @@
+{% extends "admissions/public/base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Application sent" %}{% endblock %}
+{% block content %}
+<section class="rounded-xl bg-white p-5 shadow sm:p-6">
+  <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
+    <p class="font-semibold text-emerald-900">{% translate "The school has your application." %}</p>
+    <p class="mt-1 text-sm text-emerald-900">{% blocktranslate trimmed with name=application.child_name level=application.round_class.class_level %}{{ name }}, for {{ level }}.{% endblocktranslate %}</p>
+  </div>
+  <dl class="mt-5 space-y-4 text-sm">
+    <div><dt class="text-xs uppercase tracking-wide text-slate-500">{% translate "Application number" %}</dt>
+      <dd class="font-mono text-lg font-semibold text-slate-900">{{ application.reference }}</dd></div>
+    <div><dt class="text-xs uppercase tracking-wide text-slate-500">{% translate "Your private link" %}</dt>
+      <dd class="mt-1 break-all rounded border border-slate-200 bg-slate-50 px-3 py-2 font-mono text-xs text-slate-800">{{ link }}</dd></div>
+  </dl>
+  <p class="mt-4 text-sm text-slate-700">{% translate "Save the slip now: it has the number, the link and a code your phone camera can scan. The link opens your application's page, where you upload documents, see where the application stands and answer an offer." %}</p>
+  <p class="mt-2 text-sm font-medium text-amber-800">{% translate "Anyone with the link can see the application, so keep it private. The school does not send it again by text message." %}</p>
+  <div class="mt-5 flex flex-col gap-2 sm:flex-row">
+    <a class="btn-primary justify-center" href="{% url 'apply:slip' school.slug application.pk %}">{% translate "Save the slip (PDF)" %}</a>
+    <a class="btn-secondary justify-center" href="{% url 'apply:mine' school.slug %}">{% translate "Go to your application" %}</a>
+  </div>
+</section>
+{% endblock %}

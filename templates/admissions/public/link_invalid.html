@@ -1,0 +1,14 @@
+{% extends "admissions/public/base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Link not recognised" %}{% endblock %}
+{% block content %}
+<section class="rounded-xl bg-white p-6 shadow">
+  {% if busy %}
+    <p class="font-semibold text-slate-900">{% translate "Too many links have been tried from here. Try again in 15 minutes." %}</p>
+  {% else %}
+    <p class="font-semibold text-slate-900">{% translate "This link does not open an application." %}</p>
+    <p class="mt-2 text-sm text-slate-600">{% translate "It may be mistyped, or the school may have given you a newer link, which replaces the old one." %}</p>
+  {% endif %}
+  <p class="mt-2 text-sm text-slate-600">{% translate "Contact the school office with your application number; they can give you a new link." %}</p>
+</section>
+{% endblock %}

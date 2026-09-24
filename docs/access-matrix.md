@@ -14,21 +14,41 @@ list and sees only their own requests, and a staff member opens their own file a
 else's. That column is declared by each view rather than inferred, so it cannot quietly drift
 from what the code does.
 
-Only three endpoints are open without signing in: a download whose audience is Public, the
-report-card verification page (which names the examination but no child and no mark), and the
-health probe. A test asserts that list, so a view that forgets its permission decorator cannot
-quietly join it.
+The endpoints open without signing in are marked **\***: a download whose audience is Public,
+the pages that verify a report card, a certificate or a transcript, the result lookup, the
+payment gateway's return, a school's online admission pages and the health probe. A test
+asserts that list, so a view that forgets its permission decorator cannot quietly join it.
 
 | URL | View | Permission | Also enforced | Administrator | Principal | Vice Principal | Accountant | Teacher | Staff | Student | Guardian |
 |---|---|---|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
 | / | dashboard | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
 | /academics/sections.json | academics:sections_json | `academics.view_section` | - | Y | Y | Y | Y | Y | . | . | . |
 | /academics/subject-plan/ | academics:subject_plan | `academics.view_classsubject` | - | Y | Y | Y | . | . | . | . | . |
+| /admissions/ | admissions:home | `admissions.view_application` | admissions module only | Y | Y | Y | Y | . | Y | . | . |
+| /admissions/applications/<int:pk>/ | admissions:application | `admissions.view_application` | admissions module only | Y | Y | Y | Y | . | Y | . | . |
+| /admissions/applications/<int:pk>/edit/ | admissions:application_edit | `admissions.change_application` | admissions module only | Y | Y | Y | . | . | Y | . | . |
+| /admissions/applications/<int:pk>/slip/ | admissions:slip | `admissions.change_application` | only right after the link is made; admissions module only | Y | Y | Y | . | . | Y | . | . |
+| /admissions/classes/<int:pk>/ | admissions:pipeline | `admissions.view_application` | admissions module only | Y | Y | Y | Y | . | Y | . | . |
+| /admissions/classes/<int:pk>/apply/ | admissions:office_entry | `admissions.add_application` | admissions module only | Y | Y | Y | . | . | Y | . | . |
+| /admissions/classes/<int:pk>/edit/ | admissions:class_edit | `admissions.change_roundclass` | the school's managers; admissions module only | Y | Y | Y | . | . | . | . | . |
+| /admissions/documents/<int:pk>/ | admissions:document | `admissions.view_applicationdocument` | admissions module only | Y | Y | Y | . | . | Y | . | . |
+| /admissions/payments/<int:pk>/receipt/ | admissions:receipt | `admissions.view_applicationpayment` | admissions module only | Y | Y | Y | Y | . | . | . | . |
+| /admissions/rounds/<int:pk>/ | admissions:round | `admissions.view_admissionround` | admissions module only | Y | Y | Y | Y | . | Y | . | . |
+| /admissions/rounds/<int:pk>/classes/new/ | admissions:class_new | `admissions.add_roundclass` | the school's managers; admissions module only | Y | Y | Y | . | . | . | . | . |
+| /admissions/rounds/<int:pk>/edit/ | admissions:round_edit | `admissions.change_admissionround` | the school's managers; admissions module only | Y | Y | Y | . | . | . | . | . |
+| /admissions/rounds/new/ | admissions:round_new | `admissions.add_admissionround` | the school's managers; admissions module only | Y | Y | Y | . | . | . | . | . |
+| /admissions/settings/ | admissions:settings | `admissions.change_admissionround` | the school's managers; admissions module only | Y | Y | Y | . | . | . | . | . |
 | /analytics/ | analytics:home | `(sign-in only)` | what the viewer's analytics reach: their school, sections or subjects | o | o | o | o | o | o | o | o |
 | /analytics/paper/ | analytics:paper | `(sign-in only)` | the subject's teachers for their sections, class teachers, and managers | o | o | o | o | o | o | o | o |
 | /analytics/school/ | analytics:school | `(sign-in only)` | the school's managers: Administrator, Principal, Vice Principal | o | o | o | o | o | o | o | o |
 | /analytics/section/ | analytics:section | `(sign-in only)` | the section's class teacher, and managers | o | o | o | o | o | o | o | o |
 | /analytics/student/<int:pk>/ | analytics:student | `(sign-in only)` | within the viewer's analytics: the whole school, their sections or subjects, or their own child | o | o | o | o | o | o | o | o |
+| /apply/<slug:slug>/ | apply:landing | `(public)` | - | * | * | * | * | * | * | * | * |
+| /apply/<slug:slug>/<int:pk>/ | apply:form | `(public)` | - | * | * | * | * | * | * | * | * |
+| /apply/<slug:slug>/done/ | apply:done | `(public)` | - | * | * | * | * | * | * | * | * |
+| /apply/<slug:slug>/my/ | apply:mine | `(public)` | - | * | * | * | * | * | * | * | * |
+| /apply/<slug:slug>/my/<int:pk>/slip/ | apply:slip | `(public)` | - | * | * | * | * | * | * | * | * |
+| /apply/<slug:slug>/t/<str:token>/ | apply:open | `(public)` | - | * | * | * | * | * | * | * | * |
 | /attendance/ | attendance:student_take | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
 | /attendance/leave/ | attendance:leave_list | `attendance.view_leaverequest` | own requests unless a manager | Y | Y | Y | . | Y | Y | . | . |
 | /attendance/leave/<int:pk>/review/ | attendance:leave_review | `attendance.change_leaverequest` | managers only | Y | Y | Y | . | . | . | . | . |

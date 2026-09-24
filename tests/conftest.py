@@ -280,3 +280,50 @@ def homework(erp):
     erp.student.user = student_user
     erp.student.save()
     return SimpleNamespace(periods=(first, second), student_user=student_user)
+
+
+@pytest.fixture
+def admissions(erp):
+    """
+    The school given online admissions, with a round for next year open today: Class 1, two
+    seats, a test, a Tk 500 fee, and children born in 2020 (2 January 2020 to 1 January 2021).
+    Counters for the public pages start from nothing.
+    """
+    from datetime import timedelta
+    from decimal import Decimal
+
+    from django.core.cache import cache
+    from django.utils import timezone
+
+    from admissions.models import AdmissionRound, RoundClass
+
+    cache.clear()
+    erp.school.admissions_enabled = True
+    erp.school.save()
+    today = timezone.localdate()
+    next_year = AcademicYear.objects.create(
+        school=erp.school, name="2027", start_date=date(2027, 1, 1), end_date=date(2027, 12, 31)
+    )
+    admission_round = AdmissionRound.objects.create(
+        school=erp.school,
+        academic_year=next_year,
+        name="Admission 2027",
+        opens_on=today - timedelta(days=10),
+        closes_on=today + timedelta(days=20),
+        application_fee=Decimal("500"),
+        is_published=True,
+    )
+    row = RoundClass.objects.create(
+        school=erp.school,
+        admission_round=admission_round,
+        class_level=erp.level,
+        seats=2,
+        assessment="test",
+        max_score=100,
+        pass_score=40,
+        born_on_or_after=date(2020, 1, 2),
+        born_on_or_before=date(2021, 1, 1),
+        required_documents=["birth_certificate", "photo"],
+    )
+    yield SimpleNamespace(round=admission_round, row=row, year=next_year, today=today)
+    cache.clear()

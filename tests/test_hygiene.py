@@ -42,6 +42,7 @@ def source_files():
         "reports",
         "analytics",
         "homework",
+        "admissions",
         "config",
         "templates",
     ):
@@ -200,6 +201,15 @@ def test_the_public_surface_is_exactly_what_we_intend(erp):
         # A university holding a transcript checks it here: the grades to compare, the student as
         # initials only, and whether a result on it has since been corrected.
         "/exams/transcripts/verify/<uuid:code>/",
+        # Online admissions, where the school has the module: the open rounds, the form (a
+        # honeypot, a time trap and rate limits), and the family's own page, reached only through
+        # the private link, which moves into the session. None is cached or indexed.
+        "/apply/<slug:slug>/",
+        "/apply/<slug:slug>/<int:pk>/",
+        "/apply/<slug:slug>/done/",
+        "/apply/<slug:slug>/t/<str:token>/",
+        "/apply/<slug:slug>/my/",
+        "/apply/<slug:slug>/my/<int:pk>/slip/",
         # A liveness probe; a load balancer has no session.
         "/healthz/",
     }, f"unexpected public endpoints: {public}"

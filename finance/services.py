@@ -110,10 +110,10 @@ def reverse_journal(*, school, user, entry, reason):
         raise PermissionDenied
     if not reason.strip():
         raise ValidationError("Give a reason for the reversal; it goes on the record.")
-    if entry.source in (JournalEntry.Source.FEE, JournalEntry.Source.SALARY):
+    if entry.source in (JournalEntry.Source.FEE, JournalEntry.Source.SALARY, JournalEntry.Source.ADMISSION):
         raise ValidationError(
-            "Reverse a fee receipt from the collection desk and a salary from payroll, so the "
-            "source document and the ledger stay in step."
+            "Reverse a fee receipt from the collection desk, a salary from payroll and an application "
+            "fee from the application, so the source document and the ledger stay in step."
         )
     assert_period_open(school, timezone.localdate())
     School.objects.select_for_update().get(pk=school.pk)
