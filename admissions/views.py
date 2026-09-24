@@ -460,3 +460,264 @@ def settings_page(request):
         "admissions/settings.html",
         {"keep_months": request.school.admissions_keep_months, "page_title": "Admissions settings"},
     )
+
+
+# ------------------------------------------------------------------ assessments
+
+
+@admissions_view("admissions.view_assessment")
+def assessments(request, pk):
+    from datetime import datetime
+
+    from .models import Assessment
+    from .selection import KINDS_NEEDED, schedule
+
+    row = get_object_or_404(
+        RoundClass.objects.select_related("admission_round", "class_level"), pk=pk, school=request.school
+    )
+    kinds = [(value, label) for value, label in Assessment.Kind.choices if value in KINDS_NEEDED[row.assessment]]
+    if request.method == "POST":
+        try:
+            raw = request.POST.get("starts_at", "")
+            try:
+                starts_at = timezone.make_aware(datetime.fromisoformat(raw)) if raw else None
+            except ValueError:
+                raise ValidationError("Give the date and time as the box shows them.") from None
+            capacity = request.POST.get("capacity", "").strip()
+            created = schedule(
+                user=request.user,
+                round_class=row,
+                kind=request.POST.get("kind", ""),
+                starts_at=starts_at,
+                venue=request.POST.get("venue", ""),
+                capacity=int(capacity) if capacity.isdigit() else None,
+                note=request.POST.get("note", ""),
+            )
+        except ValidationError as problem:
+            _refused(request, problem)
+        except PermissionDenied:
+            messages.error(request, "Your role cannot schedule a sitting.")
+        else:
+            messages.success(request, f"{created} scheduled. Book applicants into it below.")
+            return redirect("admissions:sitting", pk=created.pk)
+        return redirect("admissions:assessments", pk=row.pk)
+    sittings = row.assessments.annotate(
+        booked=Count("results"), recorded=Count("results", filter=Q(results__attended__isnull=False))
+    )
+    return render(
+        request,
+        "admissions/assessments.html",
+        {"row": row, "sittings": sittings, "kinds": kinds, "page_title": f"Tests and interviews · {row.class_level}"},
+    )
+
+
+@admissions_view("admissions.view_assessment")
+def sitting(request, pk):
+    from .models import Assessment
+    from .selection import RANKABLE, book, record
+
+    assessment = get_object_or_404(
+        Assessment.objects.select_related("round_class__admission_round", "round_class__class_level"),
+        pk=pk,
+        school=request.school,
+    )
+    row = assessment.round_class
+    if request.method == "POST":
+        action = request.POST.get("action", "")
+        try:
+            if action == "book":
+                chosen = Application.objects.filter(
+                    school=request.school, round_class=row, pk__in=request.POST.getlist("application")
+                )
+                booked, skipped = book(user=request.user, assessment=assessment, applications=list(chosen))
+                if booked:
+                    messages.success(request, f"{len(booked)} booked.")
+                for application, why in skipped:
+                    messages.warning(request, f"{application.reference} {application.child_name} not booked: {why}.")
+            elif action == "record":
+                rows = {
+                    result.pk: (
+                        request.POST.get(f"came_{result.pk}", ""),
+                        request.POST.get(f"score_{result.pk}", ""),
+                        request.POST.get(f"notes_{result.pk}", ""),
+                    )
+                    for result in assessment.results.all()
+                }
+                changed = record(user=request.user, assessment=assessment, rows=rows)
+                messages.success(request, f"{len(changed)} result(s) saved.")
+            else:
+                raise Http404
+        except ValidationError as problem:
+            _refused(request, problem)
+        except PermissionDenied:
+            messages.error(request, "Your role cannot do that.")
+        return redirect("admissions:sitting", pk=assessment.pk)
+    booked_ids = assessment.results.values_list("application_id", flat=True)
+    same_kind = Application.objects.filter(assessment_results__assessment__kind=assessment.kind).values("pk")
+    eligible = (
+        row.applications.filter(status__in=RANKABLE, purged_at__isnull=True)
+        .exclude(pk__in=booked_ids)
+        .exclude(pk__in=same_kind)
+        .order_by("submitted_at", "pk")
+    )
+    return render(
+        request,
+        "admissions/sitting.html",
+        {
+            "assessment": assessment,
+            "row": row,
+            "results": assessment.results.select_related("application").order_by(
+                "application__first_name", "application__pk"
+            ),
+            "eligible": [(a, services.fee_state(a)) for a in eligible],
+            "fee_first": row.admission_round.fee_before_assessment and row.admission_round.application_fee > 0,
+            "page_title": f"{assessment} · {row.class_level}",
+        },
+    )
+
+
+# ------------------------------------------------------------------ the merit list and offers
+
+
+@admissions_view("admissions.view_application")
+def merit(request, pk):
+    from . import selection
+
+    row = get_object_or_404(
+        RoundClass.objects.select_related("admission_round", "class_level"), pk=pk, school=request.school
+    )
+    if request.method == "POST":
+        action = request.POST.get("action", "")
+        user = request.user
+        try:
+            if action == "fix":
+                ranked = selection.fix_merit_list(user=user, round_class=row)
+                messages.success(request, f"Merit list fixed: {len(ranked)} ranked.")
+            elif action == "offer":
+                raw = request.POST.get("how_many", "").strip()
+                made = selection.offer_places(user=user, round_class=row, how_many=int(raw) if raw.isdigit() else None)
+                messages.success(request, f"{len(made)} place(s) offered.")
+            elif action == "waitlist":
+                moved = selection.waitlist_rest(user=user, round_class=row)
+                messages.success(request, f"{len(moved)} put on the waiting list.")
+            elif action == "below_pass":
+                turned = selection.turn_down_below_pass(
+                    user=user, round_class=row, reason=request.POST.get("reason", "")
+                )
+                messages.success(request, f"{len(turned)} not offered a place.")
+            elif action == "next":
+                application = selection.offer_next(user=user, round_class=row)
+                messages.success(request, f"Place offered to {application.reference} {application.child_name}.")
+            else:
+                raise Http404
+        except ValidationError as problem:
+            _refused(request, problem)
+        except PermissionDenied:
+            messages.error(request, "Offering places is for the school's managers.")
+        return redirect("admissions:merit", pk=row.pk)
+    ranked, waiting = selection.merit_list(row)
+    return render(
+        request,
+        "admissions/merit.html",
+        {
+            "row": row,
+            "ranked": ranked,
+            "waiting": waiting,
+            "current": selection.list_is_current(row, ranked),
+            "fixed": row.applications.filter(merit_rank__isnull=False).exists(),
+            "taken": services.seats_taken(row),
+            "waitlisted": row.applications.filter(status=S.WAITLISTED).order_by("merit_rank", "submitted_at"),
+            "offered": row.applications.filter(status__in=[S.OFFERED, S.ACCEPTED]).order_by("merit_rank"),
+            "page_title": f"Merit list · {row.class_level}",
+        },
+    )
+
+
+# ------------------------------------------------------------------ enrolment
+
+
+@admissions_view("admissions.decide_application", also="the school's managers, who may also add students")
+def enrol(request, pk):
+    from academics.models import Section
+
+    from .enrol import enrol as enrol_one
+    from .enrol import family_match, section_load
+
+    row = get_object_or_404(
+        RoundClass.objects.select_related("admission_round__academic_year", "class_level"),
+        pk=pk,
+        school=request.school,
+    )
+    year = row.admission_round.academic_year
+    sections = list(Section.objects.filter(school=request.school, class_level=row.class_level).order_by("name"))
+    accepted = list(row.applications.filter(status=S.ACCEPTED).order_by("merit_rank", "submitted_at"))
+    if request.method == "POST":
+        chosen = set(request.POST.getlist("application"))
+        by_pk = {str(section.pk): section for section in sections}
+        enrolled = []
+        for application in accepted:
+            if str(application.pk) not in chosen:
+                continue
+            section = by_pk.get(request.POST.get(f"section_{application.pk}", ""))
+            roll = request.POST.get(f"roll_{application.pk}", "").strip()
+            try:
+                if section is None:
+                    raise ValidationError("Choose a section.")
+                enrolled.append(
+                    enrol_one(
+                        user=request.user,
+                        application=application,
+                        section=section,
+                        roll_number=int(roll) if roll.isdigit() else None,
+                        same_family=request.POST.get(f"family_{application.pk}") == "on",
+                        future_ok=request.POST.get("future_ok") == "on",
+                    )
+                )
+            except ValidationError as problem:
+                for message in problem.messages:
+                    messages.error(request, f"{application.reference} {application.child_name}: {message}")
+            except PermissionDenied:
+                messages.error(request, "Enrolling needs a role that may add students.")
+                break
+        if enrolled:
+            messages.success(request, "Enrolled: " + ", ".join(str(student) for student in enrolled) + ".")
+        return redirect("admissions:enrol", pk=row.pk)
+    return render(
+        request,
+        "admissions/enrol.html",
+        {
+            "row": row,
+            "year": year,
+            "sections": [(section, section_load(section, year)) for section in sections],
+            "rows": [(application, family_match(application)) for application in accepted],
+            "page_title": f"Enrol · {row.class_level}",
+        },
+    )
+
+
+# ------------------------------------------------------------------ the funnel
+
+
+@admissions_view("admissions.view_admissionround")
+def report(request, pk):
+    from core.exports import spreadsheet
+
+    from .report import HEADERS, funnel, table
+
+    admission_round = get_object_or_404(AdmissionRound, pk=pk, school=request.school)
+    rows, sources = funnel(admission_round)
+    fmt = request.GET.get("format", "")
+    if fmt in ("csv", "xlsx"):
+        return spreadsheet(
+            f"admissions-{admission_round.pk}",
+            HEADERS,
+            table(rows),
+            fmt=fmt,
+            extra_sheets=[("Heard from", ["Where families heard of the school", "Applications"], sources)],
+            preamble=[("Round", str(admission_round)), ("For the year", str(admission_round.academic_year))],
+        )
+    return render(
+        request,
+        "admissions/report.html",
+        {"round": admission_round, "rows": rows, "sources": sources, "page_title": f"Report · {admission_round}"},
+    )

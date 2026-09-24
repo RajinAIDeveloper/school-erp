@@ -12,6 +12,7 @@ the history. The session also keeps the raw link while it is needed for the prin
 
 import secrets
 import time
+from datetime import timedelta
 
 from django.contrib import messages
 from django.core import signing
@@ -307,6 +308,18 @@ def _card(application):
         "next_kind": missing[0][0] if missing else "other",
         "can_upload": live and status != S.LAPSED,
         "fee": services.fee_state(application),
+        "fee_first": live
+        and application.round_class.admission_round.fee_before_assessment
+        and application.round_class.assessment != "none",
+        # A test or interview still to come: once it is recorded, the family's page moves on.
+        "sittings": [
+            result.assessment
+            for result in application.assessment_results.select_related("assessment").filter(
+                attended__isnull=True, assessment__starts_at__gte=timezone.now() - timedelta(hours=12)
+            )
+        ]
+        if live
+        else [],
         "can_withdraw": status in WITHDRAWABLE,
         "offer": status == S.OFFERED,
         "tone": {

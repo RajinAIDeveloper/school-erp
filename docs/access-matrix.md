@@ -28,14 +28,19 @@ asserts that list, so a view that forgets its permission decorator cannot quietl
 | /admissions/applications/<int:pk>/ | admissions:application | `admissions.view_application` | admissions module only | Y | Y | Y | Y | . | Y | . | . |
 | /admissions/applications/<int:pk>/edit/ | admissions:application_edit | `admissions.change_application` | admissions module only | Y | Y | Y | . | . | Y | . | . |
 | /admissions/applications/<int:pk>/slip/ | admissions:slip | `admissions.change_application` | only right after the link is made; admissions module only | Y | Y | Y | . | . | Y | . | . |
+| /admissions/assessments/<int:pk>/ | admissions:sitting | `admissions.view_assessment` | admissions module only | Y | Y | Y | . | . | Y | . | . |
 | /admissions/classes/<int:pk>/ | admissions:pipeline | `admissions.view_application` | admissions module only | Y | Y | Y | Y | . | Y | . | . |
 | /admissions/classes/<int:pk>/apply/ | admissions:office_entry | `admissions.add_application` | admissions module only | Y | Y | Y | . | . | Y | . | . |
+| /admissions/classes/<int:pk>/assessments/ | admissions:assessments | `admissions.view_assessment` | admissions module only | Y | Y | Y | . | . | Y | . | . |
 | /admissions/classes/<int:pk>/edit/ | admissions:class_edit | `admissions.change_roundclass` | the school's managers; admissions module only | Y | Y | Y | . | . | . | . | . |
+| /admissions/classes/<int:pk>/enrol/ | admissions:enrol | `admissions.decide_application` | the school's managers, who may also add students; admissions module only | Y | Y | Y | . | . | . | . | . |
+| /admissions/classes/<int:pk>/merit/ | admissions:merit | `admissions.view_application` | admissions module only | Y | Y | Y | Y | . | Y | . | . |
 | /admissions/documents/<int:pk>/ | admissions:document | `admissions.view_applicationdocument` | admissions module only | Y | Y | Y | . | . | Y | . | . |
 | /admissions/payments/<int:pk>/receipt/ | admissions:receipt | `admissions.view_applicationpayment` | admissions module only | Y | Y | Y | Y | . | . | . | . |
 | /admissions/rounds/<int:pk>/ | admissions:round | `admissions.view_admissionround` | admissions module only | Y | Y | Y | Y | . | Y | . | . |
 | /admissions/rounds/<int:pk>/classes/new/ | admissions:class_new | `admissions.add_roundclass` | the school's managers; admissions module only | Y | Y | Y | . | . | . | . | . |
 | /admissions/rounds/<int:pk>/edit/ | admissions:round_edit | `admissions.change_admissionround` | the school's managers; admissions module only | Y | Y | Y | . | . | . | . | . |
+| /admissions/rounds/<int:pk>/report/ | admissions:report | `admissions.view_admissionround` | admissions module only | Y | Y | Y | Y | . | Y | . | . |
 | /admissions/rounds/new/ | admissions:round_new | `admissions.add_admissionround` | the school's managers; admissions module only | Y | Y | Y | . | . | . | . | . |
 | /admissions/settings/ | admissions:settings | `admissions.change_admissionround` | the school's managers; admissions module only | Y | Y | Y | . | . | . | . | . |
 | /analytics/ | analytics:home | `(sign-in only)` | what the viewer's analytics reach: their school, sections or subjects | o | o | o | o | o | o | o | o |

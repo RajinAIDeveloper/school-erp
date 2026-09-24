@@ -344,12 +344,13 @@ class GuardianConsent(SchoolScopedModel):
     class Method(models.TextChoices):
         FORM = "form", "Signed form"
         PORTAL = "portal", "Family portal"
+        APPLICATION = "application", "Given with the admission application"
         OTHER = "other", "Other (recorded by staff)"
 
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="consents")
     purpose = models.CharField(max_length=10, choices=Purpose.choices)
     given = models.BooleanField(help_text="Ticked for consent given, clear for consent refused or withdrawn.")
-    method = models.CharField(max_length=10, choices=Method.choices, default=Method.FORM)
+    method = models.CharField(max_length=12, choices=Method.choices, default=Method.FORM)
     recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
     note = models.CharField(max_length=200, blank=True)
 

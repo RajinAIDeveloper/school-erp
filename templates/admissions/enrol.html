@@ -1,0 +1,41 @@
+{% extends "layouts/base.html" %}
+{% block header_actions %}<a href="{% url 'admissions:merit' row.pk %}" class="btn-secondary btn-sm">Merit list</a>{% endblock %}
+{% block content %}
+<form method="post" class="card overflow-x-auto">
+  {% csrf_token %}
+  <div class="card-header"><h2 class="font-semibold">Accepted places for {{ row.class_level }}, {{ year }}</h2></div>
+  <div class="card-body space-y-2 text-sm">
+    <p class="text-slate-600">Each ticked child becomes a student: the details, the guardian, the documents and photo, and the consent given on the application all come across. The application is kept for 90 days, then cleared.</p>
+    <p class="text-xs text-slate-500">Seats in each section this year: {% for section, load in sections %}{{ section }} {{ load }} of {{ section.capacity }}{% if load >= section.capacity %} (full){% endif %}{% if not forloop.last %} · {% endif %}{% endfor %}</p>
+    {% if not year.is_current %}
+      <label class="flex items-start gap-2 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900"><input type="checkbox" name="future_ok" class="mt-0.5 h-4 w-4">
+        <span>{{ year }} is not the current year. A child enrolled now is an active student at once: they count on dashboards and receive school-wide messages before the year starts. Tick to go ahead anyway.</span></label>
+    {% endif %}
+  </div>
+  <table class="table table-stack">
+    <thead><tr><th></th><th>Child</th><th>Section</th><th>Roll</th><th>Family</th></tr></thead>
+    <tbody>
+      {% for a, match in rows %}
+        <tr>
+          <td><input type="checkbox" name="application" value="{{ a.pk }}" class="h-4 w-4" aria-label="Enrol {{ a.child_name }}"></td>
+          <td data-label="Child"><a class="link font-medium" href="{% url 'admissions:application' a.pk %}">{{ a.child_name }}</a>
+            <p class="text-xs text-slate-500">{{ a.reference }} · born {{ a.date_of_birth|date:"d M Y" }} · place {{ a.merit_rank|default_if_none:"—" }}</p></td>
+          <td data-label="Section"><select name="section_{{ a.pk }}" class="input w-32">{% for section, load in sections %}<option value="{{ section.pk }}">{{ section.name }}</option>{% endfor %}</select></td>
+          <td data-label="Roll"><input class="input w-20" name="roll_{{ a.pk }}" type="number" min="1" placeholder="Next"></td>
+          <td data-label="Family" class="text-xs">
+            {% if match %}
+              <p class="text-amber-800">{{ a.guardian_phone }} is already the number of <b>{{ match.guardian.full_name }}</b>{% if match.children %}, guardian of {{ match.children|join:", " }}{% endif %}.</p>
+              <label class="mt-1 flex items-center gap-2"><input type="checkbox" name="family_{{ a.pk }}" class="h-4 w-4"> Same family: add the child to this guardian</label>
+            {% else %}
+              New guardian: {{ a.guardian_name }}, {{ a.guardian_phone }}
+            {% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5">{% include "components/empty.html" with message="No accepted place is waiting to be enrolled." %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if rows %}<div class="flex justify-end border-t border-slate-200 px-5 py-4"><button class="btn-primary">Enrol the ticked children</button></div>{% endif %}
+</form>
+{% endblock %}

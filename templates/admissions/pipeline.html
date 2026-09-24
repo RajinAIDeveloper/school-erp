@@ -2,6 +2,9 @@
 {% load erp %}
 {% block header_actions %}
   <a href="{% url 'admissions:round' row.admission_round_id %}" class="btn-secondary btn-sm">{{ row.admission_round }}</a>
+  {% if row.assessment != "none" and perms.admissions.view_assessment %}<a href="{% url 'admissions:assessments' row.pk %}" class="btn-secondary btn-sm">Tests and interviews</a>{% endif %}
+  <a href="{% url 'admissions:merit' row.pk %}" class="btn-secondary btn-sm">Merit list</a>
+  {% if perms.admissions.decide_application %}<a href="{% url 'admissions:enrol' row.pk %}" class="btn-secondary btn-sm">Enrol</a>{% endif %}
   {% if perms.admissions.add_application %}<a href="{% url 'admissions:office_entry' row.pk %}" class="btn-primary btn-sm">Walk-in application</a>{% endif %}
 {% endblock %}
 {% block content %}
@@ -21,7 +24,7 @@
 
 <section class="card overflow-x-auto">
   <table class="table table-stack">
-    <thead><tr><th>Number</th><th>Child</th><th>Born</th><th>Status</th><th>Fee</th><th>Documents</th><th>Flags</th><th></th></tr></thead>
+    <thead><tr><th>Number</th><th>Child</th><th>Born</th><th>Status</th><th class="text-right">Score</th><th>Fee</th><th>Documents</th><th>Flags</th><th></th></tr></thead>
     <tbody>
       {% for r in rows %}{% with a=r.application %}
         <tr>
@@ -29,6 +32,7 @@
           <td data-label="Child" class="font-medium">{{ a.child_name }}<p class="text-xs font-normal text-slate-500">{{ a.guardian_name }} · {{ a.guardian_phone }}</p></td>
           <td data-label="Born">{{ a.date_of_birth|date:"d M Y" }}</td>
           <td data-label="Status">{{ a.get_current_status_display }}</td>
+          <td data-label="Score" class="sm:text-right">{% if a.score is not None %}{{ a.score|floatformat:"-2" }}{% if a.merit_rank %} <span class="text-xs text-slate-500">#{{ a.merit_rank }}</span>{% endif %}{% endif %}</td>
           <td data-label="Fee">{% if r.fee.waived %}Waived{% elif r.fee.settled %}{% if r.fee.due %}Paid{% else %}—{% endif %}{% else %}<span class="text-amber-700">{{ current_school.currency_symbol }}{{ r.fee.outstanding }} owed</span>{% endif %}</td>
           <td data-label="Documents">{% if r.missing %}<span class="text-amber-700">{{ r.missing }} missing</span>{% else %}Complete{% endif %}</td>
           <td data-label="Flags" class="text-xs">
@@ -40,7 +44,7 @@
           <td class="sm:text-right"><a class="link" href="{% url 'admissions:application' a.pk %}">Open</a></td>
         </tr>
       {% endwith %}{% empty %}
-        <tr><td colspan="8">{% include "components/empty.html" with message="No application here yet." %}</td></tr>
+        <tr><td colspan="9">{% include "components/empty.html" with message="No application here yet." %}</td></tr>
       {% endfor %}
     </tbody>
   </table>

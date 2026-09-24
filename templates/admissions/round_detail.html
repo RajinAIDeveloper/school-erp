@@ -2,6 +2,7 @@
 {% load erp %}
 {% block header_actions %}
   <a href="{% url 'admissions:home' %}" class="btn-secondary btn-sm">Admissions</a>
+  <a href="{% url 'admissions:report' round.pk %}" class="btn-secondary btn-sm">Report</a>
   {% if perms.admissions.change_admissionround %}<a href="{% url 'admissions:round_edit' round.pk %}" class="btn-secondary btn-sm">Edit round</a>{% endif %}
 {% endblock %}
 {% block content %}

@@ -1,0 +1,65 @@
+{% extends "layouts/base.html" %}
+{% block header_actions %}
+  <a href="{% url 'admissions:assessments' row.pk %}" class="btn-secondary btn-sm">All sittings</a>
+  <a href="{% url 'admissions:merit' row.pk %}" class="btn-secondary btn-sm">Merit list</a>
+{% endblock %}
+{% block content %}
+<section class="card mb-6">
+  <div class="card-body flex flex-wrap gap-x-6 gap-y-1 text-sm">
+    <span><b>{{ assessment.get_kind_display }}</b></span>
+    <span>{{ assessment.starts_at|date:"D d M Y, H:i" }}</span>
+    <span>{{ assessment.venue }}</span>
+    <span>{{ results.count }} booked{% if assessment.capacity %} of {{ assessment.capacity }}{% endif %}</span>
+    {% if assessment.note %}<span class="text-slate-500">For families: {{ assessment.note }}</span>{% endif %}
+  </div>
+</section>
+
+<form method="post" class="card mb-6 overflow-x-auto">
+  {% csrf_token %}<input type="hidden" name="action" value="record">
+  <div class="card-header"><h2 class="font-semibold">Results</h2>
+    <span class="text-xs text-slate-500">{% if row.max_score is not None %}Scores out of {{ row.max_score|floatformat:"-2" }}. {% endif %}A score means the child came. Notes are for staff only.</span></div>
+  <table class="table table-stack">
+    <thead><tr><th>Number</th><th>Child</th><th>Came</th><th>Score</th><th>Notes</th></tr></thead>
+    <tbody>
+      {% for r in results %}
+        <tr>
+          <td data-label="Number" class="font-mono"><a class="link" href="{% url 'admissions:application' r.application_id %}">{{ r.application.reference }}</a></td>
+          <td data-label="Child" class="font-medium">{{ r.application.child_name }}</td>
+          <td data-label="Came">
+            <select name="came_{{ r.pk }}" class="input w-28" aria-label="Came">
+              <option value=""{% if r.attended is None %} selected{% endif %}>—</option>
+              <option value="yes"{% if r.attended is True %} selected{% endif %}>Came</option>
+              <option value="no"{% if r.attended is False %} selected{% endif %}>Absent</option>
+            </select>
+          </td>
+          <td data-label="Score"><input class="input w-24" name="score_{{ r.pk }}" inputmode="decimal" value="{{ r.score|default_if_none:''|floatformat:'-2' }}" aria-label="Score"></td>
+          <td data-label="Notes"><input class="input w-full min-w-48" name="notes_{{ r.pk }}" maxlength="300" value="{{ r.notes }}" aria-label="Notes"></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5">{% include "components/empty.html" with message="Nobody booked yet. Choose applicants below." %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if results and perms.admissions.change_assessmentresult %}<div class="flex justify-end border-t border-slate-200 px-5 py-4"><button class="btn-primary">Save results</button></div>{% endif %}
+</form>
+
+{% if perms.admissions.add_assessmentresult %}
+<form method="post" class="card overflow-x-auto">
+  {% csrf_token %}<input type="hidden" name="action" value="book">
+  <div class="card-header"><h2 class="font-semibold">Book applicants</h2>
+    <span class="text-xs text-slate-500">Applicants not yet booked for {{ assessment.get_kind_display|lower }}.{% if fee_first %} This round asks for the fee first: unpaid applications are not booked.{% endif %}</span></div>
+  <ul class="divide-y divide-slate-100 text-sm">
+    {% for a, fee in eligible %}
+      <li class="flex flex-wrap items-center justify-between gap-2 px-5 py-2">
+        <label class="flex items-center gap-3"><input type="checkbox" name="application" value="{{ a.pk }}" class="h-4 w-4" {% if fee_first and not fee.settled %}disabled{% endif %}>
+          <span><span class="font-mono">{{ a.reference }}</span> · <b>{{ a.child_name }}</b> · {{ a.get_status_display }}</span></label>
+        {% if fee_first and not fee.settled %}<span class="text-xs text-amber-700">Fee not paid</span>{% endif %}
+      </li>
+    {% empty %}
+      <li class="px-5 py-4 text-slate-500">Everyone still in the running is booked.</li>
+    {% endfor %}
+  </ul>
+  {% if eligible %}<div class="flex justify-end border-t border-slate-200 px-5 py-4"><button class="btn-primary">Book the ticked applicants</button></div>{% endif %}
+</form>
+{% endif %}
+{% endblock %}

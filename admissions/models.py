@@ -215,6 +215,7 @@ class Application(SchoolScopedModel):
     student = models.OneToOneField(
         "students.Student", null=True, blank=True, on_delete=models.SET_NULL, related_name="application"
     )
+    enrolled_at = models.DateTimeField(null=True, blank=True)
     purged_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
@@ -355,3 +356,45 @@ class ApplicationPayment(SchoolScopedModel):
     @property
     def is_voided(self):
         return self.voided_at is not None
+
+
+class Assessment(SchoolScopedModel):
+    """One sitting of the admission test, or one round of interviews, for several applicants at once."""
+
+    class Kind(models.TextChoices):
+        TEST = "test", _("Admission test")
+        INTERVIEW = "interview", _("Interview")
+
+    round_class = models.ForeignKey(RoundClass, on_delete=models.CASCADE, related_name="assessments")
+    kind = models.CharField(max_length=10, choices=Kind.choices)
+    starts_at = models.DateTimeField()
+    venue = models.CharField(max_length=150)
+    capacity = models.PositiveSmallIntegerField(null=True, blank=True, help_text="Empty for no limit.")
+    note = models.CharField(max_length=300, blank=True, help_text="Shown to families, e.g. what to bring.")
+
+    class Meta:
+        ordering = ["starts_at", "id"]
+
+    def __str__(self):
+        return f"{self.get_kind_display()} {timezone.localtime(self.starts_at):%d %b %Y %H:%M}"
+
+
+class AssessmentResult(SchoolScopedModel):
+    """An applicant's place at a sitting, and once it is over, whether they came and what they scored."""
+
+    assessment = models.ForeignKey(Assessment, on_delete=models.CASCADE, related_name="results")
+    application = models.ForeignKey(Application, on_delete=models.CASCADE, related_name="assessment_results")
+    attended = models.BooleanField(null=True, blank=True, help_text="Empty until the sitting is recorded.")
+    score = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    notes = models.CharField(max_length=300, blank=True, help_text="For staff only.")
+    recorded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    recorded_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["assessment__starts_at", "id"]
+        constraints = [
+            models.UniqueConstraint(fields=["assessment", "application"], name="one_result_per_sitting"),
+            models.CheckConstraint(condition=Q(score__isnull=True) | Q(score__gte=0), name="score_not_negative"),
+        ]

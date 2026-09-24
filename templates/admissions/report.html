@@ -1,0 +1,41 @@
+{% extends "layouts/base.html" %}
+{% block header_actions %}
+  <a href="{% url 'admissions:round' round.pk %}" class="btn-secondary btn-sm">{{ round }}</a>
+  <a href="?format=xlsx" class="btn-secondary btn-sm">Excel</a>
+  <a href="?format=csv" class="btn-secondary btn-sm">CSV</a>
+{% endblock %}
+{% block content %}
+<section class="card mb-6 overflow-x-auto">
+  <div class="card-header"><h2 class="font-semibold">From application to enrolment</h2>
+    <span class="text-xs text-slate-500">Cleared applications still count; only their details are gone.</span></div>
+  <table class="table table-stack">
+    <thead><tr><th>Class</th><th class="text-right">Seats</th><th class="text-right">Applied</th><th class="text-right">Assessed</th><th class="text-right">Offered</th><th class="text-right">Accepted</th><th class="text-right">Enrolled</th><th class="text-right">Waiting</th><th class="text-right">Filled</th><th class="text-right">Per seat</th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+        <tr>
+          <td data-label="Class" class="font-medium">{{ r.class }}</td>
+          <td data-label="Seats" class="sm:text-right">{{ r.seats }}</td>
+          <td data-label="Applied" class="sm:text-right">{{ r.applied }} <span class="text-xs text-slate-500">({{ r.online }} online)</span></td>
+          <td data-label="Assessed" class="sm:text-right">{{ r.assessed }}</td>
+          <td data-label="Offered" class="sm:text-right">{{ r.offered }}</td>
+          <td data-label="Accepted" class="sm:text-right">{{ r.accepted }}</td>
+          <td data-label="Enrolled" class="sm:text-right font-semibold">{{ r.enrolled }}</td>
+          <td data-label="Waiting" class="sm:text-right">{{ r.waiting }}</td>
+          <td data-label="Filled" class="sm:text-right">{% if r.filled is not None %}{{ r.filled }}%{% endif %}</td>
+          <td data-label="Per seat" class="sm:text-right">{{ r.per_seat|default_if_none:"" }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="10">{% include "components/empty.html" with message="This round has no class yet." %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="card max-w-xl">
+  <div class="card-header"><h2 class="font-semibold">Where families heard of the school</h2></div>
+  <ul class="divide-y divide-slate-100 text-sm">
+    {% for label, count in sources %}<li class="flex justify-between px-5 py-2"><span>{{ label }}</span><b>{{ count }}</b></li>
+    {% empty %}<li class="px-5 py-3 text-slate-500">No application yet.</li>{% endfor %}
+  </ul>
+</section>
+{% endblock %}

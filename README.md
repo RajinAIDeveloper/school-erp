@@ -232,6 +232,22 @@ schtasks /Create /TN "School ERP homework files" /SC DAILY /ST 23:50 /RU SYSTEM 
 `--dry-run` counts the files without deleting them. Uploads are capped at 30 MB a request; set
 the proxy in front to refuse larger bodies too (nginx `client_max_body_size 30m;`).
 
+A school given online admissions keeps applications that did not lead to a place for a set time
+after the round closes (six months unless its managers change it under Admissions settings), and
+an enrolled child's application for 90 days. Clear them every night, after the backup:
+
+```powershell
+schtasks /Create /TN "School ERP admissions" /SC DAILY /ST 23:55 /RU SYSTEM `
+  /TR "E:\school-erp\.venv\Scripts\python.exe E:\school-erp\manage.py admissions_purge"
+```
+
+```cron
+55 23 * * * cd /srv/school-erp && .venv/bin/python manage.py admissions_purge >> /var/log/school-erp-admissions.log 2>&1
+```
+
+`--dry-run` counts the applications without clearing them. Families apply at
+`/apply/<school slug>/`; link to it from the school's website.
+
 A school that switches on the weekly homework digest (Basic Settings, Notifications) texts each
 family once a week about homework not handed in. Queue it once a week, before the weekend; the
 SMS worker sends it. Running it twice in one week sends nothing new.

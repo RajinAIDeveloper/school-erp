@@ -1,0 +1,91 @@
+{% extends "layouts/base.html" %}
+{% block header_actions %}
+  <a href="{% url 'admissions:pipeline' row.pk %}" class="btn-secondary btn-sm">{{ row.class_level }} applications</a>
+  {% if row.assessment != "none" %}<a href="{% url 'admissions:assessments' row.pk %}" class="btn-secondary btn-sm">Tests and interviews</a>{% endif %}
+  {% if perms.admissions.decide_application %}<a href="{% url 'admissions:enrol' row.pk %}" class="btn-secondary btn-sm">Enrol</a>{% endif %}
+{% endblock %}
+{% block content %}
+<section class="card mb-4">
+  <div class="card-body flex flex-wrap gap-x-6 gap-y-1 text-sm">
+    <span><b>{{ row.seats }}</b> seats</span>
+    <span class="{% if taken >= row.seats %}font-semibold text-red-700{% endif %}"><b>{{ taken }}</b> taken or held by an open offer</span>
+    <span>Brothers and sisters: {{ row.admission_round.get_sibling_rule_display|lower }}</span>
+    {% if row.pass_score is not None %}<span>Pass mark {{ row.pass_score|floatformat:"-2" }}</span>{% endif %}
+  </div>
+  <p class="border-t border-slate-200 px-5 py-3 text-xs text-slate-500">The order is always the same for the same results: those who reached the pass mark, then by score{% if row.admission_round.sibling_rule == "tie_break" %}, a confirmed brother or sister breaking a tie{% elif row.admission_round.sibling_rule == "priority" %}, with confirmed brothers and sisters first{% endif %}, then whoever applied first. Offers go by the list once it is fixed; fixing it is recorded in the audit log.</p>
+</section>
+
+{% if perms.admissions.decide_application %}
+<section class="card mb-4">
+  <div class="card-body flex flex-wrap items-end gap-3 text-sm">
+    <form method="post">{% csrf_token %}<input type="hidden" name="action" value="fix"><button class="btn-primary btn-sm">{% if fixed %}Fix the list again{% else %}Fix the merit list{% endif %}</button></form>
+    {% if fixed and not current %}<span class="text-amber-700">The results have changed since the list was fixed.</span>{% endif %}
+    {% if fixed %}
+      <form method="post" class="flex items-end gap-2" data-confirm="Offer places from the top of the fixed list?">{% csrf_token %}<input type="hidden" name="action" value="offer">
+        <label>How many<input class="input mt-1 w-24" type="number" min="1" name="how_many" placeholder="All free"></label><button class="btn-secondary btn-sm">Offer places</button></form>
+      <form method="post" data-confirm="Put everyone else who passed on the waiting list?">{% csrf_token %}<input type="hidden" name="action" value="waitlist"><button class="btn-secondary btn-sm">Waiting list for the rest</button></form>
+    {% endif %}
+    {% if row.pass_score is not None %}
+      <form method="post" class="flex items-end gap-2" data-confirm="Turn down everyone below the pass mark?">{% csrf_token %}<input type="hidden" name="action" value="below_pass">
+        <input class="input w-72" name="reason" maxlength="300" required value="Below the pass mark in the admission test"><button class="btn-secondary btn-sm">Turn down below the pass mark</button></form>
+    {% endif %}
+    {% if waitlisted %}
+      <form method="post" data-confirm="Offer the free seat to the first on the waiting list?">{% csrf_token %}<input type="hidden" name="action" value="next"><button class="btn-secondary btn-sm">Offer to the next on the waiting list</button></form>
+    {% endif %}
+  </div>
+</section>
+{% endif %}
+
+<section class="card mb-6 overflow-x-auto">
+  <div class="card-header"><h2 class="font-semibold">Ranked</h2><span class="text-xs text-slate-500">Everyone with every assessment scored</span></div>
+  <table class="table table-stack">
+    <thead><tr><th class="text-right">Order now</th><th>Number</th><th>Child</th><th class="text-right">Score</th><th>Pass</th><th>Sibling</th><th>Applied</th><th>Status</th><th class="text-right">Fixed place</th></tr></thead>
+    <tbody>
+      {% for r in ranked %}
+        <tr class="{% if not r.passes %}text-slate-400{% endif %}">
+          <td data-label="Order now" class="font-semibold sm:text-right">{{ r.rank }}</td>
+          <td data-label="Number" class="font-mono"><a class="link" href="{% url 'admissions:application' r.application.pk %}">{{ r.application.reference }}</a></td>
+          <td data-label="Child" class="font-medium">{{ r.application.child_name }}</td>
+          <td data-label="Score" class="sm:text-right">{{ r.score|default_if_none:"—"|floatformat:"-2" }}</td>
+          <td data-label="Pass">{% if r.passes %}Yes{% else %}Below{% endif %}</td>
+          <td data-label="Sibling">{% if r.sibling %}Confirmed{% elif r.application.sibling_claimed %}Not confirmed{% endif %}</td>
+          <td data-label="Applied">{{ r.application.submitted_at|date:"d M H:i" }}</td>
+          <td data-label="Status">{{ r.application.get_current_status_display }}</td>
+          <td data-label="Fixed place" class="sm:text-right">{{ r.application.merit_rank|default_if_none:"—" }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="9">{% include "components/empty.html" with message="Nobody is ranked yet." %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% if waiting %}
+<section class="card mb-6">
+  <div class="card-header"><h2 class="font-semibold">Not ranked yet</h2><span class="text-xs text-slate-500">Still to sit, not yet recorded, or absent</span></div>
+  <ul class="divide-y divide-slate-100 text-sm">
+    {% for r in waiting %}
+      <li class="flex flex-wrap justify-between gap-2 px-5 py-2"><span><a class="link font-mono" href="{% url 'admissions:application' r.application.pk %}">{{ r.application.reference }}</a> · {{ r.application.child_name }}</span>
+        <span class="text-xs {% if r.absent %}text-red-700{% else %}text-slate-500{% endif %}">{% if r.absent %}Absent from a sitting{% else %}Waiting for a result{% endif %}</span></li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<div class="grid gap-6 lg:grid-cols-2">
+  <section class="card">
+    <div class="card-header"><h2 class="font-semibold">Offered or accepted</h2></div>
+    <ul class="divide-y divide-slate-100 text-sm">
+      {% for a in offered %}<li class="flex justify-between gap-2 px-5 py-2"><span>{{ a.merit_rank|default_if_none:"—" }}. {{ a.child_name }}</span><span class="text-xs text-slate-500">{{ a.get_current_status_display }}{% if a.status == "offered" %} · until {{ a.offer_expires_on|date:"d M" }}{% endif %}</span></li>
+      {% empty %}<li class="px-5 py-3 text-slate-500">None yet.</li>{% endfor %}
+    </ul>
+  </section>
+  <section class="card">
+    <div class="card-header"><h2 class="font-semibold">Waiting list</h2></div>
+    <ol class="divide-y divide-slate-100 text-sm">
+      {% for a in waitlisted %}<li class="px-5 py-2">{{ a.merit_rank|default_if_none:"—" }}. {{ a.child_name }} <span class="font-mono text-xs text-slate-500">{{ a.reference }}</span></li>
+      {% empty %}<li class="px-5 py-3 text-slate-500">Nobody is waiting.</li>{% endfor %}
+    </ol>
+  </section>
+</div>
+{% endblock %}

@@ -139,8 +139,9 @@ EXPLICIT_PERMS = {
         ("downloads", "view_downloaditem"),
         ("holidays", "view_holiday"),
         ("timetable", "view_routineslot"),
-        # The front office: walk-in applications, documents, siblings and the family's link.
-        # Offering places is the managers' decision. Only a school given admissions reaches these.
+        # The front office: walk-in applications, documents, siblings, the family's link, and
+        # running tests and interviews. Offering places is the managers' decision. Only a school
+        # given admissions reaches these.
         ("admissions", "view_admissionround"),
         ("admissions", "view_roundclass"),
         ("admissions", "view_application"),
@@ -149,6 +150,12 @@ EXPLICIT_PERMS = {
         ("admissions", "view_applicationdocument"),
         ("admissions", "add_applicationdocument"),
         ("admissions", "change_applicationdocument"),
+        ("admissions", "view_assessment"),
+        ("admissions", "add_assessment"),
+        ("admissions", "change_assessment"),
+        ("admissions", "view_assessmentresult"),
+        ("admissions", "add_assessmentresult"),
+        ("admissions", "change_assessmentresult"),
     ],
     STUDENT: [
         ("downloads", "view_downloaditem"),

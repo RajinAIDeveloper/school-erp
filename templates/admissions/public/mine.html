@@ -21,12 +21,21 @@
       </div>
     {% endif %}
 
+    {% for s in card.sittings %}
+      <div class="mt-4 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-950">
+        <p class="font-medium">{{ s.get_kind_display }}</p>
+        <p>{% blocktranslate trimmed with when=s.starts_at|date:"j M Y, H:i" venue=s.venue %}{{ when }}, at {{ venue }}.{% endblocktranslate %}</p>
+        {% if s.note %}<p class="mt-1 text-slate-700">{{ s.note }}</p>{% endif %}
+      </div>
+    {% endfor %}
+
     {% if card.fee.due %}
       <div class="mt-4 rounded-lg border border-slate-200 px-4 py-3 text-sm">
         <p class="font-medium text-slate-900">{% translate "Application fee" %}</p>
         {% if card.fee.waived %}<p class="text-slate-700">{% translate "The school has waived the fee." %}</p>
         {% elif card.fee.settled %}<p class="text-emerald-700">{% translate "Paid. Thank you." %}</p>
-        {% else %}<p class="text-slate-700">{% blocktranslate trimmed with amount=card.fee.outstanding|floatformat:0 currency=school.currency_symbol %}{{ currency }}{{ amount }} to pay at the school office. Bring the application number.{% endblocktranslate %}</p>{% endif %}
+        {% else %}<p class="text-slate-700">{% blocktranslate trimmed with amount=card.fee.outstanding|floatformat:0 currency=school.currency_symbol %}{{ currency }}{{ amount }} to pay at the school office. Bring the application number.{% endblocktranslate %}</p>
+          {% if card.fee_first %}<p class="mt-1 text-slate-600">{% translate "The school books the test or interview once the fee is paid." %}</p>{% endif %}{% endif %}
       </div>
     {% endif %}
 

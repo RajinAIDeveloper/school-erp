@@ -30,7 +30,8 @@ from .models import Application, ApplicationDocument, ApplicationEvent, Applicat
 S = Application.Status
 
 ALLOWED = {
-    S.SUBMITTED: {S.UNDER_REVIEW, S.NOT_OFFERED, S.WITHDRAWN},
+    # A class with no test or interview can go straight from the application to an offer.
+    S.SUBMITTED: {S.UNDER_REVIEW, S.OFFERED, S.WAITLISTED, S.NOT_OFFERED, S.WITHDRAWN},
     S.UNDER_REVIEW: {S.OFFERED, S.WAITLISTED, S.NOT_OFFERED, S.WITHDRAWN},
     S.WAITLISTED: {S.OFFERED, S.NOT_OFFERED, S.WITHDRAWN},
     S.OFFERED: {S.ACCEPTED, S.OFFER_DECLINED, S.WITHDRAWN, S.LAPSED},
@@ -306,6 +307,8 @@ def transition(application, to, *, user=None, reason="", today=None):
         locked.offer_expires_on = today + timedelta(days=round_class.admission_round.offer_days)
     if to == S.ACCEPTED:
         locked.accepted_at = timezone.now()
+    if to == S.ENROLLED:
+        locked.enrolled_at = timezone.now()
     if to in DECISIONS:
         locked.decision_reason = reason
     text = reason or ("By the family." if user is None else "")

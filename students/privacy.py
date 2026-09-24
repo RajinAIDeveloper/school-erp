@@ -236,6 +236,12 @@ def erase_student(*, school, user, student, confirm):
         payload["student"] = {"name": ERASED, "student_id": student.student_id}
         Transcript.objects.filter(pk=transcript.pk).update(payload=payload)
     TranscriptRequest.objects.filter(student=student).update(purpose="", note="", decline_reason="")
+    # The admission application the child came through, if any.
+    from admissions.models import Application
+    from admissions.privacy import clear_application
+
+    for application in Application.objects.filter(student=student, purged_at__isnull=True):
+        clear_application(application)
     SeriesCandidate.objects.filter(student=student).update(certificate_name="", uci="")
     AccessArrangement.objects.filter(candidate__student=student).delete()
 

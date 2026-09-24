@@ -42,6 +42,12 @@ portal, or other). The latest record for a purpose stands; earlier ones are kept
 Guardians give or withdraw consent themselves in the family portal ("Privacy and consent").
 Staff record it from signed forms on the student's page.
 
+A family applying online (a school given the admissions module) ticks a consent to the school
+keeping the application's details and documents to consider it. The application records the
+version of that wording, when it was given and from which address. At the office, staff confirm
+the guardian agreed to the same wording. When the child joins, the consent is carried over to
+the student as a record-keeping consent "given with the admission application".
+
 ## 3. Retention and erasure
 
 Each school sets a retention period (default 7 years after the student's last school year).
@@ -70,6 +76,29 @@ runs that hold it have been pruned.
 
 Marks, attendance, invoices, receipts and the ledger are kept, tied to the student ID, because
 the school needs them for its accounts and records.
+
+### Applicants
+
+An application holds the child's and the family's details, the documents uploaded, the test or
+interview results and staff notes. Families reach it only through a private link; the database
+keeps a hash of the link's token, never the token, and the office can replace a lost link, which
+closes the old one. Documents are checked by content, stored under a random name and served only
+to staff through a checked view. The public form asks nothing that would show whether a child
+is enrolled: a brother or sister is named by the family and confirmed by staff.
+
+The nightly `admissions_purge` job clears:
+
+- an application that did not lead to a place, once its round has been closed for the school's
+  keeping period (six months unless the managers change it under Admissions settings);
+- an enrolled child's application 90 days after enrolment, by when everything in it is in the
+  student's record, with its own copies of the documents and photo.
+
+Clearing removes the names, contact details, identity numbers, address, documents, timeline and
+notes, and keeps the year of birth only. What stays is anonymous: the class, the status reached,
+the scores and how the family heard of the school, so the admissions report still adds up.
+Application fee receipts stay for the accounts; their ledger narration names the receipt and the
+application number, never the child. Erasing a former student clears the application they came
+through as well.
 
 ## 4. Hosting and transfers
 

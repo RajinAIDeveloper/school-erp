@@ -314,6 +314,9 @@ class Command(BaseCommand):
         from homework.demo import seed_homework
 
         seed_homework(school=school, year=year, section=section, subject=subject, teacher_user=demo_teacher)
+        from admissions.demo import seed_admissions
+
+        seed_admissions(school=school, level=level, admin=demo_admin)
         if opts["admin_username"]:
             user = User.objects.filter(username=opts["admin_username"]).first()
             if user is None:
@@ -325,6 +328,6 @@ class Command(BaseCommand):
             user.groups.add(Group.objects.get(name="Administrator"))
         self.stdout.write(
             self.style.SUCCESS(
-                f"Demo school ready: {school.name}. Eight role accounts; Class 1 with fees, attendance, marks, homework, leave and a download; Cambridge IGCSE, IB Diploma and national Class 9 classes with published results; no messages sent."
+                f"Demo school ready: {school.name}. Eight role accounts; Class 1 with fees, attendance, marks, homework, leave and a download; admissions for 2027; Cambridge IGCSE, IB Diploma and national Class 9 classes with published results; no messages sent."
             )
         )

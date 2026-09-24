@@ -2818,3 +2818,11 @@ msgstr "চলমান ভর্তির তথ্য দেখুন"
 
 msgid "%(currency)s%(amount)s to pay at the school office. Bring the application number."
 msgstr "বিদ্যালয়ের অফিসে %(currency)s%(amount)s জমা দিতে হবে। আবেদন নম্বরটি সঙ্গে আনুন।"
+
+# ---- admissions: tests and interviews
+
+msgid "The school books the test or interview once the fee is paid."
+msgstr "ফি জমা দেওয়ার পর বিদ্যালয় পরীক্ষা বা সাক্ষাৎকারের সময় দেবে।"
+
+msgid "%(when)s, at %(venue)s."
+msgstr "%(when)s, স্থান: %(venue)s।"
