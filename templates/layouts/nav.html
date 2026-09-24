@@ -55,7 +55,13 @@
 <p class="mt-4 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{% translate "Academics" %}</p>
 {% endif %}
 {% if perms.examinations.view_exam %}
-<a href="{% url 'examinations:exam_list' %}" class="{{ base }} {% active request 'examinations' %}"><span class="w-5 text-center">📝</span> {% translate "Results" %}</a>
+<a href="{% url 'examinations:exam_list' %}" class="{{ base }} {% active request 'exam_list' 'exam_detail' 'report_card' %}"><span class="w-5 text-center">📝</span> {% translate "Results" %}</a>
+{% with sub="flex items-center gap-2 rounded-md py-1.5 pl-10 pr-3 text-sm hover:bg-slate-800 hover:text-white" %}
+{% if perms.examinations.change_mark %}<a href="{% url 'examinations:marks' %}" class="{{ sub }} {% active request 'marks' %}">{% translate "Enter marks" %}</a>{% endif %}
+{% if perms.examinations.view_mark %}<a href="{% url 'examinations:results' %}" class="{{ sub }} {% active request 'results' %}">{% translate "Result sheets" %}</a>{% endif %}
+{% if perms.examinations.view_combinedresult %}<a href="{% url 'examinations:combined_list' %}" class="{{ sub }} {% active request 'combined_list' 'combined_detail' 'combined_card' %}">{% translate "Combined results" %}</a>{% endif %}
+{% if perms.examinations.view_examseries %}<a href="{% url 'examinations:series_list' %}" class="{{ sub }} {% active request 'series_list' 'series_detail' 'series_results' 'board_registration' %}">{% translate "Exam series" %}</a>{% endif %}
+{% endwith %}
 {% endif %}
 {% if perms.timetable.view_routineslot %}
 <a href="{% url 'timetable:routine' %}" class="{{ base }} {% active request 'timetable' %}"><span class="w-5 text-center">🗓️</span> {% translate "Routine" %}</a>
@@ -71,10 +77,10 @@
 
 <a href="{% url 'reports:hub' %}" class="{{ base }} {% active request 'reports' %}"><span class="w-5 text-center">📊</span> {% translate "Reports" %}</a>
 
-{% if perms.core.change_school or perms.users.view_user or perms.academics.view_academicyear %}
+{% if user|can_configure or perms.users.view_user %}
 <p class="mt-4 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{% translate "Administration" %}</p>
 {% endif %}
-{% if perms.core.change_school or perms.academics.view_academicyear %}
+{% if user|can_configure %}
 <a href="{% url 'settings:hub' %}" class="{{ base }} {% active request 'settings' %}"><span class="w-5 text-center">⚙️</span> {% translate "Basic Settings" %}</a>
 {% endif %}
 {% if perms.users.view_user %}

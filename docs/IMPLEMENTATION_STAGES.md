@@ -202,6 +202,9 @@ demonstration will run on SQLite, so SQLite is treated as the production databas
 | D3 | Family screens on a phone: fee and result tables stack into cards so "Pay online" is on screen; a Pay button on the home card; the fees page opens on the child who owes | Portal tests; phone screenshots |
 | D4 | Register screen: no error before the teacher has done anything; a teacher with one section gets it chosen | Register tests |
 
+Done (commit 7c8cfce): tests/test_sqlite_server.py, test_rulebooks.py (card and analysis),
+test_family_phone.py, test_register_policy.py.
+
 **Before a real school**
 
 | # | Fix | Proof |
@@ -214,6 +217,15 @@ demonstration will run on SQLite, so SQLite is treated as the production databas
 | R6 | `check_gateway` command to try the school's SSLCommerz sandbox credentials before going live | Test with a stubbed gateway |
 | R7 | Results menu links to exam series and combined results; teachers no longer see "Basic Settings" | Navigation tests |
 | R8 | `examinations/views.py` split into modules by area, with no change in behaviour | Full suite unchanged |
+
+R1–R7 done: tests/test_operations.py (backup snapshot, `--copy-to`, a locked database),
+test_hardening.py (SMS compose, return addresses, proxies, per-student limit, menu),
+test_query_counts.py (five result pages cost the same queries for 28 students as for 3),
+test_check_gateway.py. R6 also recovers a payment whose return and notification were both
+lost (`check_gateway --settle`), and the payer is only ever sent to an sslcommerz.com page.
+Still to do before a real school, and not code: one sandbox payment end to end with the
+school's own SSLCommerz store, a restore rehearsed from a backup, and printing on the
+school's printer.
 
 ### Remaining phases (after S13)
 

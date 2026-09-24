@@ -258,6 +258,8 @@ class AuditLog(models.Model):
 
 def audit(request, action, obj=None, description=""):
     """Helper: audit(request, "payment.created", payment, "Receipt 0001")"""
+    from core.security import client_ip
+
     AuditLog.objects.create(
         school=getattr(request, "school", None),
         user=request.user if request.user.is_authenticated else None,
@@ -265,5 +267,5 @@ def audit(request, action, obj=None, description=""):
         model=obj._meta.label if obj is not None else "",
         object_id=str(obj.pk) if obj is not None else "",
         description=description,
-        ip_address=request.META.get("REMOTE_ADDR"),
+        ip_address=client_ip(request) or None,
     )

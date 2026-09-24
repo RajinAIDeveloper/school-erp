@@ -1832,10 +1832,12 @@ def public_results(request, slug):
         from django.http import Http404
 
         raise Http404
-    address = request.META.get("REMOTE_ADDR", "")
+    from core.security import client_ip
+
+    address = client_ip(request)
     context = {"school": school, "student": None, "error": "", "page_title": "Results"}
     if request.method == "POST":
-        if throttled(address, school):
+        if throttled(address, school, request.POST.get("student_id", "")):
             context["error"] = "Too many attempts. Try again in 15 minutes."
         else:
             student = lookup(school, request.POST.get("student_id", ""), request.POST.get("code", ""), address)

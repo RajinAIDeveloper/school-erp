@@ -14,6 +14,7 @@ from core.access import is_manager, require_permission, sections_for, students_f
 from core.exports import spreadsheet
 from core.forms import SchoolModelForm, TailwindFormMixin
 from core.models import audit
+from core.security import safe_next
 from employees.models import Employee
 
 from .models import AttendanceStatus, LeaveRequest, StaffAttendance, StudentAttendance
@@ -479,4 +480,4 @@ def check_in(request):
             messages.success(request, f"Checked in at {row.check_in:%H:%M}.")
     except ValidationError as exc:
         messages.error(request, " ".join(exc.messages))
-    return redirect(request.POST.get("next") or "attendance:staff_take")
+    return redirect(safe_next(request, request.POST.get("next"), "attendance:staff_take"))

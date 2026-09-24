@@ -15,6 +15,7 @@ from core.forms import TailwindFormMixin
 from core.generic import ERPCreateView, ERPListView, ERPUpdateView
 from core.models import audit
 from core.roles import ALL_ROLES
+from core.security import safe_next
 
 from .forms import ProfileForm, UserForm
 from .models import User
@@ -134,7 +135,7 @@ def provision(request, kind, pk):
         )
     except ValidationError as exc:
         messages.error(request, " ".join(exc.messages))
-        return redirect(request.POST.get("next") or "users:list")
+        return redirect(safe_next(request, request.POST.get("next"), "users:list"))
     rows = [
         {
             "person": str(profile),

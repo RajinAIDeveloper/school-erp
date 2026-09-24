@@ -231,6 +231,11 @@ LOGGING = {
     },
 }
 
+# How many reverse proxies (nginx, a load balancer, Cloudflare) stand in front of the
+# application. Each adds the address it saw to X-Forwarded-For; the entry that many places from
+# the end is the visitor. Left at 0, the header is ignored, because anyone can send one.
+TRUSTED_PROXY_COUNT = int(os.environ.get("TRUSTED_PROXY_COUNT", "0"))
+
 if not DEBUG:
     if SECRET_KEY == "dev-only-insecure-key-change-me-in-production":
         raise RuntimeError("Set DJANGO_SECRET_KEY before running with DJANGO_DEBUG=0.")

@@ -52,6 +52,14 @@ def shows_rank(row):
 
 
 @register.filter
+def can_configure(user):
+    """Whether someone can change anything under Basic Settings; seeing the lists is not enough."""
+    from core.views import SETTINGS_CARDS
+
+    return any(user.has_perm(card["permission"].replace(".view_", ".change_")) for card in SETTINGS_CARDS)
+
+
+@register.filter
 def mark(value):
     """A mark as people write it: 92 rather than 92.00. Words such as ABS pass through."""
     from examinations.documents import mark_text

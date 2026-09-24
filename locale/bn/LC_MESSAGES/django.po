@@ -454,3 +454,15 @@ msgstr "ফি পরিশোধ করুন"
 
 msgid "See fees due"
 msgstr "বকেয়া ফি দেখুন"
+
+msgid "Enter marks"
+msgstr "নম্বর এন্ট্রি"
+
+msgid "Result sheets"
+msgstr "ফলাফল শিট"
+
+msgid "Combined results"
+msgstr "সমন্বিত ফলাফল"
+
+msgid "Exam series"
+msgstr "পরীক্ষা সিরিজ"

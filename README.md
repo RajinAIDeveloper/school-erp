@@ -178,10 +178,37 @@ visitor's own address rather than the proxy's.
 ```powershell
 .\.venv\Scripts\python.exe manage.py backup              # database + media, keeps 14 runs
 .\.venv\Scripts\python.exe manage.py backup --skip-media
+.\.venv\Scripts\python.exe manage.py backup --copy-to E:\SchoolBackups   # and a second copy elsewhere
 ```
 
-Each run writes a timestamped folder containing a database dump, a media archive and a
+Each run writes a timestamped folder containing the database, a media archive and a
 `RESTORE.txt` with the steps. Rehearse a restore on a spare machine before you need one.
+
+On SQLite the database is taken with SQLite's own backup API: one consistent snapshot, safe
+while people are working, checked with `PRAGMA integrity_check` before it counts. The folder
+holds `database.sqlite3` (put it back by copying it to `SQLITE_PATH` with the application
+stopped) and `database.sql`, the same snapshot as SQL.
+
+A backup on the same disk as the database is lost with that disk. `--copy-to` puts a second
+copy on a USB drive, a network share, or a folder that OneDrive or Google Drive keeps in sync,
+and prunes old copies there as well.
+
+Run it every night. On Windows, with Task Scheduler:
+
+```powershell
+schtasks /Create /TN "School ERP backup" /SC DAILY /ST 23:30 /RU SYSTEM `
+  /TR "E:\school-erp\.venv\Scripts\python.exe E:\school-erp\manage.py backup --copy-to \\nas\school-backups"
+```
+
+On Linux, with cron (`crontab -e`):
+
+```cron
+30 23 * * * cd /srv/school-erp && .venv/bin/python manage.py backup --copy-to /mnt/offsite >> /var/log/school-erp-backup.log 2>&1
+```
+
+The task needs the same environment variables as the application (`SQLITE_PATH`,
+`DJANGO_SECRET_KEY` and so on); set them for the account the task runs as. Check the log or
+the backup folder after the first night.
 
 On PostgreSQL the dump runs `pg_dump` with connection arguments and the password in `PGPASSWORD`,
 never in a connection URI: a URI puts the password in the process list for every user on the
@@ -228,6 +255,10 @@ walks each role through the system.
 4. Record guardian consent, set the retention period, and have counsel review hosting
    ([docs/PRIVACY.md](docs/PRIVACY.md)).
 5. Never describe the system as certified by Cambridge, Pearson, the IB or a board.
+6. For online payment, enter the SSLCommerz sandbox store details, run
+   `python manage.py check_gateway`, and make one sandbox payment end to end; repeat the check
+   after switching to the live store. Schedule `check_gateway --settle` every hour, so a payment
+   whose return and notification were both lost still gets its receipt.
 
 ## Not built
 

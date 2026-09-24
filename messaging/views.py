@@ -1,7 +1,5 @@
 """SMS: composing, the outbox and delivery reporting."""
 
-import json
-
 from django import forms
 from django.contrib import messages
 from django.core.exceptions import ValidationError
@@ -14,6 +12,7 @@ from core.exports import spreadsheet
 from core.forms import TailwindFormMixin
 from core.generic import ERPListView
 from core.models import audit
+from core.security import safe_next
 
 from .models import SMSBatch, SMSMessage, SMSTemplate
 from .services import describe_length, queue_batch, render_body, segments
@@ -237,10 +236,9 @@ def compose(request):
         {
             "form": form,
             "preview": preview,
-            # Bodies as JSON so choosing a template fills the box without a round trip.
-            "template_bodies": json.dumps(
-                {str(t.pk): t.body for t in SMSTemplate.objects.filter(school=request.school)}
-            ),
+            # Choosing a template fills the box without a round trip. The page reads these
+            # through json_script, which escapes them, so a body can never become script.
+            "template_bodies": {str(t.pk): t.body for t in SMSTemplate.objects.filter(school=request.school)},
             "page_title": "Compose SMS",
         },
     )
@@ -256,7 +254,7 @@ def retry(request, pk):
     message.save(update_fields=["status", "provider_response", "attempts", "updated_at"])
     audit(request, "sms.requeued", message)
     messages.success(request, "Message put back in the queue.")
-    return redirect(request.POST.get("next") or "messaging:message_list")
+    return redirect(safe_next(request, request.POST.get("next"), "messaging:message_list"))
 
 
 @require_permission("messaging.add_smsmessage")

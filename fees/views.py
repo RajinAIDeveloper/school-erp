@@ -9,6 +9,7 @@ from core.access import public, require_permission, students_for
 from core.exports import spreadsheet
 from core.generic import ERPListView
 from core.pdf import table_document
+from core.security import safe_next
 
 from .forms import (
     DuesFilterForm,
@@ -470,7 +471,7 @@ def pay_online(request, pk):
         )
     except ValidationError as exc:
         messages.error(request, " ".join(exc.messages))
-        return redirect(request.POST.get("back") or "portal:fees")
+        return redirect(safe_next(request, request.POST.get("back"), "portal:fees"))
     return redirect(target)
 
 

@@ -61,10 +61,11 @@
 </div>
 {% endblock %}
 {% block scripts %}
+{{ template_bodies|json_script:"sms-template-bodies" }}
 <script>
   // Fill the body from a chosen template, and keep a live character and part count.
   (function () {
-    const bodies = {{ template_bodies|safe }};
+    const bodies = JSON.parse(document.getElementById("sms-template-bodies").textContent);
     const picker = document.getElementById("id_template");
     const body = document.getElementById("id_body");
     const hint = document.getElementById("length-hint");

@@ -18,7 +18,7 @@ The rules that keep the money right:
 import json
 import uuid
 from decimal import Decimal, InvalidOperation
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit
 from urllib.request import Request, urlopen
 
 from django.conf import settings
@@ -124,6 +124,12 @@ def _hand_to_gateway(online, user, urls):
         online.status, online.note = OnlinePayment.Status.FAILED, str(reply.get("failedreason") or "Not started")[:200]
         online.save(update_fields=["status", "note", "updated_at"])
         raise ValidationError(f"The payment gateway did not start the payment: {online.note}")
+    page = urlsplit(str(reply["GatewayPageURL"]))
+    if page.scheme != "https" or not (page.hostname or "").endswith(".sslcommerz.com"):
+        # The payer is only ever sent to SSLCommerz's own pages.
+        online.status, online.note = OnlinePayment.Status.FAILED, "The gateway sent back an unexpected address."
+        online.save(update_fields=["status", "note", "updated_at"])
+        raise ValidationError("The payment gateway did not start the payment. Try again in a few minutes.")
     return reply["GatewayPageURL"]
 
 
@@ -173,6 +179,31 @@ def validate_with_gateway(school, val_id):
             "format": "json",
         },
     )
+
+
+def query_transaction(school, tran_id):
+    """
+    Ask SSLCommerz what it knows about one of this system's transaction IDs (its transaction
+    query API). The reply's APIConnect says whether the store login was accepted; its element
+    list holds any payments made under that ID.
+    """
+    return http_get(
+        f"{BASES[school.sslcommerz_sandbox]}/validator/api/merchantTransIDvalidationAPI.php",
+        {"tran_id": tran_id, "store_id": school.sslcommerz_store_id, "store_passwd": school.sslcommerz_store_password},
+    )
+
+
+def recover(online):
+    """
+    A payment whose browser return and notification both went missing. If the gateway holds a
+    valid payment under its transaction ID, it is confirmed and recorded as usual; otherwise
+    nothing changes. Returns the payment attempt, or None when there was nothing to record.
+    """
+    reply = query_transaction(online.school, online.tran_id)
+    for element in reply.get("element") or []:
+        if str(element.get("status", "")).upper() in OK_STATUSES and element.get("val_id"):
+            return settle(online, validate_with_gateway(online.school, element["val_id"]))
+    return None
 
 
 @transaction.atomic

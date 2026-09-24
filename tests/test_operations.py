@@ -23,6 +23,11 @@ def test_healthz_needs_no_sign_in(erp):
     assert Client().get("/healthz/").status_code == 200
 
 
+# The backup reads what has been committed, through its own connection, so these tests commit.
+committed = pytest.mark.django_db(transaction=True)
+
+
+@committed
 def test_backup_writes_the_database_media_and_restore_notes(erp, settings, tmp_path):
     media = tmp_path / "media"
     (media / "students").mkdir(parents=True)
@@ -49,6 +54,7 @@ def test_backup_writes_the_database_media_and_restore_notes(erp, settings, tmp_p
         assert any(name.endswith("photo.txt") for name in archive.getnames())
 
 
+@committed
 def test_backup_prunes_older_runs(erp, settings, tmp_path):
     settings.MEDIA_ROOT = tmp_path / "media"
     output = tmp_path / "backups"
@@ -62,12 +68,59 @@ def test_backup_prunes_older_runs(erp, settings, tmp_path):
     assert "20260101-010101" not in remaining
 
 
+@committed
 def test_backup_can_skip_media(erp, settings, tmp_path):
     settings.MEDIA_ROOT = tmp_path / "media"
     output = tmp_path / "backups"
     call_command("backup", output=str(output), skip_media=True, verbosity=0)
     folder = next(iter(output.iterdir()))
     assert not (folder / "media.tar.gz").exists()
+
+
+@committed
+def test_the_sqlite_backup_is_a_database_that_opens_with_the_schools_data(erp, settings, tmp_path):
+    import sqlite3
+
+    settings.MEDIA_ROOT = tmp_path / "media"
+    call_command("backup", output=str(tmp_path / "backups"), skip_media=True, verbosity=0)
+    folder = next(iter((tmp_path / "backups").iterdir()))
+    copy = sqlite3.connect(folder / "database.sqlite3")
+    try:
+        assert copy.execute("PRAGMA integrity_check").fetchone() == ("ok",)
+        names = {name for (name,) in copy.execute("select name from core_school")}
+        assert names == {"Test School", "Other School"}
+    finally:
+        copy.close()
+    notes = (folder / "RESTORE.txt").read_text(encoding="utf-8")
+    assert "database.sqlite3" in notes and "-wal" in notes
+
+
+@committed
+def test_a_second_copy_goes_where_copy_to_says_and_is_pruned_there_too(erp, settings, tmp_path):
+    settings.MEDIA_ROOT = tmp_path / "media"
+    elsewhere = tmp_path / "usb-drive" / "school-backups"
+    elsewhere.mkdir(parents=True)
+    for stamp in ("20260101-010101", "20260102-010101"):
+        (elsewhere / stamp).mkdir()
+    call_command(
+        "backup", output=str(tmp_path / "backups"), copy_to=str(elsewhere), keep=2, skip_media=True, verbosity=0
+    )
+    local = next(iter((tmp_path / "backups").iterdir()))
+    assert (elsewhere / local.name / "database.sqlite3").exists()
+    assert (elsewhere / local.name / "RESTORE.txt").exists()
+    assert sorted(path.name for path in elsewhere.iterdir()) == ["20260102-010101", local.name]
+
+
+def test_a_locked_database_stops_the_backup_with_a_message_instead_of_hanging(erp, settings, tmp_path, monkeypatch):
+    """This test holds an open write transaction, which the backup's own connection must not wait on forever."""
+    from django.core.management.base import CommandError
+
+    from core.management.commands import backup
+
+    monkeypatch.setattr(backup, "BUSY_WAITS", 2)
+    settings.MEDIA_ROOT = tmp_path / "media"
+    with pytest.raises(CommandError, match="stayed locked"):
+        call_command("backup", output=str(tmp_path / "backups"), skip_media=True, verbosity=0)
 
 
 def test_role_matrix_lists_every_role_and_marks_access(erp, capsys):

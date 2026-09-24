@@ -3,8 +3,8 @@ Looking up a published result without signing in.
 
 Off unless the school switches it on. A family enters the student ID and the result code
 printed on the admit card: a random code, not the date of birth, which anyone who knows the
-child could guess. Repeated wrong attempts from one address are turned away for a while, and
-only published results are ever shown.
+child could guess. Repeated wrong attempts from one address, or for one student from any
+address, are turned away for a while, and only published results are ever shown.
 """
 
 import hashlib
@@ -77,17 +77,30 @@ def _key(address, school):
     return "result-lookup:" + hashlib.sha256(f"{address}:{school.pk}".encode()).hexdigest()
 
 
-def throttled(address, school):
-    return cache.get(_key(address, school), 0) >= ATTEMPTS
+def _student_key(student_id, school):
+    """Wrong codes for one student, from anywhere: guessing from many addresses meets this limit."""
+    student_id = (student_id or "").strip().casefold()
+    return "result-lookup-student:" + hashlib.sha256(f"{school.pk}:{student_id}".encode()).hexdigest()
 
 
-def _failed(address, school):
-    key = _key(address, school)
+def throttled(address, school, student_id=""):
+    if cache.get(_key(address, school), 0) >= ATTEMPTS:
+        return True
+    return bool(student_id.strip()) and cache.get(_student_key(student_id, school), 0) >= ATTEMPTS
+
+
+def _count(key):
     cache.add(key, 0, WINDOW)
     try:
         cache.incr(key)
     except ValueError:
         cache.set(key, 1, WINDOW)
+
+
+def _failed(address, school, student_id=""):
+    _count(_key(address, school))
+    if (student_id or "").strip():
+        _count(_student_key(student_id, school))
 
 
 def lookup(school, student_id, code, address):
@@ -97,10 +110,10 @@ def lookup(school, student_id, code, address):
     student = Student.objects.filter(school=school, student_id=(student_id or "").strip()).first()
     given = normalise(code)
     if student is None or not student.result_code or not given:
-        _failed(address, school)
+        _failed(address, school, student_id)
         return None
     if not secrets.compare_digest(normalise(student.result_code), given):
-        _failed(address, school)
+        _failed(address, school, student_id)
         return None
     return student
 

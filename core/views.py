@@ -364,13 +364,10 @@ def healthz(request):
 @require_permission(None)
 def set_language(request):
     """The header toggle: remember this person's language and go back where they were."""
-    from django.utils.http import url_has_allowed_host_and_scheme
+    from core.security import safe_next
 
     choice = request.POST.get("language", "")
     if choice in ("en", "bn") and (choice == "en" or request.school.bangla_enabled):
         request.user.language = choice
         request.user.save(update_fields=["language"])
-    back = request.POST.get("next") or "/"
-    if not url_has_allowed_host_and_scheme(back, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
-        back = "/"
-    return redirect(back)
+    return redirect(safe_next(request, request.POST.get("next"), "/"))

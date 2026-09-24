@@ -286,22 +286,29 @@ def save_marks(*, user, schedule, section, rows):
 # ------------------------------------------------------------------------ building a result
 
 
-def _attendance(enrollment, until):
-    """Attendance in the exam's year up to the exam, as it stood when the result was built."""
+def _class_attendance(enrollment_ids, until):
+    """
+    Attendance in the exam's year up to the exam, as it stood when the result was built, for a
+    whole class in one query: {enrollment_id: figures}, leaving out students with no register.
+    """
     from attendance.models import StudentAttendance
 
-    records = StudentAttendance.objects.filter(enrollment=enrollment)
+    records = StudentAttendance.objects.filter(enrollment_id__in=enrollment_ids)
     if until is not None:
         records = records.filter(date__lte=until)
-    counts = records.aggregate(total=Count("id"), present=Count("id", filter=Q(status__in=["present", "late"])))
-    if not counts["total"]:
-        return None
+    counts = records.values("enrollment_id").annotate(
+        total=Count("id"), present=Count("id", filter=Q(status__in=["present", "late"]))
+    )
     return {
-        "total": counts["total"],
-        "present": counts["present"],
-        "percent": round(counts["present"] * 100 / counts["total"]),
-        # The cut-off is printed, so a family can see what period the figure covers.
-        "until": until.isoformat() if until else "",
+        row["enrollment_id"]: {
+            "total": row["total"],
+            "present": row["present"],
+            "percent": round(row["present"] * 100 / row["total"]),
+            # The cut-off is printed, so a family can see what period the figure covers.
+            "until": until.isoformat() if until else "",
+        }
+        for row in counts
+        if row["total"]
     }
 
 
@@ -371,7 +378,7 @@ def live_class_sheet(exam, class_level):
     )
     enrollments = list(
         Enrollment.objects.filter(school=exam.school, academic_year=exam.academic_year, class_level=class_level)
-        .select_related("student", "section", "fourth_subject")
+        .select_related("student", "section__class_level", "fourth_subject")
         .prefetch_related("chosen_subjects")
         .order_by("section__name", "roll_number")
     )
@@ -400,6 +407,7 @@ def live_class_sheet(exam, class_level):
     from .feedback import card_feedback, effort_label
 
     feedback = card_feedback(exam, [e.pk for e in enrollments], until)
+    attendance = _class_attendance([e.pk for e in enrollments], until)
     rows = []
     for e in enrollments:
         taken = papers_for(e, schedules, plan)
@@ -481,7 +489,7 @@ def live_class_sheet(exam, class_level):
                 + outcome["trace"],
                 "result": outcome["result"],
                 "complete": outcome["complete"],
-                "attendance": _attendance(e, until),
+                "attendance": attendance.get(e.pk),
                 "comments": feedback[e.pk]["comments"],
                 "overall_comment": feedback[e.pk]["overall_comment"],
                 "forecasts": feedback[e.pk]["forecasts"],

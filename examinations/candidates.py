@@ -165,7 +165,7 @@ def registration_rows(academic_year, class_level):
     enrollments = (
         Enrollment.objects.filter(academic_year=academic_year, class_level=class_level)
         .exclude(status=Enrollment.Status.LEFT)
-        .select_related("student", "section", "fourth_subject")
+        .select_related("student", "section__class_level", "fourth_subject")
         .prefetch_related("chosen_subjects")
         .order_by("section__name", "roll_number")
     )
