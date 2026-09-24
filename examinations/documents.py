@@ -13,6 +13,7 @@ from xml.sax.saxutils import escape
 
 from django.db.models import Count, Q
 from django.http import HttpResponse
+from django.utils.translation import gettext
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
@@ -120,7 +121,7 @@ def attendance_text(attendance):
 
     text = f"{attendance['percent']}% ({attendance['present']}/{attendance['total']})"
     if attendance.get("until"):
-        text += f" to {date.fromisoformat(attendance['until']):%d %b %Y}"
+        text += " " + gettext("to %(day)s") % {"day": f"{date.fromisoformat(attendance['until']):%d %b %Y}"}
     return text
 
 
@@ -165,7 +166,11 @@ def card_rows(row):
                     "effort": note.get("effort", ""),
                     "comment": note.get("comment", ""),
                     "code": paper.get("subject_code", ""),
-                    "subject": paper["subject"] + (" (4th subject)" if paper.get("is_fourth") and not combined else ""),
+                    "subject": (
+                        gettext("%(subject)s (4th subject)") % {"subject": paper["subject"]}
+                        if paper.get("is_fourth") and not combined
+                        else paper["subject"]
+                    ),
                     "full_marks": mark_text(paper["full_marks"]),
                     "highest": mark_text(paper_highest.get(str(paper["schedule_id"]), "")),
                     "parts": parts,
@@ -182,7 +187,12 @@ def card_rows(row):
                     "effort": "",
                     "comment": "",
                     "code": "",
-                    "subject": f"{unit['name']} (both papers)" + (" (4th subject)" if unit.get("is_fourth") else ""),
+                    "subject": (
+                        gettext("%(subject)s (both papers, 4th subject)")
+                        if unit.get("is_fourth")
+                        else gettext("%(subject)s (both papers)")
+                    )
+                    % {"subject": unit["name"]},
                     "full_marks": mark_text(unit["full_marks"]),
                     "highest": mark_text(unit_highest.get(unit["name"], "")),
                     "parts": "",
@@ -204,7 +214,7 @@ def card_rows(row):
                     "full_marks": "—",
                     "highest": "",
                     "parts": "",
-                    "obtained": "Exempt",
+                    "obtained": gettext("Exempt"),
                     "letter": "EX",
                     "grade_point": "",
                     "combined": False,
@@ -223,22 +233,22 @@ def report_card_flowables(school, exam, enrollment, row, snapshot, style, verify
     attendance = row["attendance"] if "attendance" in row else attendance_for(enrollment, exam.end_date)
     board = row.get("system") == "national"
     facts = [
-        ("Student", row["student"]),
-        ("Student ID", row["student_code"]),
-        ("Class / section", row["section"]),
-        ("Roll", row["roll"]),
-        ("Session", str(exam.academic_year)),
-        ("Examination", exam.name),
+        (gettext("Student"), row["student"]),
+        (gettext("Student ID"), row["student_code"]),
+        (gettext("Class / section"), row["section"]),
+        (gettext("Roll"), row["roll"]),
+        (gettext("Session"), str(exam.academic_year)),
+        (gettext("Examination"), exam.name),
     ]
     name_bn = row.get("student_bn", enrollment.student.name_bn)
     if name_bn:
         facts.insert(1, ("নাম", name_bn))
     if row.get("group"):
-        facts.append(("Group", row["group"]))
+        facts.append((gettext("Group"), gettext(row["group"])))
     if row.get("father_name"):
-        facts.append(("Father", row["father_name"]))
+        facts.append((gettext("Father"), row["father_name"]))
     if attendance:
-        facts.append(("Attendance", attendance_text(attendance)))
+        facts.append((gettext("Attendance"), attendance_text(attendance)))
 
     lines = card_rows(row)
     show_parts = any(line["parts"] for line in lines)
@@ -246,12 +256,16 @@ def report_card_flowables(school, exam, enrollment, row, snapshot, style, verify
     show_points = shows_points(row)
     show_highest = any(line["highest"] for line in lines)
     # (heading, line key, right-aligned)
-    columns = [("Code", "code", False), ("Subject", "subject", False), ("Full marks", "full_marks", True)]
-    columns += [("Highest", "highest", True)] if show_highest else []
-    columns += [("Parts", "parts", False)] if show_parts else []
-    columns += [("Obtained", "obtained", True), ("Grade", "letter", False)]
-    columns += [("Points", "grade_point", True)] if show_points else []
-    columns += [(row.get("effort_label") or "Effort", "effort", False)] if show_effort else []
+    columns = [
+        (gettext("Code"), "code", False),
+        (gettext("Subject"), "subject", False),
+        (gettext("Full marks"), "full_marks", True),
+    ]
+    columns += [(gettext("Highest"), "highest", True)] if show_highest else []
+    columns += [(gettext("Parts"), "parts", False)] if show_parts else []
+    columns += [(gettext("Obtained"), "obtained", True), (gettext("Grade"), "letter", False)]
+    columns += [(gettext("Points"), "grade_point", True)] if show_points else []
+    columns += [(gettext(row.get("effort_label") or "Effort"), "effort", False)] if show_effort else []
     table = data_table(
         [heading for heading, _key, _right in columns],
         [[line[key] for _heading, key, _right in columns] for line in lines],
@@ -264,33 +278,38 @@ def report_card_flowables(school, exam, enrollment, row, snapshot, style, verify
         if line["comment"]
     ]
     if row.get("overall_comment"):
-        words.append(Paragraph(f"<b>Class teacher</b>: {escape(row['overall_comment'])}", style["cell"]))
+        words.append(
+            Paragraph(f"<b>{escape(gettext('Class teacher'))}</b>: {escape(row['overall_comment'])}", style["cell"])
+        )
     forecasts = row.get("forecasts") or []
     forecast_table = None
     if forecasts:
         forecast_table = data_table(
-            ["Subject", "Kind", "Grade", "Decided"],
+            [gettext("Subject"), gettext("Kind"), gettext("Grade"), gettext("Decided")],
             [
-                [f["subject"], f["kind_label"], f["grade"], f"{date.fromisoformat(f['as_of']):%d %b %Y}"]
+                [f["subject"], gettext(f["kind_label"]), f["grade"], f"{date.fromisoformat(f['as_of']):%d %b %Y}"]
                 for f in forecasts
             ],
             style,
         )
 
     result_colour = "#047857" if row.get("result") == "PASS" else "#b91c1c"
-    summary_cells = [("Total", total_text(row))]
+    summary_cells = [(gettext("Total"), total_text(row))]
     if row.get("has_gpa", True) and row.get("gpa") is not None:
-        summary_cells.append(("GPA", f"{row['gpa']}" + (f" ({row['gpa_letter']})" if row.get("gpa_letter") else "")))
+        summary_cells.append(
+            (gettext("GPA"), f"{row['gpa']}" + (f" ({row['gpa_letter']})" if row.get("gpa_letter") else ""))
+        )
     elif row.get("points") is not None:
-        summary_cells.append(("Points", row["points"]))
+        summary_cells.append((gettext("Points"), row["points"]))
     else:
-        summary_cells.append(("Grades", headline(row)))
+        summary_cells.append((gettext("Grades"), headline(row)))
     if board and row.get("fourth_subject"):
-        summary_cells.append(("GPA without 4th subject", row.get("gpa_without_fourth") or "—"))
+        summary_cells.append((gettext("GPA without 4th subject"), row.get("gpa_without_fourth") or "—"))
     if shows_rank(row):
-        summary_cells.append(("Rank in section", row["rank"] or "—"))
+        summary_cells.append((gettext("Rank in section"), row["rank"] or "—"))
+    result_label = gettext("Result")
     if row.get("result"):
-        summary_cells.append(("Result", row["result"]))
+        summary_cells.append((result_label, gettext(row["result"])))
     width = 178 / len(summary_cells)
     summary = Table(
         [
@@ -299,7 +318,7 @@ def report_card_flowables(school, exam, enrollment, row, snapshot, style, verify
                     f"<font color='#475569' size='7.5'>{escape(label)}</font><br/>"
                     + (
                         f"<b><font color='{result_colour}'>{escape(str(value))}</font></b>"
-                        if label == "Result"
+                        if label == result_label
                         else f"<b>{escape(str(value))}</b>"
                     ),
                     style["cell"],
@@ -324,10 +343,11 @@ def report_card_flowables(school, exam, enrollment, row, snapshot, style, verify
     signatures = Table(
         [
             [
-                Paragraph("<font color='#475569' size='7.5'>Class teacher</font>", style["cell"]),
-                Paragraph("<font color='#475569' size='7.5'>Guardian</font>", style["cell"]),
+                Paragraph(f"<font color='#475569' size='7.5'>{escape(gettext('Class teacher'))}</font>", style["cell"]),
+                Paragraph(f"<font color='#475569' size='7.5'>{escape(gettext('Guardian'))}</font>", style["cell"]),
                 Paragraph(
-                    f"<font color='#475569' size='7.5'>{escape(school.principal_name or 'Head of institution')}</font>",
+                    f"<font color='#475569' size='7.5'>"
+                    f"{escape(school.principal_name or gettext('Head of institution'))}</font>",
                     style["cell"],
                 ),
             ]
@@ -349,36 +369,45 @@ def report_card_flowables(school, exam, enrollment, row, snapshot, style, verify
     if row.get("sources"):
         made_of = ", ".join(f"{s['exam']} {s['weight']}%" for s in row["sources"])
         flow.append(
-            Paragraph(f"<font color='#475569' size='7.5'>Combined from: {escape(made_of)}</font>", style["cell"])
+            Paragraph(
+                f"<font color='#475569' size='7.5'>{escape(gettext('Combined from'))}: {escape(made_of)}</font>",
+                style["cell"],
+            )
         )
     if official_notice(row):
-        flow.append(Paragraph(f"<font color='#475569' size='7.5'>{escape(official_notice(row))}</font>", style["cell"]))
+        flow.append(
+            Paragraph(f"<font color='#475569' size='7.5'>{escape(gettext(official_notice(row)))}</font>", style["cell"])
+        )
         flow.append(Spacer(1, 4))
     if words:
-        flow.append(Paragraph("<b>Comments</b>", style["normal"]))
+        flow.append(Paragraph(f"<b>{escape(gettext('Comments'))}</b>", style["normal"]))
         flow.extend(words)
         flow.append(Spacer(1, 6))
     if forecast_table is not None:
-        flow.append(
-            Paragraph(
-                "<b>The school's grade estimates</b> <font color='#475569' size='7.5'>"
-                "The school's own judgement, not a result awarded by an examination board.</font>",
-                style["normal"],
-            )
-        )
+        heading = escape(gettext("The school's grade estimates"))
+        caveat = escape(gettext("The school's own judgement, not a result awarded by an examination board."))
+        flow.append(Paragraph(f"<b>{heading}</b> <font color='#475569' size='7.5'>{caveat}</font>", style["normal"]))
         flow.append(forecast_table)
         flow.append(Spacer(1, 6))
     if exam.status != "published":
         flow.append(
-            Paragraph("<font color='#b91c1c'><b>DRAFT</b> — these results are not published.</font>", style["normal"])
+            Paragraph(
+                f"<font color='#b91c1c'>{escape(gettext('DRAFT — these results are not published.'))}</font>",
+                style["normal"],
+            )
         )
     if snapshot:
-        where = escape(verify_url) if verify_url else "the school's report verification page"
+        where = verify_url or gettext("the school's report verification page")
         code = escape(row.get("fingerprint") or "")
         note = Paragraph(
-            f"<font color='#475569' size='7.5'>Version {snapshot.version}"
-            + (f" · card fingerprint <b>{code}</b>" if code else "")
-            + f"<br/>Scan the code, or open {where}, to confirm this card is genuine and current.</font>",
+            f"<font color='#475569' size='7.5'>{escape(gettext('Published version'))} {snapshot.version}"
+            + (f" · {escape(gettext('card fingerprint'))} <b>{code}</b>" if code else "")
+            + "<br/>"
+            + escape(
+                gettext("Scan the code, or open %(where)s, to confirm this card is genuine and current.")
+                % {"where": where}
+            )
+            + "</font>",
             style["cell"],
         )
         block = [[note, qr_drawing(verify_url, 22)]] if verify_url else [[note, ""]]
@@ -394,7 +423,7 @@ def report_card_pdf(school, exam, enrollment, row, snapshot, verify_url=""):
     style = styles()
     return document(
         school,
-        f"Report card · {exam.name}",
+        f"{gettext('Report card')} · {exam.name}",
         report_card_flowables(school, exam, enrollment, row, snapshot, style, verify_url),
         subtitle=f"{row['student']} · {row['section']}",
         filename=f"report-card-{row.get('student_code') or enrollment.student.student_id}.pdf",
@@ -410,7 +439,9 @@ def bulk_report_cards_pdf(school, exam, cards):
         verify_url = card[3] if len(card) > 3 else ""
         if index:
             flow.append(PageBreak())
-        flow.extend(letterhead(school, f"Report card · {exam.name}", f"{row['student']} · {row['section']}", style))
+        flow.extend(
+            letterhead(school, f"{gettext('Report card')} · {exam.name}", f"{row['student']} · {row['section']}", style)
+        )
         flow.extend(report_card_flowables(school, exam, enrollment, row, snapshot, style, verify_url))
     buffer = BytesIO()
     doc = SimpleDocTemplate(
@@ -439,13 +470,13 @@ def mark_sheet_pdf(school, schedule, section, students, marks=None):
     style = styles()
     exam, filled = schedule.exam, marks is not None
     parts = list(schedule.components.all())
-    headers = ["Roll", "Student ID", "Student"]
+    headers = [gettext("Roll"), gettext("Student ID"), gettext("Student")]
     if parts:
         headers += [f"{part.name} ({plain(part.full_marks)})" for part in parts]
-        headers.append(f"Total ({plain(schedule.full_marks)})")
+        headers.append(gettext("Total (%(full)s)") % {"full": plain(schedule.full_marks)})
     else:
-        headers.append(f"Marks ({plain(schedule.full_marks)})")
-    headers.append("Remarks")
+        headers.append(gettext("Marks (%(full)s)") % {"full": plain(schedule.full_marks)})
+    headers.append(gettext("Remarks"))
     blanks = len(parts) + 1
 
     body = []
@@ -455,26 +486,30 @@ def mark_sheet_pdf(school, schedule, section, students, marks=None):
         if mark is None:
             line += [""] * blanks + [""]
         elif mark.is_exempt:
-            line += [""] * (blanks - 1) + ["EX", "Exempt"]
+            line += [""] * (blanks - 1) + ["EX", gettext("Exempt")]
         elif mark.is_absent:
-            line += [""] * (blanks - 1) + ["ABS", "Absent"]
+            line += [""] * (blanks - 1) + ["ABS", gettext("Absent")]
         else:
             stored = mark.component_marks or {}
             line += [mark_text(stored.get(part.code, "")) for part in parts]
             line += [mark_text(mark.marks_obtained), ""]
         body.append(line)
 
-    when = schedule.date.strftime("%d %b %Y") if schedule.date else "Date to be set"
+    when = schedule.date.strftime("%d %b %Y") if schedule.date else gettext("Date to be set")
     if schedule.start_time:
         when += f", {schedule.start_time:%H:%M}"
     facts = _facts(
         [
-            ("Examination", f"{exam.name} ({exam.academic_year})"),
-            ("Class / section", str(section)),
-            ("Subject", f"{schedule.subject.code} {schedule.subject.name}".strip()),
-            ("Full marks", f"{plain(schedule.full_marks)} (pass {plain(schedule.pass_marks)})"),
-            ("Date", when),
-            ("Room", schedule.room or ""),
+            (gettext("Examination"), f"{exam.name} ({exam.academic_year})"),
+            (gettext("Class / section"), str(section)),
+            (gettext("Subject"), f"{schedule.subject.code} {schedule.subject.name}".strip()),
+            (
+                gettext("Full marks"),
+                gettext("%(full)s (pass %(pass_mark)s)")
+                % {"full": plain(schedule.full_marks), "pass_mark": plain(schedule.pass_marks)},
+            ),
+            (gettext("Date"), when),
+            (gettext("Room"), schedule.room or ""),
         ],
         style,
     )
@@ -485,8 +520,8 @@ def mark_sheet_pdf(school, schedule, section, students, marks=None):
     signatures = Table(
         [
             [
-                Paragraph(f"<font color='#475569' size='7.5'>{label}</font>", style["cell"])
-                for label in ("Examiner", "Checked by", "Date")
+                Paragraph(f"<font color='#475569' size='7.5'>{escape(label)}</font>", style["cell"])
+                for label in (gettext("Examiner"), gettext("Checked by"), gettext("Date"))
             ]
         ],
         colWidths=[55 * mm] * 3,
@@ -502,12 +537,14 @@ def mark_sheet_pdf(school, schedule, section, students, marks=None):
             ]
         )
     )
-    title = "Marks register" if filled else "Mark collection sheet"
+    title = gettext("Marks register") if filled else gettext("Mark collection sheet")
     note = (
-        "Marks as entered in the system. Check each against the answer script."
+        gettext("Marks as entered in the system. Check each against the answer script.")
         if filled
-        else "Write ABS for a student who was absent. Enter the marks from this sheet on the mark grid, "
-        "or type them into the Excel template and import it."
+        else gettext(
+            "Write ABS for a student who was absent. Enter the marks from this sheet on the mark grid, "
+            "or type them into the Excel template and import it."
+        )
     )
     return document(
         school,
@@ -517,7 +554,7 @@ def mark_sheet_pdf(school, schedule, section, students, marks=None):
             Spacer(1, 6),
             table,
             Spacer(1, 6),
-            Paragraph(f"<font color='#475569' size='8'>{note}</font>", style["cell"]),
+            Paragraph(f"<font color='#475569' size='8'>{escape(note)}</font>", style["cell"]),
             Spacer(1, 28),
             signatures,
         ],

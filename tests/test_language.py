@@ -24,7 +24,23 @@ TRANSLATED_TEMPLATES = [
     "templates/portal/results.html",
     "templates/examinations/_official_results.html",
     "templates/examinations/report_card.html",
+    # The teacher's own screens, for national-curriculum schools that work in Bangla.
+    "templates/core/dashboard.html",
+    "templates/attendance/take.html",
+    "templates/examinations/marks.html",
+    "templates/examinations/marks_import.html",
+    "templates/examinations/comments.html",
 ]
+
+
+def blocktranslate_msgids(text):
+    """The msgids Django makes from {% blocktranslate %} blocks: {{ name }} becomes %(name)s."""
+    found = []
+    for options, body in re.findall(r"\{% blocktranslate([^%]*)%\}(.*?)\{% endblocktranslate %\}", text, re.S):
+        if "trimmed" in options:
+            body = " ".join(line.strip() for line in body.strip().splitlines() if line.strip())
+        found.append(re.sub(r"\{\{\s*(\w+)\s*\}\}", r"%(\1)s", body))
+    return found
 
 
 def login(user):
@@ -118,8 +134,66 @@ def test_every_marked_string_on_the_family_screens_has_a_bangla_translation():
     missing = []
     for relative in TRANSLATED_TEMPLATES:
         text = (ROOT / relative).read_text(encoding="utf-8")
-        for msgid in re.findall(r'\{% translate "([^"]+)"', text):
+        for msgid in re.findall(r'\{% translate "([^"]+)"', text) + blocktranslate_msgids(text):
             if not catalogue.get(msgid):
                 missing.append(f"{relative}: {msgid}")
     assert not missing, missing
     assert all(value for key, value in catalogue.items() if key)
+
+
+# ------------------------------------------------------------------ the teacher's screens
+
+
+def teacher_in_bangla(erp):
+    erp.teacher.language = "bn"
+    erp.teacher.save()
+    return login(erp.teacher)
+
+
+def test_a_teacher_can_work_in_bangla(erp):
+    client = teacher_in_bangla(erp)
+    dashboard = client.get("/").content.decode()
+    assert "আমার শাখা" in dashboard and "হাজিরা খাতা" in dashboard
+    register = client.get("/attendance/").content.decode()
+    assert "উপস্থিতি সংরক্ষণ করুন" in register and "উপস্থিত" in register and "লিপিবদ্ধ হয়নি" in register
+    marks = client.get(f"/exams/marks/?schedule={erp.schedule.pk}&section={erp.section.pk}").content.decode()
+    assert "সব নম্বর সংরক্ষণ করুন" in marks and "পরীক্ষার পত্র" in marks and "পাস নম্বর 33" in marks
+    comments = client.get(f"/exams/comments/?schedule={erp.schedule.pk}&section={erp.section.pk}").content.decode()
+    assert "মন্তব্য সংরক্ষণ করুন" in comments
+    imports = client.get(f"/exams/marks/import/?schedule={erp.schedule.pk}&section={erp.section.pk}").content.decode()
+    assert "ফাইল যাচাই করুন" in imports
+
+
+def test_saving_marks_says_so_in_bangla(erp):
+    client = teacher_in_bangla(erp)
+    url = f"/exams/marks/?schedule={erp.schedule.pk}&section={erp.section.pk}"
+    response = client.post(
+        url, {"schedule": erp.schedule.pk, "section": erp.section.pk, f"{erp.enrollment.pk}-score": "71"}, follow=True
+    )
+    assert "১টি" not in response.content.decode()  # numbers stay as digits people type
+    assert "1টি পরিবর্তন সংরক্ষিত হয়েছে।" in response.content.decode()
+
+
+def test_the_printed_card_and_tabulation_follow_the_readers_language(erp, board):
+    from django.utils import translation
+
+    from core.pdf import styles
+    from examinations.documents import report_card_flowables
+    from examinations.exports import tabulation
+    from examinations.services import build_result_sheet
+    from tests.test_board_results import mark_everything
+    from tests.test_rulebooks import card_texts
+
+    mark_everything(erp, board)
+    publish_exam(board.exam, erp.admin)
+    rows = build_result_sheet(board.exam, board.level)["rows"]
+    row = next(r for r in rows if r["enrollment_id"] == board.science.pk)
+    with translation.override("bn"):
+        printed = " ".join(
+            card_texts(report_card_flowables(erp.school, board.exam, board.science, row, None, styles()))
+        )
+        headers, _body = tabulation(rows)
+    assert "পূর্ণ নম্বর" in printed and "জিপিএ" in printed and "উত্তীর্ণ" in printed and "(উভয় পত্র)" in printed
+    assert "চতুর্থ বিষয়" in headers and "জিপিএ" in headers
+    english = " ".join(card_texts(report_card_flowables(erp.school, board.exam, board.science, row, None, styles())))
+    assert "Full marks" in english and "(both papers)" in english

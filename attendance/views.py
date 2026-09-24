@@ -8,6 +8,7 @@ from django.db.models import Count, Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.translation import gettext, gettext_lazy
 from django.views.decorators.http import require_POST
 
 from core.access import is_manager, require_permission, sections_for, students_for
@@ -52,8 +53,10 @@ def _month_anchor(raw):
 
 
 class RegisterFilter(TailwindFormMixin, forms.Form):
-    date = forms.DateField(initial=timezone.localdate, widget=forms.DateInput(attrs={"type": "date"}))
-    section = forms.ModelChoiceField(queryset=None, required=False)
+    date = forms.DateField(
+        label=gettext_lazy("Date"), initial=timezone.localdate, widget=forms.DateInput(attrs={"type": "date"})
+    )
+    section = forms.ModelChoiceField(label=gettext_lazy("Section"), queryset=None, required=False)
 
     def __init__(self, *args, user, school, staff=False, taking=False, **kwargs):
         super().__init__(*args, **kwargs)
@@ -88,7 +91,7 @@ def _filter_data(request, staff, sections):
 
 
 class RowForm(forms.Form):
-    status = forms.ChoiceField(choices=[("", "Not recorded"), *AttendanceStatus.choices], required=False)
+    status = forms.ChoiceField(choices=[("", gettext_lazy("Not recorded")), *AttendanceStatus.choices], required=False)
     remarks = forms.CharField(max_length=200, required=False)
     check_in = forms.TimeField(required=False, widget=forms.TimeInput(attrs={"type": "time"}))
     check_out = forms.TimeField(required=False, widget=forms.TimeInput(attrs={"type": "time"}))
@@ -142,7 +145,7 @@ def register(request, staff=False):
         if request.method == "POST" and valid:
             try:
                 save_register(school=request.school, user=request.user, day=day, entries=entries, staff=staff)
-                messages.success(request, "Attendance saved.")
+                messages.success(request, gettext("Attendance saved."))
                 return redirect(request.get_full_path())
             except ValidationError as e:
                 form.add_error(None, e)
@@ -155,7 +158,7 @@ def register(request, staff=False):
             "staff": staff,
             "editable": editable,
             "closed_days": request.school.register_edit_days if closed else 0,
-            "page_title": "Staff attendance" if staff else "Student attendance",
+            "page_title": gettext("Staff attendance") if staff else gettext("Student attendance"),
         },
     )
 

@@ -1,16 +1,15 @@
 {% extends "layouts/base.html" %}
-{% load erp humanize %}
-{% block header %}Dashboard <span class="ml-2 text-sm font-normal text-slate-500">{{ today|date:"l, d M Y" }}{% if year %} · {{ year }}{% endif %}</span>{% endblock %}
+{% load erp humanize i18n %}
+{% block header %}{% translate "Dashboard" %} <span class="ml-2 text-sm font-normal text-slate-500">{{ today|date:"l, d M Y" }}{% if year %} · {{ year }}{% endif %}</span>{% endblock %}
 {% block content %}
 {% if panel.closed_today %}
   <div class="mb-4 rounded-md border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800">
-    The school is closed today, so no register is expected.
+    {% translate "The school is closed today, so no register is expected." %}
   </div>
 {% endif %}
 {% if panel.unlinked %}
   <div class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-    Your account is not linked to a staff record yet, so there is nothing personal to show.
-    Ask the school office to link it.
+    {% translate "Your account is not linked to a staff record yet, so there is nothing personal to show. Ask the school office to link it." %}
   </div>
 {% endif %}
 
@@ -131,49 +130,49 @@
 {% elif panel.kind == "teacher" %}
   <div class="mt-6 grid gap-6 lg:grid-cols-2">
     <section class="card">
-      <div class="card-header"><h2 class="font-semibold">Registers</h2>
-        <a href="{% url 'attendance:student_take' %}" class="link text-sm">Take one</a></div>
+      <div class="card-header"><h2 class="font-semibold">{% translate "Registers" %}</h2>
+        <a href="{% url 'attendance:student_take' %}" class="link text-sm">{% translate "Take one" %}</a></div>
       <ul class="divide-y divide-slate-100 text-sm">
         {% for row in panel.registers %}
           <li class="flex items-center justify-between px-5 py-2.5">
             <div>
               <span class="font-medium">{{ row.section }}</span>
-              <span class="ml-2 text-xs text-slate-500">{{ row.recorded }} of {{ row.expected }} recorded</span>
+              <span class="ml-2 text-xs text-slate-500">{% blocktranslate with recorded=row.recorded expected=row.expected trimmed %}{{ recorded }} of {{ expected }} recorded{% endblocktranslate %}</span>
             </div>
             {% if row.state == "complete" %}
-              <span class="text-xs text-emerald-700">Complete</span>
+              <span class="text-xs text-emerald-700">{% translate "Complete" %}</span>
             {% else %}
               <a href="{% url 'attendance:student_take' %}?date={{ today|date:'Y-m-d' }}&amp;section={{ row.section.pk }}"
-                 class="btn-primary btn-sm">{% if row.state == "partial" %}Finish{% else %}Take now{% endif %}</a>
+                 class="btn-primary btn-sm">{% if row.state == "partial" %}{% translate "Finish" %}{% else %}{% translate "Take now" %}{% endif %}</a>
             {% endif %}
           </li>
         {% empty %}
           <li class="px-5 py-6 text-center text-slate-500">
-            {% if panel.closed_today %}The school is closed today, so there is no register to take.
-            {% else %}No sections are assigned to you yet.{% endif %}
+            {% if panel.closed_today %}{% translate "The school is closed today, so there is no register to take." %}
+            {% else %}{% translate "No sections are assigned to you yet." %}{% endif %}
           </li>
         {% endfor %}
       </ul>
     </section>
 
     <section class="card">
-      <div class="card-header"><h2 class="font-semibold">My day</h2>
-        <a href="{% url 'timetable:routine' %}" class="link text-sm">Full routine</a></div>
+      <div class="card-header"><h2 class="font-semibold">{% translate "My day" %}</h2>
+        <a href="{% url 'timetable:routine' %}" class="link text-sm">{% translate "Full routine" %}</a></div>
       <ul class="divide-y divide-slate-100 text-sm">
         {% for slot in panel.today_slots %}
           <li class="flex items-center justify-between px-5 py-2.5">
             <div><p class="font-medium">{{ slot.subject }} · {{ slot.section }}</p>
               <p class="text-xs text-slate-500">{{ slot.period }}{% if slot.room %} · {{ slot.room }}{% endif %}</p></div>
           </li>
-        {% empty %}<li class="px-5 py-6 text-center text-slate-500">Nothing on your routine today.</li>{% endfor %}
+        {% empty %}<li class="px-5 py-6 text-center text-slate-500">{% translate "Nothing on your routine today." %}</li>{% endfor %}
       </ul>
     </section>
 
     <section class="card lg:col-span-2">
-      <div class="card-header"><h2 class="font-semibold">Marks still to enter</h2>
-        <a href="{% url 'examinations:marks' %}" class="link text-sm">Mark entry</a></div>
+      <div class="card-header"><h2 class="font-semibold">{% translate "Marks still to enter" %}</h2>
+        <a href="{% url 'examinations:marks' %}" class="link text-sm">{% translate "Mark entry" %}</a></div>
       <table class="table">
-        <thead><tr><th>Exam</th><th>Subject</th><th>Section</th><th class="text-right">Entered</th><th></th></tr></thead>
+        <thead><tr><th>{% translate "Exam" %}</th><th>{% translate "Subject" %}</th><th>{% translate "Section" %}</th><th class="text-right">{% translate "Entered" %}</th><th></th></tr></thead>
         <tbody>
           {% for row in panel.pending_marks %}
             <tr>
@@ -182,11 +181,11 @@
               <td>{{ row.section }}</td>
               <td class="text-right {% if row.entered == 0 %}text-red-600{% else %}text-amber-700{% endif %}">{{ row.entered }}/{{ row.expected }}</td>
               <td class="text-right">
-                <a href="{% url 'examinations:marks' %}?schedule={{ row.schedule.pk }}&amp;section={{ row.section.pk }}" class="link text-xs">Enter</a>
+                <a href="{% url 'examinations:marks' %}?schedule={{ row.schedule.pk }}&amp;section={{ row.section.pk }}" class="link text-xs">{% translate "Enter" %}</a>
               </td>
             </tr>
           {% empty %}
-            <tr><td colspan="5">{% include "components/empty.html" with message="Nothing outstanding. Every paper assigned to you is marked." %}</td></tr>
+            <tr><td colspan="5">{% translate "Nothing outstanding. Every paper assigned to you is marked." as nothing %}{% include "components/empty.html" with message=nothing %}</td></tr>
           {% endfor %}
         </tbody>
       </table>

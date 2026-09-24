@@ -12,6 +12,7 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.translation import gettext, gettext_lazy
 from django.views.decorators.http import require_POST
 
 from core.access import is_manager, require_permission, sections_for
@@ -31,8 +32,8 @@ from ..subjects import enrollments_taking, subject_plan
 
 
 class MarkFilter(TailwindFormMixin, forms.Form):
-    schedule = forms.ModelChoiceField(queryset=None)
-    section = forms.ModelChoiceField(queryset=None)
+    schedule = forms.ModelChoiceField(label=gettext_lazy("Exam paper"), queryset=None)
+    section = forms.ModelChoiceField(label=gettext_lazy("Section"), queryset=None)
 
     def __init__(self, *args, user, school, **kwargs):
         super().__init__(*args, **kwargs)
@@ -172,9 +173,9 @@ def marks(request):
                 try:
                     saved = save_marks(user=request.user, schedule=schedule, section=section, rows=submitted)
                     if saved:
-                        messages.success(request, f"Saved {len(saved)} change(s).")
+                        messages.success(request, gettext("Saved %(count)s change(s).") % {"count": len(saved)})
                     else:
-                        messages.info(request, "Nothing had changed, so nothing was saved.")
+                        messages.info(request, gettext("Nothing had changed, so nothing was saved."))
                     return redirect(
                         reverse("examinations:marks")
                         + "?"
@@ -182,7 +183,7 @@ def marks(request):
                     )
                 except MarkEntryError as exc:
                     row_errors = exc.errors
-                    messages.error(request, "Nothing was saved. Fix the rows marked below and submit again.")
+                    messages.error(request, gettext("Nothing was saved. Fix the rows marked below and submit again."))
                 except ValidationError as exc:
                     messages.error(request, " ".join(exc.messages))
 
@@ -240,7 +241,7 @@ def marks(request):
             "passed": passed,
             # Changes whenever a stored mark does, so a draft typed over older marks is dropped.
             "draft_base": _draft_base(rows),
-            "page_title": "Mark entry",
+            "page_title": gettext("Mark entry"),
         },
     )
 
@@ -335,13 +336,13 @@ def marks_import(request):
         "parts": parts,
         "grid": grid,
         "students": len(students),
-        "page_title": "Import marks",
+        "page_title": gettext("Import marks"),
     }
     if request.method == "POST" and request.POST.get("action") == "check":
         upload = request.FILES.get("file")
         request.session.pop(session_key, None)
         if upload is None:
-            messages.error(request, "Choose the filled-in template to upload.")
+            messages.error(request, gettext("Choose the filled-in template to upload."))
         else:
             try:
                 prepared, problems, skipped = check(schedule, parts, students, existing, read_rows(upload))
@@ -362,7 +363,7 @@ def marks_import(request):
     elif request.method == "POST" and request.POST.get("action") == "confirm":
         prepared = request.session.pop(session_key, None)
         if prepared is None:
-            messages.error(request, "Nothing was waiting to be saved. Upload the file again.")
+            messages.error(request, gettext("Nothing was waiting to be saved. Upload the file again."))
         else:
             try:
                 saved = apply(
@@ -372,20 +373,23 @@ def marks_import(request):
                 names = {e.pk: e.student.full_name for e in students}
                 messages.error(
                     request,
-                    "Nothing was saved. "
+                    gettext("Nothing was saved.")
+                    + " "
                     + "; ".join(f"{names.get(pk, pk)}: {message}" for pk, message in exc.errors.items()),
                 )
             except ValidationError as exc:
                 messages.error(request, " ".join(exc.messages))
             else:
-                messages.success(request, f"Imported {len(saved)} change(s) from the file.")
+                messages.success(
+                    request, gettext("Imported %(count)s change(s) from the file.") % {"count": len(saved)}
+                )
                 return redirect(grid)
     return render(request, "examinations/marks_import.html", context)
 
 
 class OverallCommentFilter(TailwindFormMixin, forms.Form):
-    exam = forms.ModelChoiceField(queryset=None)
-    section = forms.ModelChoiceField(queryset=None)
+    exam = forms.ModelChoiceField(label=gettext_lazy("Exam"), queryset=None)
+    section = forms.ModelChoiceField(label=gettext_lazy("Section"), queryset=None)
 
     def __init__(self, *args, user, school, **kwargs):
         super().__init__(*args, **kwargs)
@@ -437,7 +441,13 @@ def comments(request):
         selector = OverallCommentFilter(data, user=request.user, school=request.school)
     else:
         selector = MarkFilter(data, user=request.user, school=request.school)
-    context = {"selector": selector, "overall": overall, "rows": [], "limit": COMMENT_LIMIT, "page_title": "Comments"}
+    context = {
+        "selector": selector,
+        "overall": overall,
+        "rows": [],
+        "limit": COMMENT_LIMIT,
+        "page_title": gettext("Comments"),
+    }
     if not (selector.is_bound and selector.is_valid()):
         return render(request, "examinations/comments.html", context)
 
@@ -480,11 +490,14 @@ def comments(request):
             else:
                 saved = save_subject_comments(user=request.user, schedule=schedule, section=section, rows=submitted)
                 query = {"schedule": schedule.pk, "section": section.pk}
-            messages.success(request, f"Saved {saved} change(s)." if saved else "Nothing had changed.")
+            messages.success(
+                request,
+                gettext("Saved %(count)s change(s).") % {"count": saved} if saved else gettext("Nothing had changed."),
+            )
             return redirect(reverse("examinations:comments") + "?" + urlencode(query))
         except CommentError as exc:
             errors = exc.errors
-            messages.error(request, "Nothing was saved. Fix the rows marked below and save again.")
+            messages.error(request, gettext("Nothing was saved. Fix the rows marked below and save again."))
         except ValidationError as exc:
             messages.error(request, " ".join(exc.messages))
     context.update(

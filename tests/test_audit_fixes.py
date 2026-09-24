@@ -1250,7 +1250,7 @@ def test_the_mark_grid_shows_a_live_class_average(erp):
     client = Client()
     client.force_login(erp.teacher)
     body = client.get(f"/exams/marks/?schedule={erp.schedule.pk}&section={erp.section.pk}").content.decode()
-    assert "Class average 70.00/100" in body
+    assert "Class average 70/100" in body
     assert "2 of 2 above the pass mark" in body
 
 

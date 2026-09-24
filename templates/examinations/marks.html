@@ -1,15 +1,15 @@
 {% extends "layouts/base.html" %}
-{% load erp %}
+{% load erp i18n %}
 {% block header_actions %}
-  <a href="{% url 'examinations:results' %}" class="btn-secondary btn-sm">Results</a>
-  {% if perms.examinations.view_mark %}<a href="{% url 'examinations:unlocks' %}" class="btn-secondary btn-sm">Unlock requests</a>{% endif %}
-  {% if schedule and section and perms.examinations.change_resultcomment %}<a href="{% url 'examinations:comments' %}?schedule={{ schedule.pk }}&section={{ section.pk }}" class="btn-secondary btn-sm">Comments</a>{% endif %}
-  {% if perms.examinations.add_gradeforecast %}<a href="{% url 'examinations:forecasts' %}" class="btn-secondary btn-sm">Grade estimates</a>{% endif %}
+  <a href="{% url 'examinations:results' %}" class="btn-secondary btn-sm">{% translate "Results" %}</a>
+  {% if perms.examinations.view_mark %}<a href="{% url 'examinations:unlocks' %}" class="btn-secondary btn-sm">{% translate "Unlock requests" %}</a>{% endif %}
+  {% if schedule and section and perms.examinations.change_resultcomment %}<a href="{% url 'examinations:comments' %}?schedule={{ schedule.pk }}&section={{ section.pk }}" class="btn-secondary btn-sm">{% translate "Comments" %}</a>{% endif %}
+  {% if perms.examinations.add_gradeforecast %}<a href="{% url 'examinations:forecasts' %}" class="btn-secondary btn-sm">{% translate "Grade estimates" %}</a>{% endif %}
 {% endblock %}
 {% block content %}
 <form method="get" class="card card-body mb-4">
   <div class="grid gap-4 sm:grid-cols-2">{% for field in selector %}{% render_field field %}{% endfor %}</div>
-  <div class="mt-4"><button class="btn-secondary">Load class</button></div>
+  <div class="mt-4"><button class="btn-secondary">{% translate "Load class" %}</button></div>
 </form>
 
 {% if schedule and section %}
@@ -17,42 +17,41 @@
     <div>
       <p class="font-semibold">{{ schedule.subject }} &middot; {{ section }}</p>
       <p class="text-sm text-slate-500">
-        {{ schedule.exam }} &middot; full marks {{ schedule.full_marks }} &middot; pass {{ schedule.pass_marks }}
+        {% blocktranslate with exam=schedule.exam full=schedule.full_marks|mark pass_mark=schedule.pass_marks|mark trimmed %}{{ exam }} · full marks {{ full }} · pass {{ pass_mark }}{% endblocktranslate %}
       </p>
     </div>
     <div class="text-right text-sm">
       <p class="{% if missing %}text-amber-700{% else %}text-emerald-700{% endif %}">
-        {{ entered }} of {{ rows|length }} entered{% if missing %} &middot; {{ missing }} still blank{% endif %}
+        {% blocktranslate with total=rows|length trimmed %}{{ entered }} of {{ total }} entered{% endblocktranslate %}{% if missing %} &middot; {% blocktranslate trimmed %}{{ missing }} still blank{% endblocktranslate %}{% endif %}
       </p>
       {% if average is not None %}
         <p class="text-slate-600">
-          Class average {{ average }}/{{ schedule.full_marks }}{% if average_percent is not None %} ({{ average_percent }}%){% endif %}
-          &middot; {{ passed }} of {{ sat }} above the pass mark
+          {% blocktranslate with average=average|mark full=schedule.full_marks|mark trimmed %}Class average {{ average }}/{{ full }}{% endblocktranslate %}{% if average_percent is not None %} ({{ average_percent }}%){% endif %}
+          &middot; {% blocktranslate trimmed %}{{ passed }} of {{ sat }} above the pass mark{% endblocktranslate %}
         </p>
       {% endif %}
     </div>
   </div>
 
   <div class="mb-4 flex flex-wrap items-center gap-2 text-sm">
-    <span class="text-slate-500">Exam hall:</span>
-    <a class="btn-secondary btn-sm" href="{% url 'examinations:mark_sheet' %}?schedule={{ schedule.pk }}&section={{ section.pk }}">Blank mark sheet (PDF)</a>
-    <a class="btn-secondary btn-sm" href="{% url 'examinations:mark_sheet' %}?schedule={{ schedule.pk }}&section={{ section.pk }}&kind=register">Marks register (PDF)</a>
-    {% if not locked and perms.examinations.change_mark %}<a class="btn-secondary btn-sm" href="{% url 'examinations:marks_import' %}?schedule={{ schedule.pk }}&section={{ section.pk }}">Import from Excel</a>{% endif %}
+    <span class="text-slate-500">{% translate "Exam hall:" %}</span>
+    <a class="btn-secondary btn-sm" href="{% url 'examinations:mark_sheet' %}?schedule={{ schedule.pk }}&section={{ section.pk }}">{% translate "Blank mark sheet (PDF)" %}</a>
+    <a class="btn-secondary btn-sm" href="{% url 'examinations:mark_sheet' %}?schedule={{ schedule.pk }}&section={{ section.pk }}&kind=register">{% translate "Marks register (PDF)" %}</a>
+    {% if not locked and perms.examinations.change_mark %}<a class="btn-secondary btn-sm" href="{% url 'examinations:marks_import' %}?schedule={{ schedule.pk }}&section={{ section.pk }}">{% translate "Import from Excel" %}</a>{% endif %}
   </div>
 
   {% if locked %}
     <div class="card mb-4">
       <div class="card-body">
-        <p class="font-medium text-amber-800">These results are published, so the marks are locked.</p>
+        <p class="font-medium text-amber-800">{% translate "These results are published, so the marks are locked." %}</p>
         <p class="mt-1 text-sm text-slate-600">
-          A correction needs a scoped unlock, which stays open for 48 hours and creates a new
-          published version rather than overwriting the old one.
+          {% translate "A correction needs a scoped unlock, which stays open for 48 hours and creates a new published version rather than overwriting the old one." %}
         </p>
         <form method="post" action="{% url 'examinations:request_unlock' schedule.pk %}" class="mt-3 flex flex-wrap items-end gap-3">
           {% csrf_token %}
-          <div class="flex-1"><label class="label">Reason for the correction</label>
-            <input name="reason" required maxlength="300" class="input" placeholder="e.g. answer script re-totalled"></div>
-          <button class="btn-secondary">Request unlock</button>
+          <div class="flex-1"><label class="label">{% translate "Reason for the correction" %}</label>
+            <input name="reason" required maxlength="300" class="input" placeholder="{% translate "e.g. answer script re-totalled" %}"></div>
+          <button class="btn-secondary">{% translate "Request unlock" %}</button>
         </form>
       </div>
     </div>
@@ -64,28 +63,28 @@
     <input type="hidden" name="section" value="{{ section.pk }}">
     {% if not locked %}
       <div class="hidden border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-900" data-draft-banner>
-        <span>Marks typed on this computer at <span data-draft-time></span> were never saved.</span>
-        <button type="button" class="btn-secondary btn-sm ml-2" data-draft-restore>Put them back</button>
-        <button type="button" class="btn-secondary btn-sm ml-1" data-draft-discard>Discard them</button>
+        <span>{% blocktranslate trimmed %}Marks typed on this computer at <span data-draft-time></span> were never saved.{% endblocktranslate %}</span>
+        <button type="button" class="btn-secondary btn-sm ml-2" data-draft-restore>{% translate "Put them back" %}</button>
+        <button type="button" class="btn-secondary btn-sm ml-1" data-draft-discard>{% translate "Discard them" %}</button>
       </div>
       <div class="flex flex-wrap items-center gap-2 border-b border-slate-200 px-5 py-3">
-        <span class="text-sm text-slate-500">For the whole class:</span>
-        <button type="button" class="btn-secondary btn-sm" data-check-all="absent">Mark all absent</button>
-        <button type="button" class="btn-secondary btn-sm" data-check-all="present">Clear all absences</button>
-        <span class="text-xs text-slate-500">Useful for a paper nobody sat, then correct the few who did.</span>
+        <span class="text-sm text-slate-500">{% translate "For the whole class:" %}</span>
+        <button type="button" class="btn-secondary btn-sm" data-check-all="absent">{% translate "Mark all absent" %}</button>
+        <button type="button" class="btn-secondary btn-sm" data-check-all="present">{% translate "Clear all absences" %}</button>
+        <span class="text-xs text-slate-500">{% translate "Useful for a paper nobody sat, then correct the few who did." %}</span>
       </div>
     {% endif %}
     <div class="overflow-x-auto">
       <table class="table">
         <thead>
-          <tr><th class="w-16">Roll</th><th>Student</th>
+          <tr><th class="w-16">{% translate "Roll" %}</th><th>{% translate "Student" %}</th>
             {% if components %}
-              {% for c in components %}<th class="w-28">{{ c.name }}<span class="block text-[11px] font-normal text-slate-500">out of {{ c.full_marks|floatformat:"-2" }} &middot; pass {{ c.pass_marks|floatformat:"-2" }}</span></th>{% endfor %}
-              <th class="w-20 text-right">Total</th>
+              {% for c in components %}<th class="w-28">{{ c.name }}<span class="block text-[11px] font-normal text-slate-500">{% blocktranslate with full=c.full_marks|mark pass_mark=c.pass_marks|mark trimmed %}out of {{ full }} · pass {{ pass_mark }}{% endblocktranslate %}</span></th>{% endfor %}
+              <th class="w-20 text-right">{% translate "Total" %}</th>
             {% else %}
-              <th class="w-40">Marks</th>
+              <th class="w-40">{% translate "Marks" %}</th>
             {% endif %}
-            <th class="w-28">Absent</th><th>Problem</th></tr>
+            <th class="w-28">{% translate "Absent" %}</th><th>{% translate "Problem" %}</th></tr>
         </thead>
         <tbody>
           {% for row in rows %}
@@ -114,18 +113,18 @@
                 <label class="inline-flex items-center gap-2 text-sm">
                   <input type="checkbox" name="{{ row.enrollment.pk }}-absent" {% if row.input_absent %}checked{% endif %}
                          class="h-4 w-4 rounded border-slate-300" data-absent {% if locked %}disabled{% endif %}>
-                  Absent
+                  {% translate "Absent" %}
                 </label>
-                <label class="ml-3 inline-flex items-center gap-2 text-sm" title="Excused by the school: left out of the result">
+                <label class="ml-3 inline-flex items-center gap-2 text-sm" title="{% translate "Excused by the school: left out of the result" %}">
                   <input type="checkbox" name="{{ row.enrollment.pk }}-exempt" {% if row.input_exempt %}checked{% endif %}
                          class="h-4 w-4 rounded border-slate-300" {% if locked or not may_exempt %}disabled{% endif %}>
-                  Exempt
+                  {% translate "Exempt" %}
                 </label>
               </td>
               <td class="text-sm text-red-700">{{ row.error|default:"" }}</td>
             </tr>
           {% empty %}
-            <tr><td colspan="{% if components %}{{ components|length|add:5 }}{% else %}5{% endif %}">{% include "components/empty.html" with message="No student in this section sits this paper in the exam's year." %}</td></tr>
+            <tr><td colspan="{% if components %}{{ components|length|add:5 }}{% else %}5{% endif %}">{% translate "No student in this section sits this paper in the exam's year." as nothing %}{% include "components/empty.html" with message=nothing %}</td></tr>
           {% endfor %}
         </tbody>
       </table>
@@ -133,14 +132,14 @@
     {% if rows and not locked %}
       <div class="flex items-center justify-between border-t border-slate-200 px-5 py-4">
         <p class="text-xs text-slate-500">
-          Everything is checked before anything is saved, so a single bad entry never leaves the class half marked.
-          Clearing a row takes that mark back to "not entered"; only rows you changed are saved.
+          {% blocktranslate trimmed %}Everything is checked before anything is saved, so a single bad entry never leaves the class half marked. Clearing a row takes that mark back to "not entered"; only rows you changed are saved.{% endblocktranslate %}
         </p>
-        <button class="btn-primary">Save all marks</button>
+        <button class="btn-primary">{% translate "Save all marks" %}</button>
       </div>
     {% endif %}
   </form>
 {% else %}
-  {% include "components/empty.html" with message="Choose an exam paper and a section to enter marks." %}
+  {% translate "Choose an exam paper and a section to enter marks." as nothing %}
+  {% include "components/empty.html" with message=nothing %}
 {% endif %}
 {% endblock %}

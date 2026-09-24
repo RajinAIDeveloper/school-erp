@@ -118,9 +118,11 @@ def _report_download(request, sheet, report, fmt):
         subtitle = " · ".join(value for _label, value in report["about"][1:4])
         if report["note"]:
             subtitle += " · " + report["note"]
+        from django.utils.translation import gettext
+
         return table_document(
             request.school,
-            f"{report['title']} - {sheet['exam'].name}",
+            f"{gettext(report['title'])} - {sheet['exam'].name}",
             report["headers"],
             report["rows"],
             subtitle=subtitle,

@@ -469,3 +469,483 @@ msgstr "পরীক্ষা সিরিজ"
 
 msgid "Highest"
 msgstr "সর্বোচ্চ"
+
+msgid "Monthly report"
+msgstr "মাসিক প্রতিবেদন"
+
+msgid "Today's summary"
+msgstr "আজকের সারসংক্ষেপ"
+
+msgid "Check in / out"
+msgstr "আগমন / প্রস্থান"
+
+msgid "Load register"
+msgstr "হাজিরা খাতা খুলুন"
+
+msgid "Choose a section to open its register."
+msgstr "হাজিরা খাতা খুলতে একটি শাখা বেছে নিন।"
+
+msgid "All present"
+msgstr "সবাই উপস্থিত"
+
+msgid "All absent"
+msgstr "সবাই অনুপস্থিত"
+
+msgid "Clear"
+msgstr "মুছে ফেলুন"
+
+msgid "Name"
+msgstr "নাম"
+
+msgid "In"
+msgstr "আগমন"
+
+msgid "Out"
+msgstr "প্রস্থান"
+
+msgid "Leaving a row blank records nothing for that person."
+msgstr "কোনো সারি ফাঁকা রাখলে সেই ব্যক্তির জন্য কিছুই লিপিবদ্ধ হবে না।"
+
+msgid "Save attendance"
+msgstr "উপস্থিতি সংরক্ষণ করুন"
+
+msgid "You have read-only access to this register."
+msgstr "এই হাজিরা খাতা আপনি শুধু দেখতে পারবেন।"
+
+msgid "Choose a date and section to load the register. If it stays empty, check that students are enrolled in that section."
+msgstr "হাজিরা খাতা খুলতে তারিখ ও শাখা বেছে নিন। খাতা ফাঁকা থাকলে দেখুন শাখাটিতে শিক্ষার্থী ভর্তি আছে কিনা।"
+
+msgid "This register is more than %(days)s day(s) old, so only the school's managers can change it."
+msgstr "এই হাজিরা খাতা %(days)s দিনের বেশি পুরোনো, তাই শুধু বিদ্যালয়ের ব্যবস্থাপকরা এটি বদলাতে পারবেন।"
+
+msgid "%(n)s staff on this register"
+msgstr "এই খাতায় %(n)s জন কর্মী"
+
+msgid "%(n)s student(s) on this register"
+msgstr "এই খাতায় %(n)s জন শিক্ষার্থী"
+
+msgid "Not recorded"
+msgstr "লিপিবদ্ধ হয়নি"
+
+msgid "Attendance saved."
+msgstr "উপস্থিতি সংরক্ষিত হয়েছে।"
+
+msgid "Staff attendance"
+msgstr "কর্মচারী উপস্থিতি"
+
+msgid "Student attendance"
+msgstr "শিক্ষার্থী উপস্থিতি"
+
+msgid "Section"
+msgstr "শাখা"
+
+msgid "Unlock requests"
+msgstr "আনলকের অনুরোধ"
+
+msgid "Comments"
+msgstr "মন্তব্য"
+
+msgid "Grade estimates"
+msgstr "গ্রেড প্রাক্কলন"
+
+msgid "Load class"
+msgstr "শ্রেণি খুলুন"
+
+msgid "Exam hall:"
+msgstr "পরীক্ষার হল:"
+
+msgid "Blank mark sheet (PDF)"
+msgstr "ফাঁকা নম্বরপত্র (পিডিএফ)"
+
+msgid "Marks register (PDF)"
+msgstr "নম্বর রেজিস্টার (পিডিএফ)"
+
+msgid "Import from Excel"
+msgstr "এক্সেল থেকে আনুন"
+
+msgid "These results are published, so the marks are locked."
+msgstr "এই ফলাফল প্রকাশিত, তাই নম্বর লক করা আছে।"
+
+msgid "A correction needs a scoped unlock, which stays open for 48 hours and creates a new published version rather than overwriting the old one."
+msgstr "সংশোধনের জন্য নির্দিষ্ট আনলক লাগবে; এটি ৪৮ ঘণ্টা খোলা থাকে এবং পুরোনো সংস্করণ মুছে না দিয়ে নতুন প্রকাশিত সংস্করণ তৈরি করে।"
+
+msgid "Reason for the correction"
+msgstr "সংশোধনের কারণ"
+
+msgid "e.g. answer script re-totalled"
+msgstr "যেমন: উত্তরপত্রের নম্বর আবার যোগ করা হয়েছে"
+
+msgid "Request unlock"
+msgstr "আনলকের অনুরোধ করুন"
+
+msgid "Put them back"
+msgstr "ফিরিয়ে আনুন"
+
+msgid "Discard them"
+msgstr "বাদ দিন"
+
+msgid "For the whole class:"
+msgstr "পুরো শ্রেণির জন্য:"
+
+msgid "Mark all absent"
+msgstr "সবাইকে অনুপস্থিত করুন"
+
+msgid "Clear all absences"
+msgstr "সব অনুপস্থিতি মুছুন"
+
+msgid "Useful for a paper nobody sat, then correct the few who did."
+msgstr "কেউ পরীক্ষা না দিলে কাজে লাগে; তারপর যারা দিয়েছে শুধু তাদেরটা ঠিক করুন।"
+
+msgid "Marks"
+msgstr "নম্বর"
+
+msgid "Problem"
+msgstr "সমস্যা"
+
+msgid "Excused by the school: left out of the result"
+msgstr "বিদ্যালয় অব্যাহতি দিয়েছে: ফলাফলে গণনা হবে না"
+
+msgid "Exempt"
+msgstr "অব্যাহতি"
+
+msgid "No student in this section sits this paper in the exam's year."
+msgstr "এই শিক্ষাবর্ষে এই শাখার কোনো শিক্ষার্থী এই পত্রের পরীক্ষা দেয় না।"
+
+msgid "Save all marks"
+msgstr "সব নম্বর সংরক্ষণ করুন"
+
+msgid "Choose an exam paper and a section to enter marks."
+msgstr "নম্বর তুলতে পরীক্ষার পত্র ও শাখা বেছে নিন।"
+
+msgid "%(exam)s · full marks %(full)s · pass %(pass_mark)s"
+msgstr "%(exam)s · পূর্ণ নম্বর %(full)s · পাস নম্বর %(pass_mark)s"
+
+msgid "%(entered)s of %(total)s entered"
+msgstr "%(total)s জনের মধ্যে %(entered)s জনের নম্বর তোলা হয়েছে"
+
+msgid "%(missing)s still blank"
+msgstr "%(missing)s জনের বাকি"
+
+msgid "Class average %(average)s/%(full)s"
+msgstr "শ্রেণির গড় %(average)s/%(full)s"
+
+msgid "%(passed)s of %(sat)s above the pass mark"
+msgstr "%(sat)s জনের মধ্যে %(passed)s জন পাস নম্বরের উপরে"
+
+msgid "Marks typed on this computer at <span data-draft-time></span> were never saved."
+msgstr "এই কম্পিউটারে <span data-draft-time></span> সময়ে তোলা নম্বর সংরক্ষণ করা হয়নি।"
+
+msgid "out of %(full)s · pass %(pass_mark)s"
+msgstr "পূর্ণ নম্বর %(full)s · পাস %(pass_mark)s"
+
+msgid "Everything is checked before anything is saved, so a single bad entry never leaves the class half marked. Clearing a row takes that mark back to \"not entered\"; only rows you changed are saved."
+msgstr "সংরক্ষণের আগে সব যাচাই করা হয়, তাই একটি ভুল এন্ট্রির কারণে শ্রেণির নম্বর আধাআধি সংরক্ষিত হয়ে থাকে না। কোনো সারি মুছে দিলে সেই নম্বর আবার \"তোলা হয়নি\" অবস্থায় ফিরে যায়; শুধু আপনার বদলানো সারিগুলো সংরক্ষিত হয়।"
+
+msgid "Exam paper"
+msgstr "পরীক্ষার পত্র"
+
+msgid "Saved %(count)s change(s)."
+msgstr "%(count)sটি পরিবর্তন সংরক্ষিত হয়েছে।"
+
+msgid "Nothing had changed, so nothing was saved."
+msgstr "কিছুই বদলায়নি, তাই কিছু সংরক্ষণ করা হয়নি।"
+
+msgid "Nothing was saved. Fix the rows marked below and submit again."
+msgstr "কিছুই সংরক্ষণ করা হয়নি। নিচে চিহ্নিত সারিগুলো ঠিক করে আবার জমা দিন।"
+
+msgid "Mark entry"
+msgstr "নম্বর এন্ট্রি"
+
+msgid "Back to the mark grid"
+msgstr "নম্বর তালিকায় ফিরে যান"
+
+msgid "1. Download the class template"
+msgstr "১. শ্রেণির টেমপ্লেট ডাউনলোড করুন"
+
+msgid "One row per student, with any marks already entered. Type the marks in Excel, write ABS for an absent student, and leave a row blank to keep that student's mark as it is. Keep the Roll and Student ID columns: rows are matched by them, never by name."
+msgstr "প্রতি শিক্ষার্থীর জন্য একটি সারি, আগে তোলা নম্বরসহ। এক্সেলে নম্বর লিখুন, অনুপস্থিত শিক্ষার্থীর জন্য ABS লিখুন, আর কারও নম্বর অপরিবর্তিত রাখতে তার সারি ফাঁকা রাখুন। রোল ও শিক্ষার্থী আইডি কলাম রেখে দিন: সারি মেলানো হয় এগুলো দিয়ে, কখনো নাম দিয়ে নয়।"
+
+msgid "Excel template"
+msgstr "এক্সেল টেমপ্লেট"
+
+msgid "CSV template"
+msgstr "CSV টেমপ্লেট"
+
+msgid "2. Upload it and check"
+msgstr "২. আপলোড করে যাচাই করুন"
+
+msgid "Nothing is saved yet: you will see every change first."
+msgstr "এখনই কিছু সংরক্ষণ হবে না: আগে প্রতিটি পরিবর্তন দেখতে পাবেন।"
+
+msgid "Check the file"
+msgstr "ফাইল যাচাই করুন"
+
+msgid "Fix these in the file and upload it again. Nothing will be saved while any remain."
+msgstr "ফাইলে এগুলো ঠিক করে আবার আপলোড করুন। একটিও বাকি থাকলে কিছু সংরক্ষণ হবে না।"
+
+msgid "Row"
+msgstr "সারি"
+
+msgid "Now"
+msgstr "এখন"
+
+msgid "In the file"
+msgstr "ফাইলে"
+
+msgid "Change"
+msgstr "পরিবর্তন"
+
+msgid "New"
+msgstr "নতুন"
+
+msgid "Changed"
+msgstr "পরিবর্তিত"
+
+msgid "Unchanged"
+msgstr "অপরিবর্তিত"
+
+msgid "The file has no marks in it."
+msgstr "ফাইলে কোনো নম্বর নেই।"
+
+msgid "Saved all together, as on the mark grid: if any row is refused, none is saved."
+msgstr "নম্বর তালিকার মতোই সব একসাথে সংরক্ষিত হয়: কোনো সারি বাতিল হলে কিছুই সংরক্ষিত হয় না।"
+
+msgid "Save 1 mark"
+msgstr "১টি নম্বর সংরক্ষণ করুন"
+
+msgid "Save %(to_save)s marks"
+msgstr "%(to_save)sটি নম্বর সংরক্ষণ করুন"
+
+msgid "%(exam)s · full marks %(full)s"
+msgstr "%(exam)s · পূর্ণ নম্বর %(full)s"
+
+msgid "%(n)s parts"
+msgstr "%(n)sটি অংশ"
+
+msgid "%(n)s student(s) sit this paper"
+msgstr "এই পত্রে %(n)s জন শিক্ষার্থী পরীক্ষা দেয়"
+
+msgid "3. What %(filename)s would change"
+msgstr "৩. %(filename)s যা বদলাবে"
+
+msgid "%(new)s new · %(changed)s changed · %(unchanged)s unchanged"
+msgstr "%(new)sটি নতুন · %(changed)sটি পরিবর্তিত · %(unchanged)sটি অপরিবর্তিত"
+
+msgid "Import marks"
+msgstr "নম্বর আমদানি"
+
+msgid "Choose the filled-in template to upload."
+msgstr "আপলোডের জন্য পূরণ করা টেমপ্লেট বেছে নিন।"
+
+msgid "Nothing was waiting to be saved. Upload the file again."
+msgstr "সংরক্ষণের অপেক্ষায় কিছু ছিল না। ফাইলটি আবার আপলোড করুন।"
+
+msgid "Nothing was saved."
+msgstr "কিছুই সংরক্ষণ করা হয়নি।"
+
+msgid "Imported %(count)s change(s) from the file."
+msgstr "ফাইল থেকে %(count)sটি পরিবর্তন আনা হয়েছে।"
+
+msgid "Subject comments"
+msgstr "বিষয়ভিত্তিক মন্তব্য"
+
+msgid "Class teacher comments"
+msgstr "শ্রেণি শিক্ষকের মন্তব্য"
+
+msgid "Class teacher's comments"
+msgstr "শ্রেণি শিক্ষকের মন্তব্য"
+
+msgid "This exam's results are published, so its comments are fixed."
+msgstr "এই পরীক্ষার ফলাফল প্রকাশিত, তাই মন্তব্য আর বদলানো যাবে না।"
+
+msgid "Comment"
+msgstr "মন্তব্য"
+
+msgid "No students sit this paper in this section."
+msgstr "এই শাখার কোনো শিক্ষার্থী এই পত্রের পরীক্ষা দেয় না।"
+
+msgid "Save comments"
+msgstr "মন্তব্য সংরক্ষণ করুন"
+
+msgid "%(exam)s · printed on each student's report card and frozen when results are published."
+msgstr "%(exam)s · প্রত্যেক শিক্ষার্থীর রিপোর্ট কার্ডে ছাপা হয় এবং ফলাফল প্রকাশের সময় স্থির হয়ে যায়।"
+
+msgid "Up to %(limit)s characters each. Clearing a row removes its comment."
+msgstr "প্রতিটিতে সর্বোচ্চ %(limit)s অক্ষর। কোনো সারি মুছে দিলে তার মন্তব্য মুছে যায়।"
+
+msgid "Nothing had changed."
+msgstr "কিছুই বদলায়নি।"
+
+msgid "Nothing was saved. Fix the rows marked below and save again."
+msgstr "কিছুই সংরক্ষণ করা হয়নি। নিচে চিহ্নিত সারিগুলো ঠিক করে আবার সংরক্ষণ করুন।"
+
+msgid "ATL"
+msgstr "ATL"
+
+msgid "The school is closed today, so no register is expected."
+msgstr "আজ বিদ্যালয় বন্ধ, তাই কোনো হাজিরা নেওয়ার প্রয়োজন নেই।"
+
+msgid "Your account is not linked to a staff record yet, so there is nothing personal to show. Ask the school office to link it."
+msgstr "আপনার অ্যাকাউন্ট এখনো কোনো কর্মী-তথ্যের সাথে যুক্ত নয়, তাই ব্যক্তিগত কিছু দেখানোর নেই। যুক্ত করতে বিদ্যালয়ের অফিসে বলুন।"
+
+msgid "Registers"
+msgstr "হাজিরা খাতা"
+
+msgid "Take one"
+msgstr "হাজিরা নিন"
+
+msgid "Complete"
+msgstr "সম্পূর্ণ"
+
+msgid "Finish"
+msgstr "শেষ করুন"
+
+msgid "Take now"
+msgstr "এখন নিন"
+
+msgid "The school is closed today, so there is no register to take."
+msgstr "আজ বিদ্যালয় বন্ধ, তাই হাজিরা নেওয়ার কিছু নেই।"
+
+msgid "No sections are assigned to you yet."
+msgstr "আপনাকে এখনো কোনো শাখা দেওয়া হয়নি।"
+
+msgid "My day"
+msgstr "আমার দিন"
+
+msgid "Full routine"
+msgstr "পুরো রুটিন"
+
+msgid "Nothing on your routine today."
+msgstr "আজ আপনার রুটিনে কিছু নেই।"
+
+msgid "Marks still to enter"
+msgstr "যেসব নম্বর তোলা বাকি"
+
+msgid "Entered"
+msgstr "তোলা হয়েছে"
+
+msgid "Enter"
+msgstr "তুলুন"
+
+msgid "Nothing outstanding. Every paper assigned to you is marked."
+msgstr "কিছু বাকি নেই। আপনার সব পত্রের নম্বর তোলা হয়েছে।"
+
+msgid "%(recorded)s of %(expected)s recorded"
+msgstr "%(expected)s জনের মধ্যে %(recorded)s জন লিপিবদ্ধ"
+
+msgid "My sections"
+msgstr "আমার শাখা"
+
+msgid "assigned to you"
+msgstr "আপনার দায়িত্বে"
+
+msgid "Registers today"
+msgstr "আজকের হাজিরা"
+
+msgid "Closed"
+msgstr "বন্ধ"
+
+msgid "the school is closed today"
+msgstr "আজ বিদ্যালয় বন্ধ"
+
+msgid "complete"
+msgstr "সম্পূর্ণ"
+
+msgid "nothing to take"
+msgstr "নেওয়ার কিছু নেই"
+
+msgid "Papers awaiting marks"
+msgstr "নম্বর বাকি এমন পত্র"
+
+msgid "unpublished exams"
+msgstr "অপ্রকাশিত পরীক্ষা"
+
+msgid "Periods today"
+msgstr "আজকের পিরিয়ড"
+
+msgid "on your routine"
+msgstr "আপনার রুটিনে"
+
+msgid "%(subject)s (4th subject)"
+msgstr "%(subject)s (চতুর্থ বিষয়)"
+
+msgid "%(subject)s (both papers, 4th subject)"
+msgstr "%(subject)s (উভয় পত্র, চতুর্থ বিষয়)"
+
+msgid "%(subject)s (both papers)"
+msgstr "%(subject)s (উভয় পত্র)"
+
+msgid "Examination"
+msgstr "পরীক্ষা"
+
+msgid "GPA"
+msgstr "জিপিএ"
+
+msgid "the school's report verification page"
+msgstr "বিদ্যালয়ের রিপোর্ট যাচাইয়ের পাতা"
+
+msgid "Scan the code, or open %(where)s, to confirm this card is genuine and current."
+msgstr "কার্ডটি আসল ও হালনাগাদ কিনা নিশ্চিত হতে কোডটি স্ক্যান করুন, অথবা %(where)s খুলুন।"
+
+msgid "Total (%(full)s)"
+msgstr "মোট (%(full)s)"
+
+msgid "Marks (%(full)s)"
+msgstr "নম্বর (%(full)s)"
+
+msgid "Date to be set"
+msgstr "তারিখ ঠিক হয়নি"
+
+msgid "%(full)s (pass %(pass_mark)s)"
+msgstr "%(full)s (পাস %(pass_mark)s)"
+
+msgid "Room"
+msgstr "কক্ষ"
+
+msgid "Examiner"
+msgstr "পরীক্ষক"
+
+msgid "Checked by"
+msgstr "নিরীক্ষক"
+
+msgid "Marks register"
+msgstr "নম্বর রেজিস্টার"
+
+msgid "Mark collection sheet"
+msgstr "নম্বর সংগ্রহপত্র"
+
+msgid "Marks as entered in the system. Check each against the answer script."
+msgstr "সিস্টেমে তোলা নম্বর। প্রতিটি উত্তরপত্রের সাথে মিলিয়ে দেখুন।"
+
+msgid "Write ABS for a student who was absent. Enter the marks from this sheet on the mark grid, or type them into the Excel template and import it."
+msgstr "অনুপস্থিত শিক্ষার্থীর জন্য ABS লিখুন। এই পত্র থেকে নম্বর তালিকায় নম্বর তুলুন, অথবা এক্সেল টেমপ্লেটে লিখে আমদানি করুন।"
+
+msgid "4th subject"
+msgstr "চতুর্থ বিষয়"
+
+msgid "%(subject)s marks"
+msgstr "%(subject)s নম্বর"
+
+msgid "%(subject)s LG"
+msgstr "%(subject)s লেটার গ্রেড"
+
+msgid "%(subject)s GP"
+msgstr "%(subject)s গ্রেড পয়েন্ট"
+
+msgid "GPA without 4th"
+msgstr "চতুর্থ বিষয় ছাড়া জিপিএ"
+
+msgid "Tabulation sheet"
+msgstr "টেবুলেশন শিট"
+
+msgid "Merit list"
+msgstr "মেধা তালিকা"
+
+msgid "Grade distribution"
+msgstr "গ্রেড বিন্যাস"
+
+msgid "Failed subjects"
+msgstr "অকৃতকার্য বিষয়"
+
+msgid "Near the pass mark"
+msgstr "পাস নম্বরের কাছাকাছি"

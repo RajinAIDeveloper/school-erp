@@ -1,26 +1,26 @@
 {% extends "layouts/base.html" %}
-{% load erp %}
+{% load erp i18n %}
 {% block header_actions %}
-  <a href="{% if staff %}{% url 'attendance:staff_report' %}{% else %}{% url 'attendance:student_report' %}{% endif %}" class="btn-secondary btn-sm">Monthly report</a>
-  {% if not staff %}<a href="{% url 'attendance:daily_summary' %}" class="btn-secondary btn-sm">Today's summary</a>{% endif %}
-  {% if perms.attendance.view_leaverequest %}<a href="{% url 'attendance:leave_list' %}" class="btn-secondary btn-sm">Leave</a>{% endif %}
+  <a href="{% if staff %}{% url 'attendance:staff_report' %}{% else %}{% url 'attendance:student_report' %}{% endif %}" class="btn-secondary btn-sm">{% translate "Monthly report" %}</a>
+  {% if not staff %}<a href="{% url 'attendance:daily_summary' %}" class="btn-secondary btn-sm">{% translate "Today's summary" %}</a>{% endif %}
+  {% if perms.attendance.view_leaverequest %}<a href="{% url 'attendance:leave_list' %}" class="btn-secondary btn-sm">{% translate "Leave" %}</a>{% endif %}
   {% if staff and current_school.staff_self_checkin and user.employee_profile %}
     <form method="post" action="{% url 'attendance:check_in' %}" class="inline">{% csrf_token %}
-      <button class="btn-success btn-sm">Check in / out</button></form>
+      <button class="btn-success btn-sm">{% translate "Check in / out" %}</button></form>
   {% endif %}
 {% endblock %}
 {% block content %}
 {% if closed_days %}
   <div class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-    This register is more than {{ closed_days }} day{{ closed_days|pluralize }} old, so only the school's managers can change it.
+    {% blocktranslate with days=closed_days trimmed %}This register is more than {{ days }} day(s) old, so only the school's managers can change it.{% endblocktranslate %}
   </div>
 {% endif %}
 <form method="get" class="card card-body mb-4">
   <div class="grid gap-4 sm:grid-cols-3">{% for field in filter_form %}{% render_field field %}{% endfor %}</div>
-  <div class="mt-4"><button class="btn-secondary">Load register</button></div>
+  <div class="mt-4"><button class="btn-secondary">{% translate "Load register" %}</button></div>
 </form>
 {% if not staff and not filter_form.is_bound %}
-  <p class="mb-4 text-sm text-slate-600">Choose a section to open its register.</p>
+  <p class="mb-4 text-sm text-slate-600">{% translate "Choose a section to open its register." %}</p>
 {% endif %}
 
 {% if rows %}
@@ -31,11 +31,11 @@
 
   {% if editable %}
   <div class="card-header">
-    <p class="text-sm text-slate-600">{{ rows|length }} {% if staff %}staff{% else %}student{% endif %}{{ rows|length|pluralize }} on this register</p>
+    <p class="text-sm text-slate-600">{% with n=rows|length %}{% if staff %}{% blocktranslate trimmed %}{{ n }} staff on this register{% endblocktranslate %}{% else %}{% blocktranslate trimmed %}{{ n }} student(s) on this register{% endblocktranslate %}{% endif %}{% endwith %}</p>
     <div class="flex flex-wrap gap-2">
-      <button type="button" class="btn-secondary btn-sm" data-mark-all="present">All present</button>
-      <button type="button" class="btn-secondary btn-sm" data-mark-all="absent">All absent</button>
-      <button type="button" class="btn-secondary btn-sm" data-mark-all="">Clear</button>
+      <button type="button" class="btn-secondary btn-sm" data-mark-all="present">{% translate "All present" %}</button>
+      <button type="button" class="btn-secondary btn-sm" data-mark-all="absent">{% translate "All absent" %}</button>
+      <button type="button" class="btn-secondary btn-sm" data-mark-all="">{% translate "Clear" %}</button>
     </div>
   </div>
   {% endif %}
@@ -44,8 +44,8 @@
     <table class="table">
       <thead>
         <tr>
-          <th class="w-12">#</th><th>Name</th><th>Status</th><th>Remarks</th>
-          {% if staff %}<th>In</th><th>Out</th>{% endif %}
+          <th class="w-12">#</th><th>{% translate "Name" %}</th><th>{% translate "Status" %}</th><th>{% translate "Remarks" %}</th>
+          {% if staff %}<th>{% translate "In" %}</th><th>{% translate "Out" %}</th>{% endif %}
         </tr>
       </thead>
       <tbody>
@@ -69,7 +69,7 @@
                     {% elif value == 'leave' %}peer-checked:bg-sky-100 peer-checked:text-sky-800
                     {% elif value == 'half_day' %}peer-checked:bg-amber-100 peer-checked:text-amber-800
                     {% else %}peer-checked:bg-slate-200 peer-checked:text-slate-700{% endif %}">
-                    {{ label|default:"—" }}
+                    {% if label %}{% translate label %}{% else %}—{% endif %}
                   </span>
                 </label>
               {% endfor %}
@@ -88,14 +88,15 @@
 
   {% if editable %}
     <div class="flex items-center justify-between border-t border-slate-200 px-5 py-4">
-      <p class="text-xs text-slate-500">Leaving a row blank records nothing for that person.</p>
-      <button class="btn-primary">Save attendance</button>
+      <p class="text-xs text-slate-500">{% translate "Leaving a row blank records nothing for that person." %}</p>
+      <button class="btn-primary">{% translate "Save attendance" %}</button>
     </div>
   {% else %}
-    <p class="border-t border-slate-200 px-5 py-3 text-sm text-slate-500">You have read-only access to this register.</p>
+    <p class="border-t border-slate-200 px-5 py-3 text-sm text-slate-500">{% translate "You have read-only access to this register." %}</p>
   {% endif %}
 </form>
 {% else %}
-  {% include "components/empty.html" with message="Choose a date and section to load the register. If it stays empty, check that students are enrolled in that section." %}
+  {% translate "Choose a date and section to load the register. If it stays empty, check that students are enrolled in that section." as nothing %}
+  {% include "components/empty.html" with message=nothing %}
 {% endif %}
 {% endblock %}

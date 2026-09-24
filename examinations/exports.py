@@ -11,6 +11,8 @@ which filter it covers, and every percentage says what it is a percentage of.
 from collections import Counter
 from decimal import Decimal
 
+from django.utils.translation import gettext
+
 from .grading import headline
 from .rulebooks import rulebook
 from .services import assign_ranks
@@ -152,14 +154,19 @@ def tabulation(rows):
         for unit in row.get("subjects") or []:
             if unit["name"] not in subjects:
                 subjects.append(unit["name"])
-    headers = ["Roll", "Student", "Group", "4th subject"]
+    headers = [gettext("Roll"), gettext("Student"), gettext("Group"), gettext("4th subject")]
     for name in subjects:
-        headers += [f"{name} marks", f"{name} LG", f"{name} GP"]
-    headers += ["GPA", "GPA without 4th", "Result"]
+        headers += [
+            gettext("%(subject)s marks") % {"subject": name},
+            gettext("%(subject)s LG") % {"subject": name},
+            gettext("%(subject)s GP") % {"subject": name},
+        ]
+    headers += [gettext("GPA"), gettext("GPA without 4th"), gettext("Result")]
     body = []
     for row in sorted(rows, key=lambda r: (r["section"], r["roll"])):
         by_name = {unit["name"]: unit for unit in row.get("subjects") or []}
-        line = [row["roll"], row["student"], row.get("group", ""), row.get("fourth_subject", "")]
+        group = row.get("group", "")
+        line = [row["roll"], row["student"], gettext(group) if group else "", row.get("fourth_subject", "")]
         for name in subjects:
             unit = by_name.get(name)
             if unit is None:
@@ -170,7 +177,8 @@ def tabulation(rows):
                 line += ["ABS", unit["letter"], unit["grade_point"]]
             else:
                 line += [unit["score"], unit["letter"], unit["grade_point"]]
-        line += [row.get("gpa") or "", row.get("gpa_without_fourth") or "", row.get("result") or ""]
+        result = row.get("result") or ""
+        line += [row.get("gpa") or "", row.get("gpa_without_fourth") or "", gettext(result) if result else ""]
         body.append(line)
     return headers, body
 

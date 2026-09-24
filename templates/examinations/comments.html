@@ -1,26 +1,26 @@
 {% extends "layouts/base.html" %}
-{% load erp %}
+{% load erp i18n %}
 {% block header_actions %}
-  {% if overall %}<a href="{% url 'examinations:comments' %}" class="btn-secondary btn-sm">Subject comments</a>
-  {% else %}<a href="{% url 'examinations:comments' %}?overall=1" class="btn-secondary btn-sm">Class teacher comments</a>{% endif %}
-  {% if schedule and section %}<a href="{% url 'examinations:marks' %}?schedule={{ schedule.pk }}&section={{ section.pk }}" class="btn-secondary btn-sm">Marks</a>{% endif %}
+  {% if overall %}<a href="{% url 'examinations:comments' %}" class="btn-secondary btn-sm">{% translate "Subject comments" %}</a>
+  {% else %}<a href="{% url 'examinations:comments' %}?overall=1" class="btn-secondary btn-sm">{% translate "Class teacher comments" %}</a>{% endif %}
+  {% if schedule and section %}<a href="{% url 'examinations:marks' %}?schedule={{ schedule.pk }}&section={{ section.pk }}" class="btn-secondary btn-sm">{% translate "Marks" %}</a>{% endif %}
 {% endblock %}
 {% block content %}
 <form method="get" class="card card-body mb-4">
   {% if overall %}<input type="hidden" name="overall" value="1">{% endif %}
   <div class="grid gap-4 sm:grid-cols-2">{% for field in selector %}{% render_field field %}{% endfor %}</div>
-  <div class="mt-4"><button class="btn-secondary">Load class</button></div>
+  <div class="mt-4"><button class="btn-secondary">{% translate "Load class" %}</button></div>
 </form>
 
 {% if section %}
   <div class="mb-4 rounded-lg border border-slate-200 bg-white px-5 py-3">
-    <p class="font-semibold">{% if schedule %}{{ schedule.subject }}{% else %}Class teacher's comments{% endif %} &middot; {{ section }}</p>
-    <p class="text-sm text-slate-500">{{ exam }} &middot; printed on each student's report card and frozen when results are published.</p>
+    <p class="font-semibold">{% if schedule %}{{ schedule.subject }}{% else %}{% translate "Class teacher's comments" %}{% endif %} &middot; {{ section }}</p>
+    <p class="text-sm text-slate-500">{% blocktranslate trimmed %}{{ exam }} · printed on each student's report card and frozen when results are published.{% endblocktranslate %}</p>
   </div>
 
   {% if locked %}
     <div class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-      This exam's results are published, so its comments are fixed.
+      {% translate "This exam's results are published, so its comments are fixed." %}
     </div>
   {% endif %}
 
@@ -32,7 +32,7 @@
     <div class="overflow-x-auto">
       <table class="table">
         <thead>
-          <tr><th class="w-14">Roll</th><th class="w-48">Student</th>{% if not overall %}<th class="w-28">{{ effort_label }}</th>{% endif %}<th>Comment</th></tr>
+          <tr><th class="w-14">{% translate "Roll" %}</th><th class="w-48">{% translate "Student" %}</th>{% if not overall %}<th class="w-28">{% translate effort_label %}</th>{% endif %}<th>{% translate "Comment" %}</th></tr>
         </thead>
         <tbody>
           {% for row in rows %}
@@ -48,15 +48,15 @@
               </td>
             </tr>
           {% empty %}
-            <tr><td colspan="4">{% include "components/empty.html" with message="No students sit this paper in this section." %}</td></tr>
+            <tr><td colspan="4">{% translate "No students sit this paper in this section." as nothing %}{% include "components/empty.html" with message=nothing %}</td></tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
     {% if rows and not locked %}
       <div class="flex items-center justify-between border-t border-slate-200 px-5 py-4">
-        <p class="text-xs text-slate-500">Up to {{ limit }} characters each. Clearing a row removes its comment.</p>
-        <button class="btn-primary">Save comments</button>
+        <p class="text-xs text-slate-500">{% blocktranslate trimmed %}Up to {{ limit }} characters each. Clearing a row removes its comment.{% endblocktranslate %}</p>
+        <button class="btn-primary">{% translate "Save comments" %}</button>
       </div>
     {% endif %}
   </form>

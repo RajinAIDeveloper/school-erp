@@ -230,17 +230,21 @@ def teacher_dashboard(school, user):
                         }
                     )
 
+    from django.utils.translation import gettext
+
     complete = sum(1 for row in registers if row["state"] == "complete")
     return {
         "kind": "teacher",
         "closed_today": closed_today,
         "tiles": [
-            {"label": "My sections", "value": len(sections), "note": "assigned to you"},
+            {"label": gettext("My sections"), "value": len(sections), "note": gettext("assigned to you")},
             {
-                "label": "Registers today",
-                "value": "Closed" if closed_today else f"{complete}/{len(registers)}",
+                "label": gettext("Registers today"),
+                "value": gettext("Closed") if closed_today else f"{complete}/{len(registers)}",
                 "note": (
-                    "the school is closed today" if closed_today else ("complete" if registers else "nothing to take")
+                    gettext("the school is closed today")
+                    if closed_today
+                    else (gettext("complete") if registers else gettext("nothing to take"))
                 ),
                 "tone": (
                     "muted"
@@ -249,12 +253,12 @@ def teacher_dashboard(school, user):
                 ),
             },
             {
-                "label": "Papers awaiting marks",
+                "label": gettext("Papers awaiting marks"),
                 "value": len(pending_marks),
-                "note": "unpublished exams",
+                "note": gettext("unpublished exams"),
                 "tone": "warn" if pending_marks else "good",
             },
-            {"label": "Periods today", "value": len(today_slots), "note": "on your routine"},
+            {"label": gettext("Periods today"), "value": len(today_slots), "note": gettext("on your routine")},
         ],
         "registers": registers,
         "today_slots": today_slots,
