@@ -1,13 +1,22 @@
 """Employee forms. Salary is only editable by people who run payroll."""
 
 from django import forms
+from django.core.exceptions import ValidationError
 from django.db.models import Q
 
+from core.files import prepare
 from core.forms import SchoolModelForm
 from core.roles import ACCOUNTANT, MANAGERS, STAFF, TEACHER
 from users.models import User
 
 from .models import Employee, EmployeeDocument
+
+DOCUMENT_UPLOADS = (
+    ("cv_document", EmployeeDocument.Category.CV, "CV"),
+    ("academic_document", EmployeeDocument.Category.ACADEMIC, "Academic document"),
+    ("other_document", EmployeeDocument.Category.OTHER, "Other document"),
+)
+DOCUMENT_ACCEPT = ".pdf,.jpg,.jpeg,.png,.docx"
 
 BASE_FIELDS = [
     "employee_id",
@@ -38,13 +47,47 @@ class EmployeeForm(SchoolModelForm):
         label="Create a login when I save this employee",
         help_text="For a new teacher or staff member. The username and temporary password appear once after saving.",
     )
+    cv_document = forms.FileField(
+        required=False,
+        label="CV (optional)",
+        help_text="Upload a CV now, or add it later from the employee's page. PDF, photo or DOCX; up to 10 MB.",
+        widget=forms.FileInput(attrs={"accept": DOCUMENT_ACCEPT}),
+    )
+    academic_document = forms.FileField(
+        required=False,
+        label="Academic document (optional)",
+        help_text="For example, a degree or training certificate. You can add more later.",
+        widget=forms.FileInput(attrs={"accept": DOCUMENT_ACCEPT}),
+    )
+    other_document = forms.FileField(
+        required=False,
+        label="Other document (optional)",
+        help_text="For example, an appointment letter. You can add more later.",
+        widget=forms.FileInput(attrs={"accept": DOCUMENT_ACCEPT}),
+    )
 
     class Meta:
         model = Employee
         fields = ["user", *BASE_FIELDS, "basic_salary"]
 
-    def __init__(self, *args, can_see_salary=True, can_create_login=False, **kwargs):
+    def __init__(self, *args, can_see_salary=True, can_create_login=False, can_upload_documents=False, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["department"].help_text = (
+            "Optional. The team this person works in, such as Academics. "
+            "Add choices under Teachers & Staff → Departments."
+        )
+        self.fields["designation"].help_text = (
+            "Optional. This person's job title, such as Teacher or Assistant Teacher. "
+            "Add choices under Teachers & Staff → Designations. "
+            "Assign a class teacher separately under Basic Settings → Sections."
+        )
+        self.fields["qualification"].help_text = (
+            "Optional. Write a short summary, such as B.Ed or M.Sc (Physics). "
+            "Use the document fields below for certificates or a CV."
+        )
+        if not can_upload_documents:
+            for field, _, _ in DOCUMENT_UPLOADS:
+                self.fields.pop(field)
         login = self.fields["user"]
         login.label = "Existing login"
         login.help_text = "Choose an account you already made. Its saved name and contact details fill in below."
@@ -77,7 +120,17 @@ class EmployeeForm(SchoolModelForm):
             self.fields.pop("create_login")
         if not can_see_salary:
             self.fields.pop("basic_salary", None)
-        self.order_fields(["user", "create_login", *BASE_FIELDS, "basic_salary"])
+        qualification_position = BASE_FIELDS.index("qualification") + 1
+        self.order_fields(
+            [
+                "user",
+                "create_login",
+                *BASE_FIELDS[:qualification_position],
+                *(field for field, _, _ in DOCUMENT_UPLOADS),
+                *BASE_FIELDS[qualification_position:],
+                "basic_salary",
+            ]
+        )
 
     def clean(self):
         data = super().clean()
@@ -97,10 +150,28 @@ class EmployeeForm(SchoolModelForm):
                 self.add_error(field, "Enter this detail here or select an existing login that has it.")
         if login:
             data["create_login"] = False
+        for field, _, _ in DOCUMENT_UPLOADS:
+            upload = data.get(field)
+            if upload:
+                try:
+                    data[field], _ = prepare(upload)
+                except ValidationError as exc:
+                    self.add_error(field, exc)
         return data
 
 
 class EmployeeDocumentForm(SchoolModelForm):
     class Meta:
         model = EmployeeDocument
-        fields = ["title", "file"]
+        fields = ["category", "title", "file"]
+        widgets = {"file": forms.FileInput(attrs={"accept": DOCUMENT_ACCEPT})}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["category"].help_text = "Choose CV, Academic qualification, or Other document."
+        self.fields["title"].help_text = "For example, B.Ed certificate or appointment letter."
+        self.fields["file"].help_text = "PDF, photo or DOCX; up to 10 MB."
+
+    def clean_file(self):
+        content, _ = prepare(self.cleaned_data["file"])
+        return content

@@ -140,6 +140,88 @@ def test_new_employee_and_login_are_created_together(admin_client, erp):
         assert b"only time these passwords are shown" in response.content
 
 
+def test_employee_can_be_created_with_blank_qualification_and_optional_documents(admin_client, erp, settings, tmp_path):
+    settings.MEDIA_ROOT = tmp_path
+    response = admin_client.post(
+        "/employees/new/",
+        {
+            "employee_id": "T-DOC",
+            "employee_type": "teacher",
+            "first_name": "Amina",
+            "gender": "F",
+            "phone": "01712345677",
+            "joining_date": "2026-01-01",
+            "status": "active",
+            "basic_salary": "0",
+            "cv_document": SimpleUploadedFile("cv.pdf", b"%PDF-1.4\nCV"),
+            "academic_document": SimpleUploadedFile("degree.pdf", b"%PDF-1.4\nDegree"),
+        },
+    )
+    assert response.status_code == 302
+    employee = Employee.objects.get(school=erp.school, employee_id="T-DOC")
+    assert employee.qualification == ""
+    documents = {document.category: document for document in employee.documents.all()}
+    assert set(documents) == {EmployeeDocument.Category.CV, EmployeeDocument.Category.ACADEMIC}
+    assert documents[EmployeeDocument.Category.CV].uploaded_by == erp.admin
+    assert b"%PDF-1.4\nCV" == b"".join(
+        admin_client.get(f"/employees/documents/{documents[EmployeeDocument.Category.CV].pk}/").streaming_content
+    )
+
+
+def test_employee_form_rejects_invalid_document_without_saving_employee(admin_client, erp):
+    response = admin_client.post(
+        "/employees/new/",
+        {
+            "employee_id": "T-BAD-DOC",
+            "employee_type": "teacher",
+            "first_name": "Amina",
+            "gender": "F",
+            "phone": "01712345676",
+            "joining_date": "2026-01-01",
+            "status": "active",
+            "basic_salary": "0",
+            "cv_document": SimpleUploadedFile("cv.pdf", b"This is not a PDF"),
+        },
+    )
+    assert response.status_code == 200
+    assert b"not a PDF" in response.content
+    assert not Employee.objects.filter(school=erp.school, employee_id="T-BAD-DOC").exists()
+
+
+def test_documents_work_with_one_step_login_and_later_upload(admin_client, erp, settings, tmp_path):
+    settings.MEDIA_ROOT = tmp_path
+    response = admin_client.post(
+        "/employees/new/",
+        {
+            "employee_id": "T-CV",
+            "employee_type": "teacher",
+            "first_name": "Nadia",
+            "gender": "F",
+            "phone": "01712345675",
+            "joining_date": "2026-01-01",
+            "status": "active",
+            "basic_salary": "0",
+            "create_login": "on",
+            "cv_document": SimpleUploadedFile("cv.pdf", b"%PDF-1.4\nCV"),
+        },
+    )
+    assert response.status_code == 200
+    employee = Employee.objects.get(school=erp.school, employee_id="T-CV")
+    assert employee.user is not None
+    assert employee.documents.filter(category=EmployeeDocument.Category.CV).count() == 1
+
+    response = admin_client.post(
+        f"/employees/{employee.pk}/documents/new/",
+        {
+            "category": EmployeeDocument.Category.OTHER,
+            "title": "Appointment letter",
+            "file": SimpleUploadedFile("letter.pdf", b"%PDF-1.4\nLetter"),
+        },
+    )
+    assert response.status_code == 302
+    assert employee.documents.filter(category=EmployeeDocument.Category.OTHER, title="Appointment letter").exists()
+
+
 def test_employee_form_rejects_other_school_and_wrong_role_logins(erp):
     from employees.forms import EmployeeForm
 

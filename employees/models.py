@@ -97,10 +97,16 @@ class Employee(SchoolScopedModel):
 
 
 class EmployeeDocument(SchoolScopedModel):
-    """Contracts, certificates and letters. Private to staff who manage employees."""
+    """CVs, certificates and other employee files."""
+
+    class Category(models.TextChoices):
+        CV = "cv", "CV"
+        ACADEMIC = "academic", "Academic qualification"
+        OTHER = "other", "Other document"
 
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name="documents")
     title = models.CharField(max_length=150)
+    category = models.CharField(max_length=10, choices=Category.choices, default=Category.OTHER)
     file = models.FileField(upload_to="employees/documents/")
     uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL)
 

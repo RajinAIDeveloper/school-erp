@@ -99,11 +99,13 @@
   </section>
 
   <section class="card">
-    <div class="card-header"><h3 class="font-semibold">Documents</h3></div>
+    <div class="card-header"><h3 class="font-semibold">Documents</h3>
+      {% if perms.employees.add_employeedocument %}<a href="{% url 'employees:document_upload' employee.pk %}" class="link text-sm">Add another</a>{% endif %}</div>
     <ul class="divide-y divide-slate-100 text-sm">
       {% for doc in documents %}
         <li class="flex items-center justify-between px-5 py-2.5">
           <a href="{% url 'employees:document' doc.pk %}" class="link">{{ doc.title }}</a>
+          <span class="text-xs text-slate-500">{{ doc.get_category_display }}</span>
           <span class="text-xs text-slate-500">{{ doc.created_at|date:"d M Y" }}</span>
         </li>
       {% empty %}<li class="px-5 py-6 text-center text-slate-500">No documents.</li>{% endfor %}

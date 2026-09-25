@@ -13,14 +13,31 @@ from django.utils import timezone
 
 from core.access import is_manager, require_permission
 from core.exports import spreadsheet
+from core.files import too_large
 from core.generic import ERPCreateView, ERPListView, ERPUpdateView
 from core.models import audit
 from users.services import provision_login
 
-from .forms import EmployeeDocumentForm, EmployeeForm
+from .forms import DOCUMENT_UPLOADS, EmployeeDocumentForm, EmployeeForm
 from .models import Department, Designation, Employee, EmployeeDocument
 
 SALARY_PERMISSION = "finance.view_payroll"
+
+
+def _save_employee_documents(request, employee, form):
+    """Attach the optional files submitted with the employee form."""
+    for field, category, label in DOCUMENT_UPLOADS:
+        content = form.cleaned_data.get(field)
+        if content:
+            original_name = request.FILES[field].name.rsplit("/", 1)[-1].rsplit("\\", 1)[-1]
+            EmployeeDocument.objects.create(
+                school=request.school,
+                employee=employee,
+                category=category,
+                title=f"{label}: {original_name}"[:150],
+                file=content,
+                uploaded_by=request.user,
+            )
 
 
 class EmployeeListView(ERPListView):
@@ -78,7 +95,14 @@ class EmployeeFormMixin:
         kwargs = super().get_form_kwargs()
         kwargs["can_see_salary"] = self.request.user.has_perm("finance.change_payroll")
         kwargs["can_create_login"] = self.request.user.has_perm("users.add_user")
+        kwargs["can_upload_documents"] = self.request.user.has_perm("employees.add_employeedocument")
         return kwargs
+
+    def post(self, request, *args, **kwargs):
+        if too_large(request):
+            messages.error(request, "The upload is too large. Upload files of up to 10 MB each.")
+            return redirect(request.path)
+        return super().post(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -107,7 +131,11 @@ class EmployeeCreateView(EmployeeFormMixin, ERPCreateView):
 
     def form_valid(self, form):
         if not form.cleaned_data.get("create_login") or form.cleaned_data.get("user"):
-            return super().form_valid(form)
+            with transaction.atomic():
+                response = super().form_valid(form)
+                if response.status_code == 302:
+                    _save_employee_documents(self.request, self.object, form)
+                return response
         try:
             with transaction.atomic():
                 response = super().form_valid(form)
@@ -116,6 +144,7 @@ class EmployeeCreateView(EmployeeFormMixin, ERPCreateView):
                 account, password = provision_login(
                     school=self.request.school, user=self.request.user, profile=self.object
                 )
+                _save_employee_documents(self.request, self.object, form)
         except ValidationError as exc:
             form.add_error(None, exc)
             return self.form_invalid(form)
@@ -143,6 +172,13 @@ class EmployeeCreateView(EmployeeFormMixin, ERPCreateView):
 class EmployeeUpdateView(EmployeeFormMixin, ERPUpdateView):
     permission_required = "employees.change_employee"
     page_title = "Edit employee"
+
+    def form_valid(self, form):
+        with transaction.atomic():
+            response = super().form_valid(form)
+            if response.status_code == 302:
+                _save_employee_documents(self.request, self.object, form)
+            return response
 
 
 def _may_open(user, employee):
@@ -202,6 +238,9 @@ def me(request):
 @require_permission("employees.add_employeedocument")
 def document_upload(request, pk):
     employee = get_object_or_404(Employee, school=request.school, pk=pk)
+    if too_large(request):
+        messages.error(request, "The upload is too large. Choose a file of up to 10 MB.")
+        return redirect("employees:detail", pk=pk)
     form = EmployeeDocumentForm(request.POST or None, request.FILES or None, school=request.school)
     form.instance.employee = employee
     if request.method == "POST" and form.is_valid():
@@ -210,7 +249,15 @@ def document_upload(request, pk):
         audit(request, "employee_document.uploaded", form.instance, f"{form.instance.title} for {employee}")
         messages.success(request, "Document uploaded.")
         return redirect("employees:detail", pk=pk)
-    return render(request, "generic/form.html", {"form": form, "page_title": f"Upload document for {employee}"})
+    return render(
+        request,
+        "generic/form.html",
+        {
+            "form": form,
+            "page_title": f"Upload document for {employee}",
+            "cancel_url": reverse("employees:detail", args=[employee.pk]),
+        },
+    )
 
 
 @require_permission(None, also="own documents unless a manager")
@@ -220,7 +267,10 @@ def document_download(request, pk):
     own = document.employee.user_id == request.user.pk
     if not (own or is_manager(request.user) or request.user.has_perm("employees.change_employee")):
         raise Http404
-    return FileResponse(document.file.open("rb"), as_attachment=True, filename=document.file.name.rsplit("/", 1)[-1])
+    response = FileResponse(document.file.open("rb"), as_attachment=True, filename=document.file.name.rsplit("/", 1)[-1])
+    response["X-Content-Type-Options"] = "nosniff"
+    response["Cache-Control"] = "private, no-store"
+    return response
 
 
 @require_permission("employees.view_employee")
