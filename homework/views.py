@@ -15,6 +15,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime, parse_time
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.translation import gettext
 from django.views.decorators.http import require_POST
 
@@ -282,6 +283,11 @@ def _task_form(request, task, level, subject, sections, year, copy=None):
                                 "limit": day["limit"],
                             },
                         )
+                return_to = request.GET.get("return_to", "")
+                if return_to.startswith("/") and not return_to.startswith("//") and url_has_allowed_host_and_scheme(
+                    return_to, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+                ):
+                    return redirect(return_to)
                 return redirect("homework:detail", pk=saved.pk)
         for problem in problems:
             form.add_error(None, problem)

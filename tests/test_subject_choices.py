@@ -100,7 +100,12 @@ def test_the_subject_plan_screen_shows_and_loads_a_plan(erp):
     page = client.get(f"/academics/subject-plan/?year={erp.year.pk}&class_level={erp.level.pk}")
     assert b"Higher Mathematics" in page.content
 
-    assert login(erp.teacher).get("/academics/subject-plan/").status_code == 403
+    teacher_page = login(erp.teacher).get(
+        f"/academics/subject-plan/?year={erp.year.pk}&class_level={erp.level.pk}"
+    )
+    assert teacher_page.status_code == 200
+    assert b"Higher Mathematics" not in teacher_page.content
+    assert b"Start from the national Classes 9-10 plan" not in teacher_page.content
     # Another school's class is never shown or changed.
     foreign = ClassLevel.objects.create(school=erp.other, name="Theirs", order=1)
     client.post("/academics/subject-plan/", {"year": erp.year.pk, "class_level": foreign.pk, "action": "national"})

@@ -5,6 +5,7 @@ working Tailwind list/create/update/delete UI, already tenant-scoped.
 
 from django.contrib import messages
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.generic import CreateView, DeleteView, ListView, UpdateView
 
 from .mixins import SchoolScopedMixin
@@ -78,6 +79,14 @@ class ERPFormMixin(SchoolScopedMixin):
     template_name = "generic/form.html"
     success_url_name = None
     cancel_url_name = None
+    prefill_fields = ()
+
+    def get_initial(self):
+        initial = super().get_initial()
+        for field in self.prefill_fields:
+            if field in self.request.GET:
+                initial[field] = self.request.GET[field]
+        return initial
 
     def form_valid(self, form):
         from django.core.exceptions import ValidationError
@@ -96,17 +105,27 @@ class ERPFormMixin(SchoolScopedMixin):
             form.add_error(None, "A record with these unique values already exists. Reload and check your entries.")
         return self.form_invalid(form)
 
+    def get_return_to_url(self):
+        return_to = self.request.GET.get("return_to", "")
+        if return_to.startswith("/") and not return_to.startswith("//") and url_has_allowed_host_and_scheme(
+            return_to, allowed_hosts={self.request.get_host()}, require_https=self.request.is_secure()
+        ):
+            return return_to
+        return None
+
     def get_success_url(self):
+        return_to = self.get_return_to_url()
+        if return_to:
+            return return_to
         if self.success_url_name:
             return reverse(self.success_url_name)
         return super().get_success_url()
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx["cancel_url"] = (
+        ctx["cancel_url"] = self.get_return_to_url() or (
             reverse(self.cancel_url_name or self.success_url_name)
-            if (self.cancel_url_name or self.success_url_name)
-            else None
+            if (self.cancel_url_name or self.success_url_name) else None
         )
         return ctx
 

@@ -56,6 +56,7 @@ urlpatterns += crud(
     prefix="manage/",
     form=ExamForm,
     search=("name",),
+    prefill_fields=("academic_year", "term", "name"),
 )
 urlpatterns += crud(
     ExamSchedule,
@@ -71,6 +72,7 @@ urlpatterns += crud(
         ("Pass marks", "pass_marks"),
     ],
     form=ExamScheduleForm,
+    prefill_fields=("exam", "class_level", "subject"),
 )
 urlpatterns += crud(
     GradeScale,

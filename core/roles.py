@@ -89,6 +89,10 @@ EXPLICIT_PERMS = {
         ("admissions", "change_applicationpayment"),
     ],
     TEACHER: [
+        ("academics", "view_classsubject"),
+        ("academics", "view_teachingplanitem"),
+        ("academics", "add_teachingplanitem"),
+        ("academics", "change_teachingplanitem"),
         ("students", "view_student"),
         ("students", "view_enrollment"),
         ("students", "view_guardian"),

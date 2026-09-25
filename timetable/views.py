@@ -6,6 +6,7 @@ from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.http import url_has_allowed_host_and_scheme
 
 from academics.models import AcademicYear, Section, Subject
 from core.access import is_manager, plans_timetable, require_permission, sections_for, students_for
@@ -208,6 +209,11 @@ def grid_edit(request):
                     school=request.school, user=request.user, academic_year=year, section=section, cells=cells
                 )
                 messages.success(request, f"Saved {saved} period(s); cleared {cleared}.")
+                return_to = request.GET.get("return_to", "")
+                if return_to.startswith("/") and not return_to.startswith("//") and url_has_allowed_host_and_scheme(
+                    return_to, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+                ):
+                    return redirect(return_to)
                 return redirect(f"/routine/?academic_year={year.pk}&section={section.pk}")
         except WeekGridError as exc:
             cell_errors = exc.errors

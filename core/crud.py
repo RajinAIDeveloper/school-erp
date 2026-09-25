@@ -1,7 +1,7 @@
 """Explicitly configured CRUD screens for school master data, not financial events."""
 
 from django.forms import modelform_factory
-from django.urls import path
+from django.urls import path, reverse
 
 from .forms import SchoolModelForm
 from .generic import ERPCreateView, ERPDeleteView, ERPListView, ERPUpdateView
@@ -23,6 +23,9 @@ def crud(
     deletable=False,
     filters=(),
     row_forms=(),
+    prefill_fields=(),
+    create_success_url_name=None,
+    detail_url_name=None,
 ):
     """
     Build list/create/update (and optionally delete) screens for one model.
@@ -54,14 +57,18 @@ def crud(
         extra_actions=actions,
         filters=filters,
         row_forms=row_forms,
+        detail_url_name=detail_url_name,
     )
     if deletable:
         listing_attrs["delete_url_name"] = namespace + ":" + delete_name
     if scope is not None:
         listing_attrs["scope_queryset"] = lambda self, qs, _scope=scope: _scope(self, qs)
     listing = type(stem + "List", (ERPListView,), listing_attrs)
-    attrs = dict(**common, form_class=form, success_url_name=namespace + ":" + list_name)
-    create = type(stem + "Create", (ERPCreateView,), dict(**attrs, permission_required=base + "add_" + stem))
+    attrs = dict(**common, form_class=form, success_url_name=namespace + ":" + list_name, prefill_fields=prefill_fields)
+    create_attrs = dict(**attrs, permission_required=base + "add_" + stem)
+    if create_success_url_name:
+        create_attrs["get_success_url"] = lambda self, name=create_success_url_name: reverse(name, args=[self.object.pk])
+    create = type(stem + "Create", (ERPCreateView,), create_attrs)
     update = type(stem + "Update", (ERPUpdateView,), dict(**attrs, permission_required=base + "change_" + stem))
     routes = [
         path(prefix, listing.as_view(), name=list_name),

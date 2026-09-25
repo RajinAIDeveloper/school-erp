@@ -89,4 +89,13 @@ for model, key, fields, columns in [
         columns,
         actions=(("School settings", "settings:school", "core.change_school"),),
         row_forms=YEAR_ROW_FORMS if model is AcademicYear else (),
+        list_permission="academics.change_classsubject" if model is ClassSubject else None,
+        prefill_fields=(
+            ("academic_year", "class_level", "subject") if model is ClassSubject else
+            ("academic_year", "section", "subject") if model is SubjectTeacher else
+            ("class_level",) if model is Section else
+            ("academic_year",) if model is Term else ()
+        ),
+        create_success_url_name="academics:subject_setup" if model is ClassSubject else None,
+        detail_url_name="academics:subject_setup" if model is ClassSubject else None,
     )

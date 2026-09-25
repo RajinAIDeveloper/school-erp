@@ -23,7 +23,9 @@ asserts that list, so a view that forgets its permission decorator cannot quietl
 |---|---|---|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
 | / | dashboard | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
 | /academics/sections.json | academics:sections_json | `academics.view_section` | - | Y | Y | Y | Y | Y | . | . | . |
-| /academics/subject-plan/ | academics:subject_plan | `academics.view_classsubject` | - | Y | Y | Y | . | . | . | . | . |
+| /academics/subject-plan/ | academics:subject_plan | `academics.view_classsubject` | - | Y | Y | Y | . | Y | . | . | . |
+| /academics/subject-plan/<int:pk>/setup/ | academics:subject_setup | `academics.view_teachingplanitem` | assigned subject unless a manager | Y | Y | Y | . | Y | . | . | . |
+| /academics/teaching-plan/<int:pk>/edit/ | academics:teaching_plan_edit | `academics.change_teachingplanitem` | own assigned section unless a manager | Y | Y | Y | . | Y | . | . | . |
 | /admissions/ | admissions:home | `admissions.view_application` | admissions module only | Y | Y | Y | Y | . | Y | . | . |
 | /admissions/applications/<int:pk>/ | admissions:application | `admissions.view_application` | admissions module only | Y | Y | Y | Y | . | Y | . | . |
 | /admissions/applications/<int:pk>/edit/ | admissions:application_edit | `admissions.change_application` | admissions module only | Y | Y | Y | . | . | Y | . | . |
@@ -243,7 +245,7 @@ asserts that list, so a view that forgets its permission decorator cannot quietl
 | /routine/utilisation/ | timetable:utilisation | `timetable.view_routineslot` | timetable editors only | Y | Y | Y | . | Y | Y | Y | Y |
 | /settings/ | settings:hub | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
 | /settings/audit/ | settings:audit | `core.view_auditlog` | - | Y | . | . | . | . | . | . | . |
-| /settings/class-subject/ | settings:class_subject_list | `academics.view_classsubject` | - | Y | Y | Y | . | . | . | . | . |
+| /settings/class-subject/ | settings:class_subject_list | `academics.change_classsubject` | - | Y | Y | Y | . | . | . | . | . |
 | /settings/class-subject/<int:pk>/edit/ | settings:class_subject_update | `academics.change_classsubject` | - | Y | Y | Y | . | . | . | . | . |
 | /settings/class-subject/new/ | settings:class_subject_create | `academics.add_classsubject` | - | Y | Y | Y | . | . | . | . | . |
 | /settings/class/ | settings:class_list | `academics.view_classlevel` | - | Y | Y | Y | Y | Y | . | . | . |

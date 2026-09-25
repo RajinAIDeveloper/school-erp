@@ -273,3 +273,51 @@ class SubjectTeacher(SchoolScopedModel):
                     errors["subject"] = f"{self.subject} is not in {level}'s subject plan for {self.academic_year}."
         if errors:
             raise ValidationError(errors)
+
+
+class TeachingPlanItem(SchoolScopedModel):
+    """An optional dated topic or assessment intention for one class subject."""
+
+    class Kind(models.TextChoices):
+        LESSON = "lesson", "Lesson"
+        REVISION = "revision", "Revision"
+        QUIZ = "quiz", "Quiz planned"
+        CLASS_TEST = "class_test", "Class test planned"
+
+    academic_year = models.ForeignKey(AcademicYear, on_delete=models.CASCADE, related_name="teaching_plan_items")
+    class_level = models.ForeignKey(ClassLevel, on_delete=models.CASCADE, related_name="teaching_plan_items")
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name="teaching_plan_items")
+    term = models.ForeignKey(Term, null=True, blank=True, on_delete=models.SET_NULL, related_name="teaching_plan_items")
+    section = models.ForeignKey(
+        Section, null=True, blank=True, on_delete=models.CASCADE, related_name="teaching_plan_items",
+        help_text="Leave blank to plan for every section in this class.",
+    )
+    planned_date = models.DateField()
+    kind = models.CharField(max_length=12, choices=Kind.choices, default=Kind.LESSON)
+    unit = models.CharField(max_length=100, blank=True, help_text="Chapter or unit, such as Fractions.")
+    topic = models.CharField(max_length=150, help_text="What you plan to teach or assess.")
+    learning_goal = models.TextField(blank=True, help_text="What students should be able to do afterward.")
+    taught_on = models.DateField(null=True, blank=True, help_text="Fill this in after the lesson or activity happens.")
+
+    class Meta:
+        ordering = ["planned_date", "pk"]
+        indexes = [models.Index(fields=["school", "academic_year", "class_level", "subject", "planned_date"])]
+
+    def __str__(self):
+        return f"{self.planned_date}: {self.topic}"
+
+    def clean(self):
+        super().clean()
+        errors = {}
+        if self.section_id and self.class_level_id and self.section.class_level_id != self.class_level_id:
+            errors["section"] = "Choose a section of this class."
+        if self.term_id and self.academic_year_id and self.term.academic_year_id != self.academic_year_id:
+            errors["term"] = "Choose a term in this academic year."
+        if self.planned_date and self.academic_year_id:
+            if not self.academic_year.start_date <= self.planned_date <= self.academic_year.end_date:
+                errors["planned_date"] = "Choose a date in this academic year."
+        if self.planned_date and self.term_id:
+            if not self.term.start_date <= self.planned_date <= self.term.end_date:
+                errors["planned_date"] = "Choose a date inside the selected term."
+        if errors:
+            raise ValidationError(errors)

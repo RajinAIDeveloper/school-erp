@@ -1,0 +1,104 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block header_actions %}<a href="{{ subject_plan_url }}" class="btn-secondary btn-sm">Finish for now</a>{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-6xl space-y-6">
+  <div class="rounded-lg border border-sky-200 bg-sky-50 px-5 py-4 text-sm text-sky-900">
+    <p class="font-semibold">{{ row.subject }} is in the {{ row.academic_year }} subject plan for {{ row.class_level }}.</p>
+    <p class="mt-1">Everything below is optional. Set up teachers and the weekly routine when ready. Track topics and future dates here only if your school wants a teaching plan in the ERP.</p>
+  </div>
+
+  <section class="card">
+    <div class="card-header"><div><h2 class="font-semibold">1. Teachers and weekly lessons</h2><p class="mt-1 text-sm text-slate-500">Assign the subject in each section, then choose its days and periods.</p></div></div>
+    <div class="divide-y divide-slate-100">
+      {% for section_row in section_rows %}
+        <div class="flex flex-wrap items-center justify-between gap-4 px-5 py-4">
+          <div>
+            <p class="font-medium">{{ section_row.section }}</p>
+            <p class="mt-1 text-sm text-slate-600">Teacher:
+              {% for assignment in section_row.teachers %}{{ assignment.teacher.full_name }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="text-amber-700">Not assigned yet</span>{% endfor %}
+            </p>
+            <p class="text-sm text-slate-600">Weekly {{ row.subject }} periods: {{ section_row.slots|length }}</p>
+            {% for slot in section_row.slots %}<span class="mr-2 text-xs text-slate-500">{{ slot.get_weekday_display }} {{ slot.period.name }}</span>{% endfor %}
+          </div>
+          <div class="flex flex-wrap gap-2">
+            {% if perms.academics.add_subjectteacher %}<a href="{{ section_row.assign_url }}" class="btn-secondary btn-sm">{% if section_row.has_teacher %}Add another teacher{% else %}Assign teacher{% endif %}</a>{% endif %}
+            {% if perms.timetable.change_routineslot %}<a href="{{ section_row.routine_url }}" class="btn-secondary btn-sm">Set weekly routine</a>{% endif %}
+          </div>
+        </div>
+      {% empty %}
+        <div class="px-5 py-5 text-sm text-slate-600">No sections for this class yet.
+          {% if perms.academics.add_section %}<a class="link" href="{{ section_create_url }}">Add a section</a>{% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-header flex flex-wrap items-center justify-between gap-3">
+      <div><h2 class="font-semibold">2. Optional term teaching plan</h2><p class="mt-1 text-sm text-slate-500">Record chapters, topics, learning goals and dates. This does not change the routine or create a graded exam.</p></div>
+      <form method="get" class="flex items-center gap-2">
+        <label for="term" class="text-sm">Show term</label>
+        <select id="term" name="term" class="input w-44" onchange="this.form.submit()">
+          <option value="">All terms</option>
+          {% for term in terms %}<option value="{{ term.pk }}" {% if selected_term.pk == term.pk %}selected{% endif %}>{{ term.name }}</option>{% endfor %}
+        </select>
+      </form>
+    </div>
+    {% if not terms and perms.academics.add_term %}
+      <p class="px-5 pt-4 text-sm text-slate-600">Want a semester or term? <a class="link" href="{{ term_create_url }}">Add a term</a>. You can also plan by date without one.</p>
+    {% endif %}
+    <div class="overflow-x-auto">
+      <table class="table">
+        <thead><tr><th>Date</th><th>Section</th><th>Unit and topic</th><th>Type</th><th>Progress</th><th></th></tr></thead>
+        <tbody>
+          {% for item in items %}
+            <tr>
+              <td>{{ item.planned_date|date:"d M Y" }}</td>
+              <td>{{ item.section|default:"All sections" }}</td>
+              <td><span class="font-medium">{{ item.topic }}</span>{% if item.unit %}<span class="block text-xs text-slate-500">{{ item.unit }}</span>{% endif %}{% if item.learning_goal %}<span class="block text-xs text-slate-500">{{ item.learning_goal|truncatechars:100 }}</span>{% endif %}</td>
+              <td>{{ item.get_kind_display }}</td>
+              <td>{% if item.taught_on %}Done {{ item.taught_on|date:"d M" }}{% else %}Planned{% endif %}</td>
+              <td>{% if perms.academics.change_teachingplanitem and item.can_edit_here %}<a class="link text-xs" href="{% url 'academics:teaching_plan_edit' item.pk %}">Edit</a>{% endif %}</td>
+            </tr>
+          {% empty %}<tr><td colspan="6" class="py-6 text-center text-slate-500">No topics planned here yet. You can add one below, or skip this step.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if form %}
+      <details class="border-t border-slate-200 px-5 py-4" {% if form.errors %}open{% endif %}>
+        <summary class="cursor-pointer font-medium text-indigo-700">+ Add a topic or planned activity</summary>
+        <form method="post" class="mt-4">
+          {% csrf_token %}
+          {% render_form form %}
+          <div class="mt-4 flex justify-end"><button class="btn-primary">Save plan item</button></div>
+        </form>
+      </details>
+    {% endif %}
+  </section>
+
+  <div class="grid gap-6 lg:grid-cols-2">
+    <section class="card card-body">
+      <h2 class="font-semibold">3. Future tests and quizzes</h2>
+      <p class="mt-1 text-sm text-slate-600">A quiz date in the teaching plan is only a reminder. For a paper with marks and results, create an exam and add a {{ row.subject }} paper with its date.</p>
+      {% if perms.examinations.add_exam %}<a href="{{ exam_create_url }}" class="btn-secondary btn-sm mt-4 self-start">Create a test or quiz exam</a>{% endif %}
+      {% for exam_row in exam_rows %}
+        <div class="mt-3 flex items-center justify-between gap-3 border-t border-slate-100 pt-3 text-sm">
+          <span>{{ exam_row.exam.name }}{% if exam_row.exam.term %} · {{ exam_row.exam.term.name }}{% endif %}</span>
+          {% if exam_row.has_paper %}<span class="text-emerald-700">Paper scheduled</span>{% elif perms.examinations.add_examschedule %}<a class="link" href="{{ exam_row.schedule_url }}">Add {{ row.subject }} paper</a>{% endif %}
+        </div>
+      {% endfor %}
+      {% if papers %}<p class="mt-4 text-sm font-medium">Scheduled {{ row.subject }} papers</p>{% endif %}
+      {% for paper in papers %}<p class="text-sm text-slate-600">{{ paper.exam.name }} · {{ paper.date|date:"d M Y"|default:"Date not set" }}{% if paper.start_time %} · {{ paper.start_time|time:"H:i" }}{% endif %}</p>{% endfor %}
+    </section>
+    {% if homework_enabled and perms.homework.add_task %}
+      <section class="card card-body">
+        <h2 class="font-semibold">4. Homework in advance</h2>
+        <p class="mt-1 text-sm text-slate-600">Choose a section, add instructions and a due date. You can publish now, schedule it for later, or save a draft.</p>
+        <a href="{{ homework_url }}" class="btn-secondary btn-sm mt-4 self-start">Plan {{ row.subject }} homework</a>
+      </section>
+    {% endif %}
+  </div>
+  <div class="flex justify-end"><a href="{{ subject_plan_url }}" class="btn-primary">Finish for now</a></div>
+</div>
+{% endblock %}

@@ -79,6 +79,9 @@
 {% if perms.timetable.view_routineslot %}
 <a href="{% url 'timetable:routine' %}" class="{{ base }} {% active request 'timetable' %}">{% include "components/nav_icon.html" with name="calendar" %} {% translate "Routine" %}</a>
 {% endif %}
+{% if perms.academics.view_classsubject %}
+<a href="{% url 'academics:subject_plan' %}" class="{{ base }} {% active request 'subject_plan' 'subject_setup' 'teaching_plan_edit' %}">{% include "components/nav_icon.html" with name="book" %} {% translate "Teaching plans" %}</a>
+{% endif %}
 
 <p class="mt-4 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{% translate "Communication" %}</p>
 <a href="{% url 'downloads:notices' %}" class="{{ base }} {% active request 'notices' 'notice_list' %}">{% include "components/nav_icon.html" with name="notice" %} {% translate "Notices" %}</a>

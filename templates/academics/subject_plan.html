@@ -1,7 +1,7 @@
 {% extends "layouts/base.html" %}
 {% block header_actions %}
-  {% if perms.academics.add_classsubject %}<a href="{% url 'settings:class_subject_create' %}" class="btn-primary btn-sm">Add a subject row</a>{% endif %}
-  <a href="{% url 'settings:class_subject_list' %}" class="btn-secondary btn-sm">All rows</a>
+  {% if perms.academics.add_classsubject %}<a href="{% url 'settings:class_subject_create' %}{% if year and level %}?academic_year={{ year.pk }}&amp;class_level={{ level.pk }}{% endif %}" class="btn-primary btn-sm">Add a subject row</a>{% endif %}
+  {% if perms.academics.change_classsubject %}<a href="{% url 'settings:class_subject_list' %}" class="btn-secondary btn-sm">All rows</a>{% endif %}
   {% if perms.students.change_enrollment %}<a href="{% url 'students:subject_choices' %}" class="btn-secondary btn-sm">Subject choices</a>{% endif %}
 {% endblock %}
 {% block content %}
@@ -37,7 +37,10 @@
             <td>{{ row.get_kind_display }}</td>
             <td class="text-sm text-slate-600">{{ row.subject.combines_into|default:"" }}</td>
             <td class="text-sm text-slate-600">{{ row.subject.get_religion_display|default:"" }}</td>
-            <td class="text-right">{% if perms.academics.change_classsubject %}<a href="{% url 'settings:class_subject_update' row.pk %}" class="link text-xs">Edit</a>{% endif %}</td>
+            <td class="text-right whitespace-nowrap">
+              <a href="{% url 'academics:subject_setup' row.pk %}" class="link text-xs">Continue setup</a>
+              {% if perms.academics.change_classsubject %}<a href="{% url 'settings:class_subject_update' row.pk %}" class="link ml-3 text-xs">Edit</a>{% endif %}
+            </td>
           </tr>
         {% empty %}
           <tr><td colspan="7">{% include "components/empty.html" with message="No subject plan for this class and year: every student sits every paper." %}</td></tr>
