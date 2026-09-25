@@ -1,0 +1,12 @@
+{% extends "generic/form.html" %}
+{% load erp %}
+{% block form_body %}
+  {% if perms.employees.add_employee %}
+    <p class="mb-5 rounded-md border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+      Adding a teacher or staff member? Use
+      <a class="font-semibold underline" href="{% url 'employees:create' %}">Teachers &amp; Staff → + New</a>
+      to create their staff record and login together. Use this page for school management accounts.
+    </p>
+  {% endif %}
+  {% render_form form %}
+{% endblock %}

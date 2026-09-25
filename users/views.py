@@ -64,6 +64,7 @@ class UserCreateView(ERPCreateView):
     form_class = UserForm
     permission_required = "users.add_user"
     page_title = "Create user"
+    template_name = "users/form.html"
     success_url_name = "users:list"
 
     def form_valid(self, form):

@@ -29,7 +29,7 @@ hosted multi-school one without reshaping the database.
 | SMS | Templates rendered per recipient, preview with recipient count and SMS-part cost, batches with delivery counts, retries, a gateway test, and five optional event notifications |
 | Calendar | Holidays and events, a month grid, working-day counts, national-holiday import, iCalendar export |
 | Settings | A hub with a readiness check, one-press defaults, school profile, academic setup, notifications, policy and the audit log |
-| Users | Create a login straight from a student, guardian or staff record, or for a whole class; temporary passwords that must be changed; role and activity filters |
+| Users | Create a teacher or staff record and login together, or link an existing login; create logins from student and guardian records or for a whole class; temporary passwords that must be changed; role and activity filters |
 | Language | Bangla and English: the school switches Bangla on, each person chooses in the header; the family portal, navigation and report card are translated |
 | Privacy | Guardian consent per purpose (also given and withdrawn by families in the portal), identity numbers for managers only, logged views of restricted data, and erasure of former students' personal data after the school's retention period; see [docs/PRIVACY.md](docs/PRIVACY.md) |
 

@@ -1,10 +1,15 @@
 {% extends "layouts/base.html" %}
 {% load erp %}
+{% block header %}{% if settings_nav and perms.core.change_school %}Basic Settings{% else %}{{ block.super }}{% endif %}{% endblock %}
 {% block header_actions %}
   {% for label, url in extra_actions %}<a href="{{ url }}" class="btn-secondary btn-sm">{{ label }}</a>{% endfor %}
   {% if create_url %}<a href="{{ create_url }}" class="btn-primary btn-sm">+ New</a>{% endif %}
 {% endblock %}
 {% block content %}
+{% if settings_nav and perms.core.change_school %}
+  {% include "core/settings_nav.html" %}
+  <h2 class="mb-4 text-lg font-semibold text-slate-900">{{ page_title }}</h2>
+{% endif %}
 <div class="card">
   {% if has_search or filters %}
   <form method="get" class="card-header" data-autosubmit>

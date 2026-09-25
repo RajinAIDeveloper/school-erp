@@ -1,0 +1,15 @@
+{% extends "generic/form.html" %}
+{% load erp static %}
+{% block form_body %}
+  {% if not form.instance.pk %}
+    <p class="mb-5 rounded-md border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+      {% if form.create_login %}Add the employee and their login in one step. Choose an existing login
+      to reuse it, or leave Existing login blank to create a new one when you save.{% else %}Add the
+      employee record here. A school administrator can create their login afterward.{% endif %}
+      Gender and joining date are not on the user account, so enter them here.
+    </p>
+  {% endif %}
+  {% render_form form %}
+  {{ login_autofill|json_script:"employee-login-data" }}
+{% endblock %}
+{% block scripts %}<script src="{% static 'js/employee_onboarding.js' %}" defer></script>{% endblock %}

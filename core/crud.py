@@ -42,6 +42,8 @@ def crud(
     update_name = key + "_update" if key else "update"
     delete_name = key + "_delete" if key else "delete"
     common = dict(model=model, page_title=label)
+    if namespace == "settings":
+        common["extra_context"] = {"settings_nav": True}
     listing_attrs = dict(
         **common,
         permission_required=list_permission or base + "view_" + stem,

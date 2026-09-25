@@ -148,9 +148,15 @@ SETTINGS_CARDS = [
     },
     {
         "title": "Classes and sections",
-        "description": "The classes you teach, their sections and who each class teacher is.",
+        "description": "Add the class levels your school teaches, such as Class 7.",
         "url": "settings:class_list",
         "permission": "academics.view_classlevel",
+    },
+    {
+        "title": "Sections",
+        "description": "Add A, B or other sections under a class and choose each class teacher.",
+        "url": "settings:section_list",
+        "permission": "academics.view_section",
     },
     {
         "title": "Subjects and teaching",

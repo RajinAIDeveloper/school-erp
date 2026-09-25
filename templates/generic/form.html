@@ -1,6 +1,11 @@
 {% extends "layouts/base.html" %}
 {% load erp %}
+{% block header %}{% if settings_nav and perms.core.change_school %}Basic Settings{% else %}{{ block.super }}{% endif %}{% endblock %}
 {% block content %}
+{% if settings_nav and perms.core.change_school %}
+  {% include "core/settings_nav.html" %}
+  <h2 class="mb-4 text-lg font-semibold text-slate-900">{{ page_title }}</h2>
+{% endif %}
 <div class="card mx-auto max-w-4xl">
   <form method="post" enctype="multipart/form-data" class="card-body">
     {% csrf_token %}

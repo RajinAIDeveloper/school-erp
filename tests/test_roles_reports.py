@@ -146,6 +146,16 @@ def test_settings_hub_shows_only_the_cards_a_role_may_open(erp):
     assert b"SMS gateway" in body and b"Create defaults" in body
 
 
+def test_settings_navigation_stays_visible_on_setup_pages(erp):
+    c = Client()
+    c.force_login(erp.admin)
+    for path in ("/settings/", "/settings/year/", "/settings/year/new/", "/settings/section/"):
+        response = c.get(path)
+        assert response.status_code == 200
+        assert b'href="/settings/section/"' in response.content, path
+        assert b"Basic Settings" in response.content, path
+
+
 def test_settings_hub_is_closed_to_roles_with_no_setup_access(erp):
     c = Client()
     c.force_login(erp.parent)

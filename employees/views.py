@@ -1,16 +1,21 @@
 """Teacher and staff records: roster, personal file, documents."""
 
+import json
+
 from django.contrib import messages
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
+from django.db import transaction
 from django.db.models import Count, Q
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 
 from core.access import is_manager, require_permission
 from core.exports import spreadsheet
 from core.generic import ERPCreateView, ERPListView, ERPUpdateView
 from core.models import audit
+from users.services import provision_login
 
 from .forms import EmployeeDocumentForm, EmployeeForm
 from .models import Department, Designation, Employee, EmployeeDocument
@@ -27,6 +32,10 @@ class EmployeeListView(ERPListView):
     create_url_name = "employees:create"
     update_url_name = "employees:update"
     detail_url_name = "employees:detail"
+    empty_message = (
+        "No staff records found. A Teacher login alone is not a staff record. "
+        "Click + New to add a teacher or staff member and create or link their login."
+    )
     extra_actions = (
         ("Teaching assignments", "settings:subject_teacher_list", "academics.view_subjectteacher"),
         ("Departments", "settings:department_list", "employees.view_department"),
@@ -63,22 +72,72 @@ class EmployeeFormMixin:
     model = Employee
     form_class = EmployeeForm
     success_url_name = "employees:list"
+    template_name = "employees/form.html"
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs["can_see_salary"] = self.request.user.has_perm("finance.change_payroll")
+        kwargs["can_create_login"] = self.request.user.has_perm("users.add_user")
         return kwargs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["login_autofill"] = {
+            str(user.pk): {
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "email": user.email,
+                "phone": user.phone,
+                "roles": [group.name for group in user.groups.all()],
+            }
+            for user in context["form"].fields["user"].queryset
+        }
+        return context
 
 
 class EmployeeCreateView(EmployeeFormMixin, ERPCreateView):
     permission_required = "employees.add_employee"
-    page_title = "Add employee"
+    page_title = "Add teacher or staff member"
 
     def get_initial(self):
         return {
             "employee_id": Employee.next_employee_id(self.request.school),
             "joining_date": timezone.localdate(),
         }
+
+    def form_valid(self, form):
+        if not form.cleaned_data.get("create_login") or form.cleaned_data.get("user"):
+            return super().form_valid(form)
+        try:
+            with transaction.atomic():
+                response = super().form_valid(form)
+                if response.status_code != 302:
+                    return response
+                account, password = provision_login(
+                    school=self.request.school, user=self.request.user, profile=self.object
+                )
+        except ValidationError as exc:
+            form.add_error(None, exc)
+            return self.form_invalid(form)
+        rows = [
+            {
+                "person": str(self.object),
+                "role": account.role_names,
+                "identifier": self.object.employee_id,
+                "username": account.username,
+                "password": password,
+            }
+        ]
+        return render(
+            self.request,
+            "users/credentials.html",
+            {
+                "rows": rows,
+                "download": json.dumps(rows),
+                "back": reverse("employees:detail", args=[self.object.pk]),
+                "page_title": "New staff login",
+            },
+        )
 
 
 class EmployeeUpdateView(EmployeeFormMixin, ERPUpdateView):

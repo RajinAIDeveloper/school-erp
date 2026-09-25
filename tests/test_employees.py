@@ -2,6 +2,7 @@
 
 from datetime import date
 
+from django.contrib.auth.models import Group
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client
 
@@ -56,6 +57,110 @@ def test_employee_form_drops_salary_without_payroll_rights(erp):
 
     assert "basic_salary" in EmployeeForm(school=erp.school, can_see_salary=True).fields
     assert "basic_salary" not in EmployeeForm(school=erp.school, can_see_salary=False).fields
+
+
+def test_employee_form_only_offers_one_step_login_to_user_managers(erp):
+    principal = User.objects.create_user("head-create", school=erp.school, password="Test-pass-9842")
+    principal.groups.add(Group.objects.get(name="Principal"))
+    client = Client()
+    client.force_login(principal)
+    body = client.get("/employees/new/").content
+    assert b"Create a login when I save this employee" not in body
+    assert b"A school administrator can create their login afterward" in body
+
+
+def test_user_creation_points_teacher_onboarding_to_staff_form(admin_client):
+    assert b"create their staff record and login together" in admin_client.get("/users/new/").content
+
+
+def test_existing_teacher_login_can_be_linked_when_employee_is_created(admin_client, erp):
+    teacher = User.objects.create_user(
+        "class7_teacher",
+        school=erp.school,
+        password="Test-pass-9842",
+        first_name="John",
+        last_name="Wick",
+        email="john@example.test",
+        phone="01712345612",
+    )
+    teacher.groups.add(Group.objects.get(name="Teacher"))
+    page = admin_client.get("/employees/new/")
+    assert b"class7_teacher" in page.content
+    assert page.context["login_autofill"][str(teacher.pk)]["email"] == "john@example.test"
+
+    response = admin_client.post(
+        "/employees/new/",
+        {
+            "user": teacher.pk,
+            "employee_id": "T-007",
+            "employee_type": "teacher",
+            "gender": "M",
+            "joining_date": "2026-01-01",
+            "status": "active",
+            "basic_salary": "0",
+            "create_login": "on",
+        },
+    )
+    assert response.status_code == 302
+    employee = Employee.objects.get(school=erp.school, employee_id="T-007")
+    assert employee.user == teacher
+    assert employee.first_name == "John" and employee.last_name == "Wick"
+    assert employee.email == "john@example.test" and employee.phone == "01712345612"
+    assert User.objects.filter(school=erp.school, username="class7_teacher").count() == 1
+    assert b"John Wick" in admin_client.get("/employees/").content
+    assert b"John Wick" in admin_client.get("/settings/section/new/").content
+
+
+def test_new_employee_and_login_are_created_together(admin_client, erp):
+    for employee_id, kind, role, phone in (
+        ("T-009", "teacher", "Teacher", "01712345619"),
+        ("S-009", "staff", "Staff", "01712345618"),
+    ):
+        response = admin_client.post(
+            "/employees/new/",
+            {
+                "employee_id": employee_id,
+                "employee_type": kind,
+                "first_name": "New",
+                "last_name": role,
+                "gender": "F",
+                "phone": phone,
+                "joining_date": "2026-01-01",
+                "status": "active",
+                "basic_salary": "0",
+                "create_login": "on",
+            },
+        )
+        assert response.status_code == 200
+        employee = Employee.objects.get(school=erp.school, employee_id=employee_id)
+        assert employee.user is not None
+        assert employee.user.groups.filter(name=role).exists()
+        assert employee.user.must_change_password
+        assert employee.user.check_password(response.context["rows"][0]["password"])
+        assert b"only time these passwords are shown" in response.content
+
+
+def test_employee_form_rejects_other_school_and_wrong_role_logins(erp):
+    from employees.forms import EmployeeForm
+
+    foreign = User.objects.create_user("foreign_staff", school=erp.other, password="Test-pass-9842")
+    foreign.groups.add(Group.objects.get(name="Teacher"))
+    wrong_role = User.objects.create_user("wrong_role", school=erp.school, password="Test-pass-9842")
+    wrong_role.groups.add(Group.objects.get(name="Guardian"))
+    data = {
+        "employee_id": "T-008",
+        "employee_type": "teacher",
+        "first_name": "Example",
+        "gender": "F",
+        "phone": "01712345613",
+        "joining_date": "2026-01-01",
+        "status": "active",
+        "basic_salary": "0",
+    }
+    assert not EmployeeForm({**data, "user": foreign.pk}, school=erp.school).is_valid()
+    form = EmployeeForm({**data, "user": wrong_role.pk}, school=erp.school)
+    assert not form.is_valid()
+    assert "Teacher role" in str(form.errors["user"])
 
 
 def test_employee_detail_shows_assignments_attendance_and_leave(admin_client, erp):

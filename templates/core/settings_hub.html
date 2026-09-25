@@ -2,6 +2,7 @@
 {% load erp %}
 {% block header %}Basic Settings{% endblock %}
 {% block content %}
+{% if perms.core.change_school %}{% include "core/settings_nav.html" %}{% endif %}
 {% with pending=readiness %}
   {% regroup pending by done as grouped %}
 {% endwith %}
