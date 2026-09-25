@@ -60,7 +60,7 @@
       } else {
         const name = document.createElement("span");
         name.className = "block truncate py-8";
-        name.textContent = "📄 " + page.file.name;
+        name.textContent = "File: " + page.file.name;
         item.appendChild(name);
       }
       const tools = document.createElement("div");

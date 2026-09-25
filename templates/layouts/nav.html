@@ -1,48 +1,48 @@
 {% load erp i18n %}
 {% with base="flex items-center gap-2 rounded-md px-3 py-2 hover:bg-slate-800 hover:text-white" %}
 <a href="{% url 'dashboard' %}" class="{{ base }} {% active request 'dashboard' %}">
-  <span class="w-5 text-center">🏠</span> {% translate "Dashboard" %}
+  {% include "components/nav_icon.html" with name="home" %} {% translate "Dashboard" %}
 </a>
 
 {% if user.student_profile or user.guardian_profile %}
 <p class="mt-4 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{% translate "My records" %}</p>
-<a href="{% url 'portal:index' %}" class="{{ base }} {% active request 'index' %}"><span class="w-5 text-center">🧑‍🎓</span> {% translate "My school records" %}</a>
-<a href="{% url 'portal:attendance' %}" class="{{ base }} {% active request 'attendance' %}"><span class="w-5 text-center">📋</span> {% translate "My attendance" %}</a>
-<a href="{% url 'portal:fees' %}" class="{{ base }} {% active request 'fees' %}"><span class="w-5 text-center">💳</span> {% translate "My fees" %}</a>
-<a href="{% url 'portal:results' %}" class="{{ base }} {% active request 'results' %}"><span class="w-5 text-center">📝</span> {% translate "My results" %}</a>
-<a href="{% url 'portal:progress' %}" class="{{ base }} {% active request 'progress' %}"><span class="w-5 text-center">📈</span> {% translate "Progress" %}</a>
-<a href="{% url 'portal:transcripts' %}" class="{{ base }} {% active request 'transcripts' 'transcript_pdf' %}"><span class="w-5 text-center">📜</span> {% translate "Transcripts" %}</a>
-{% if current_school|has_module:"homework" %}<a href="{% url 'homework:todo' %}" class="{{ base }} {% active request 'todo' 'todo_task' %}"><span class="w-5 text-center">📚</span> {% translate "Homework" %}</a>{% endif %}
-<a href="{% url 'portal:privacy' %}" class="{{ base }} {% active request 'privacy' %}"><span class="w-5 text-center">🔒</span> {% translate "Privacy and consent" %}</a>
+<a href="{% url 'portal:index' %}" class="{{ base }} {% active request 'index' %}">{% include "components/nav_icon.html" with name="person" %} {% translate "My school records" %}</a>
+<a href="{% url 'portal:attendance' %}" class="{{ base }} {% active request 'attendance' %}">{% include "components/nav_icon.html" with name="clipboard" %} {% translate "My attendance" %}</a>
+<a href="{% url 'portal:fees' %}" class="{{ base }} {% active request 'fees' %}">{% include "components/nav_icon.html" with name="card" %} {% translate "My fees" %}</a>
+<a href="{% url 'portal:results' %}" class="{{ base }} {% active request 'results' %}">{% include "components/nav_icon.html" with name="document" %} {% translate "My results" %}</a>
+<a href="{% url 'portal:progress' %}" class="{{ base }} {% active request 'progress' %}">{% include "components/nav_icon.html" with name="trend" %} {% translate "Progress" %}</a>
+<a href="{% url 'portal:transcripts' %}" class="{{ base }} {% active request 'transcripts' 'transcript_pdf' %}">{% include "components/nav_icon.html" with name="document" %} {% translate "Transcripts" %}</a>
+{% if current_school|has_module:"homework" %}<a href="{% url 'homework:todo' %}" class="{{ base }} {% active request 'todo' 'todo_task' %}">{% include "components/nav_icon.html" with name="book" %} {% translate "Homework" %}</a>{% endif %}
+<a href="{% url 'portal:privacy' %}" class="{{ base }} {% active request 'privacy' %}">{% include "components/nav_icon.html" with name="lock" %} {% translate "Privacy and consent" %}</a>
 {% endif %}
 
 {% if perms.students.view_student %}
 <p class="mt-4 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{% translate "People" %}</p>
-<a href="{% url 'students:list' %}" class="{{ base }} {% active request 'students' %}"><span class="w-5 text-center">🎓</span> {% translate "Students" %}</a>
+<a href="{% url 'students:list' %}" class="{{ base }} {% active request 'students' %}">{% include "components/nav_icon.html" with name="school" %} {% translate "Students" %}</a>
 {% endif %}
 {% if perms.admissions.view_application and current_school|has_module:"admissions" %}
-<a href="{% url 'admissions:home' %}" class="{{ base }} {% active request 'admissions' %}"><span class="w-5 text-center">📝</span> {% translate "Admissions" %}</a>
+<a href="{% url 'admissions:home' %}" class="{{ base }} {% active request 'admissions' %}">{% include "components/nav_icon.html" with name="document" %} {% translate "Admissions" %}</a>
 {% endif %}
 {% if perms.employees.view_employee %}
-<a href="{% url 'employees:list' %}" class="{{ base }} {% active request 'employees' %}"><span class="w-5 text-center">👩‍🏫</span> {% translate "Teachers & Staff" %}</a>
+<a href="{% url 'employees:list' %}" class="{{ base }} {% active request 'employees' %}">{% include "components/nav_icon.html" with name="users" %} {% translate "Teachers & Staff" %}</a>
 {% endif %}
 {% if user.employee_profile %}
-<a href="{% url 'employees:me' %}" class="{{ base }}"><span class="w-5 text-center">🪪</span> {% translate "My staff file" %}</a>
+<a href="{% url 'employees:me' %}" class="{{ base }}">{% include "components/nav_icon.html" with name="badge" %} {% translate "My staff file" %}</a>
 {% endif %}
 
 {% if perms.attendance.view_studentattendance or perms.attendance.view_staffattendance %}
 <p class="mt-4 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{% translate "Attendance" %}</p>
 {% endif %}
 {% if perms.attendance.view_studentattendance %}
-<a href="{% url 'attendance:student_take' %}" class="{{ base }} {% active request 'student_take' 'student_report' %}"><span class="w-5 text-center">📋</span> {% translate "Student Attendance" %}</a>
+<a href="{% url 'attendance:student_take' %}" class="{{ base }} {% active request 'student_take' 'student_report' %}">{% include "components/nav_icon.html" with name="clipboard" %} {% translate "Student Attendance" %}</a>
 {% endif %}
 {% if perms.attendance.view_staffattendance %}
-<a href="{% url 'attendance:staff_take' %}" class="{{ base }} {% active request 'staff_take' 'staff_report' 'leave_list' 'leave_create' %}"><span class="w-5 text-center">🕒</span> {% translate "Staff Attendance" %}</a>
+<a href="{% url 'attendance:staff_take' %}" class="{{ base }} {% active request 'staff_take' 'staff_report' 'leave_list' 'leave_create' %}">{% include "components/nav_icon.html" with name="clock" %} {% translate "Staff Attendance" %}</a>
 {% endif %}
 
 {% if perms.attendance.view_leaverequest %}
 <a href="{% url 'attendance:leave_list' %}" class="{{ base }} {% active request 'leave_list' 'leave_create' %}">
-  <span class="w-5 text-center">🌴</span> {% translate "Leave" %}
+  {% include "components/nav_icon.html" with name="calendar" %} {% translate "Leave" %}
   {% if pending_leave_count %}<span class="ml-auto rounded-full bg-amber-500 px-2 text-xs font-semibold text-white">{{ pending_leave_count }}</span>{% endif %}
 </a>
 {% endif %}
@@ -51,17 +51,17 @@
 <p class="mt-4 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{% translate "Finance" %}</p>
 {% endif %}
 {% if perms.fees.view_feeinvoice %}
-<a href="{% url 'fees:invoice_list' %}" class="{{ base }} {% active request 'fees' %}"><span class="w-5 text-center">💳</span> {% translate "Fees" %}</a>
+<a href="{% url 'fees:invoice_list' %}" class="{{ base }} {% active request 'fees' %}">{% include "components/nav_icon.html" with name="card" %} {% translate "Fees" %}</a>
 {% endif %}
 {% if perms.finance.view_journalentry %}
-<a href="{% url 'finance:dashboard' %}" class="{{ base }} {% active request 'finance' %}"><span class="w-5 text-center">📒</span> {% translate "Accounts" %}</a>
+<a href="{% url 'finance:dashboard' %}" class="{{ base }} {% active request 'finance' %}">{% include "components/nav_icon.html" with name="ledger" %} {% translate "Accounts" %}</a>
 {% endif %}
 
 {% if perms.examinations.view_exam or perms.timetable.view_routineslot %}
 <p class="mt-4 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{% translate "Academics" %}</p>
 {% endif %}
 {% if perms.examinations.view_exam %}
-<a href="{% url 'examinations:exam_list' %}" class="{{ base }} {% active request 'exam_list' 'exam_detail' 'report_card' %}"><span class="w-5 text-center">📝</span> {% translate "Results" %}</a>
+<a href="{% url 'examinations:exam_list' %}" class="{{ base }} {% active request 'exam_list' 'exam_detail' 'report_card' %}">{% include "components/nav_icon.html" with name="document" %} {% translate "Results" %}</a>
 {% with sub="flex items-center gap-2 rounded-md py-1.5 pl-10 pr-3 text-sm hover:bg-slate-800 hover:text-white" %}
 {% if perms.examinations.change_mark %}<a href="{% url 'examinations:marks' %}" class="{{ sub }} {% active request 'marks' %}">{% translate "Enter marks" %}</a>{% endif %}
 {% if perms.examinations.view_mark %}<a href="{% url 'examinations:results' %}" class="{{ sub }} {% active request 'results' %}">{% translate "Result sheets" %}</a>{% endif %}
@@ -71,36 +71,36 @@
 {% endwith %}
 {% endif %}
 {% if perms.examinations.view_mark %}
-<a href="{% url 'analytics:home' %}" class="{{ base }} {% active request 'analytics' %}"><span class="w-5 text-center">📊</span> {% translate "Analytics" %}</a>
+<a href="{% url 'analytics:home' %}" class="{{ base }} {% active request 'analytics' %}">{% include "components/nav_icon.html" with name="chart" %} {% translate "Analytics" %}</a>
 {% endif %}
 {% if perms.homework.view_task and current_school|has_module:"homework" %}
-<a href="{% url 'homework:list' %}" class="{{ base }} {% active request 'homework' %}"><span class="w-5 text-center">📚</span> {% translate "Homework" %}</a>
+<a href="{% url 'homework:list' %}" class="{{ base }} {% active request 'homework' %}">{% include "components/nav_icon.html" with name="book" %} {% translate "Homework" %}</a>
 {% endif %}
 {% if perms.timetable.view_routineslot %}
-<a href="{% url 'timetable:routine' %}" class="{{ base }} {% active request 'timetable' %}"><span class="w-5 text-center">🗓️</span> {% translate "Routine" %}</a>
+<a href="{% url 'timetable:routine' %}" class="{{ base }} {% active request 'timetable' %}">{% include "components/nav_icon.html" with name="calendar" %} {% translate "Routine" %}</a>
 {% endif %}
 
 <p class="mt-4 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{% translate "Communication" %}</p>
-<a href="{% url 'downloads:notices' %}" class="{{ base }} {% active request 'notices' 'notice_list' %}"><span class="w-5 text-center">📣</span> {% translate "Notices" %}</a>
-<a href="{% url 'downloads:list' %}" class="{{ base }} {% active request 'downloads' %}"><span class="w-5 text-center">📁</span> {% translate "Downloads" %}</a>
+<a href="{% url 'downloads:notices' %}" class="{{ base }} {% active request 'notices' 'notice_list' %}">{% include "components/nav_icon.html" with name="notice" %} {% translate "Notices" %}</a>
+<a href="{% url 'downloads:list' %}" class="{{ base }} {% active request 'downloads' %}">{% include "components/nav_icon.html" with name="folder" %} {% translate "Downloads" %}</a>
 {% if perms.messaging.view_smsmessage %}
-<a href="{% url 'messaging:batch_list' %}" class="{{ base }} {% active request 'messaging' %}"><span class="w-5 text-center">💬</span> {% translate "SMS" %}</a>
+<a href="{% url 'messaging:batch_list' %}" class="{{ base }} {% active request 'messaging' %}">{% include "components/nav_icon.html" with name="message" %} {% translate "SMS" %}</a>
 {% endif %}
-<a href="{% url 'holidays:month' %}" class="{{ base }} {% active request 'holidays' %}"><span class="w-5 text-center">🎉</span> {% translate "Calendar" %}</a>
+<a href="{% url 'holidays:month' %}" class="{{ base }} {% active request 'holidays' %}">{% include "components/nav_icon.html" with name="calendar" %} {% translate "Calendar" %}</a>
 
-<a href="{% url 'reports:hub' %}" class="{{ base }} {% active request 'reports' %}"><span class="w-5 text-center">📊</span> {% translate "Reports" %}</a>
+<a href="{% url 'reports:hub' %}" class="{{ base }} {% active request 'reports' %}">{% include "components/nav_icon.html" with name="chart" %} {% translate "Reports" %}</a>
 
 {% if user|can_configure or perms.users.view_user %}
 <p class="mt-4 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{% translate "Administration" %}</p>
 {% endif %}
 {% if user|can_configure %}
-<a href="{% url 'settings:hub' %}" class="{{ base }} {% active request 'settings' %}"><span class="w-5 text-center">⚙️</span> {% translate "Basic Settings" %}</a>
+<a href="{% url 'settings:hub' %}" class="{{ base }} {% active request 'settings' %}">{% include "components/nav_icon.html" with name="settings" %} {% translate "Basic Settings" %}</a>
 {% endif %}
 {% if perms.users.view_user %}
-<a href="{% url 'users:list' %}" class="{{ base }} {% active request 'users' %}"><span class="w-5 text-center">👥</span> {% translate "User Management" %}</a>
+<a href="{% url 'users:list' %}" class="{{ base }} {% active request 'users' %}">{% include "components/nav_icon.html" with name="users" %} {% translate "User Management" %}</a>
 {% endif %}
 {% if user.is_superuser %}
-<a href="{% url 'platform' %}" class="{{ base }} {% active request 'platform' %}"><span class="w-5 text-center">🌐</span> {% translate "Platform" %}</a>
-<a href="{% url 'admin:index' %}" class="{{ base }}"><span class="w-5 text-center">🛠️</span> {% translate "Django Admin" %}</a>
+<a href="{% url 'platform' %}" class="{{ base }} {% active request 'platform' %}">{% include "components/nav_icon.html" with name="globe" %} {% translate "Platform" %}</a>
+<a href="{% url 'admin:index' %}" class="{{ base }}">{% include "components/nav_icon.html" with name="tools" %} {% translate "Django Admin" %}</a>
 {% endif %}
 {% endwith %}

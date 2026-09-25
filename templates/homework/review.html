@@ -22,7 +22,7 @@
                 <a href="{% url 'homework:file' page.pk %}" target="_blank" rel="noopener" class="block overflow-hidden rounded-md border border-slate-200">
                   <img src="{% url 'homework:file' page.pk %}" alt="{% translate "Page" %} {{ page.page }}" loading="lazy" class="w-full"></a>
               {% else %}
-                <a href="{% url 'homework:file' page.pk %}" class="flex items-center gap-2 rounded-md border border-slate-200 px-4 py-3 text-sm hover:bg-slate-50">📄 {% translate "Page" %} {{ page.page }} · {{ page.get_kind_display }} · {{ page.size|filesizeformat }}</a>
+                <a href="{% url 'homework:file' page.pk %}" class="flex items-center gap-2 rounded-md border border-slate-200 px-4 py-3 text-sm hover:bg-slate-50">{% include "components/nav_icon.html" with name="document" %} {% translate "Page" %} {{ page.page }} · {{ page.get_kind_display }} · {{ page.size|filesizeformat }}</a>
               {% endif %}
             {% endfor %}
           </div>

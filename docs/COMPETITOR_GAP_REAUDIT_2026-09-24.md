@@ -1,5 +1,8 @@
 # Competitor gap re-audit — 24 September 2026
 
+> Historical snapshot. Several gaps below were built on 25 September. Use
+> [the current re-audit](COMPETITOR_GAP_REAUDIT_2026-09-25.md) when planning new work.
+
 ## Scope and evidence
 
 Target: English-medium schools in Bangladesh using Cambridge, Pearson Edexcel or IB, with the Bangladesh national curriculum as another configuration. This compares the current repository with **public vendor descriptions** from ManageBac+, Toddle, OpenApply, Fedena, DigiCampus BD, Eduman, PRS, Bidyaan and OpenEduCat. Vendor pages describe what the vendors claim; their private workflows were not tested. "Missing" means no corresponding model, route and user workflow was found in this repository. It does not mean every school needs that feature.

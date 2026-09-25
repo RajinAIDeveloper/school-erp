@@ -46,7 +46,7 @@
 
   {% if panel.homework %}
     <a href="{% url 'homework:list' %}" class="mt-4 flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm hover:border-slate-300">
-      <span>📚 {% translate "Homework handed in over the last week" %}:</span>
+      <span class="inline-flex items-center gap-2">{% include "components/nav_icon.html" with name="book" %} {% translate "Homework handed in over the last week" %}:</span>
       {% if panel.homework.rate is not None %}<b class="{% if panel.homework.rate < 70 %}text-red-600{% elif panel.homework.rate < 85 %}text-amber-600{% else %}text-emerald-700{% endif %}">{{ panel.homework.rate }}%</b>
         <span class="text-slate-500">({{ panel.homework.expected }} {% translate "pieces of work checked or due online" %})</span>
       {% else %}<span class="text-slate-500">{% translate "nothing checked yet" %}</span>{% endif %}

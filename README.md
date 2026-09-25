@@ -41,6 +41,8 @@ leaving the number, the outcome and the time for an audit.
 
 Eight roles: Administrator, Principal, Vice Principal (the same access as a Principal), Accountant,
 Teacher, Staff, Student, Guardian.
+[Manual test guide](docs/MANUAL_TEST_GUIDE.md) gives demo logins and a step-by-step walkthrough
+from school setup through attendance, exams, report cards, homework, admissions and reports.
 [docs/access-matrix.md](docs/access-matrix.md) lists every screen with the permission it
 declares, and names the further limit where a screen applies one of its own — a teacher holding
 `attendance.view_leaverequest` opens the leave list and sees only their own requests. It is

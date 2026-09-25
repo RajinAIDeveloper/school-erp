@@ -9,7 +9,7 @@
     {% if task.purpose %}<p class="mt-3 rounded-md bg-indigo-50 px-3 py-2 text-sm text-indigo-900"><span class="font-semibold">{% translate "Why:" %}</span> {{ task.purpose }}</p>{% endif %}
     {% if task.instructions %}<div class="mt-4 whitespace-pre-line text-slate-800">{{ task.instructions }}</div>{% endif %}
     {% if resources %}
-      <ul class="mt-4 space-y-1 text-sm">{% for r in resources %}<li>{% if r.url %}🔗 <a class="link" href="{{ r.url }}" target="_blank" rel="noopener noreferrer">{{ r.title }}</a>{% else %}📄 <a class="link" href="{% url 'homework:resource' r.pk %}">{{ r.title }}</a>{% endif %}</li>{% endfor %}</ul>
+      <ul class="mt-4 space-y-1 text-sm">{% for r in resources %}<li class="flex items-center gap-2">{% if r.url %}{% include "components/nav_icon.html" with name="link" %} <a class="link" href="{{ r.url }}" target="_blank" rel="noopener noreferrer">{{ r.title }}</a>{% else %}{% include "components/nav_icon.html" with name="document" %} <a class="link" href="{% url 'homework:resource' r.pk %}">{{ r.title }}</a>{% endif %}</li>{% endfor %}</ul>
     {% endif %}
     <dl class="mt-5 grid grid-cols-2 gap-3 text-sm">
       <div><dt class="text-slate-500">{% translate "Due" %}</dt><dd class="font-medium {% if overdue %}text-red-700{% endif %}">{{ row.due_at|date:"l d M, H:i" }}</dd></div>
@@ -54,7 +54,7 @@
       <div class="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5">
         {% for page in pages %}
           <div class="rounded-md border border-slate-200 p-1 text-center text-xs {% if page.attempt != row.attempt %}opacity-60{% endif %}">
-            <a href="{% url 'homework:file' page.pk %}" target="_blank" rel="noopener">{% if page.kind == "jpeg" %}<img src="{% url 'homework:file' page.pk %}" alt="{% translate "Page" %} {{ page.page }}" loading="lazy" class="mx-auto h-24 w-full object-cover">{% else %}<span class="block py-8">📄 {{ page.get_kind_display }}</span>{% endif %}</a>
+            <a href="{% url 'homework:file' page.pk %}" target="_blank" rel="noopener">{% if page.kind == "jpeg" %}<img src="{% url 'homework:file' page.pk %}" alt="{% translate "Page" %} {{ page.page }}" loading="lazy" class="mx-auto h-24 w-full object-cover">{% else %}<span class="flex justify-center gap-2 py-8">{% include "components/nav_icon.html" with name="document" %} {{ page.get_kind_display }}</span>{% endif %}</a>
             <span class="text-slate-500">{% translate "Page" %} {{ page.page }}</span>
             {% if not closed and page.attempt == row.attempt %}
               <form method="post">{% csrf_token %}<input type="hidden" name="page" value="{{ page.pk }}"><button class="text-red-700 hover:underline" name="action" value="remove">{% translate "Take out" %}</button></form>
@@ -70,8 +70,8 @@
         {% csrf_token %}
         <input type="hidden" name="action" value="hand_in">
         <div class="flex flex-wrap gap-2">
-          <label class="btn-secondary cursor-pointer">📷 {% translate "Take a photo" %}<input class="sr-only" type="file" name="pages" accept="image/*" capture="environment" data-pages></label>
-          <label class="btn-secondary cursor-pointer">📎 {% translate "Choose photos or files" %}<input class="sr-only" type="file" name="pages" accept="image/*,application/pdf,.docx" multiple data-pages></label>
+          <label class="btn-secondary inline-flex cursor-pointer items-center gap-2">{% include "components/nav_icon.html" with name="camera" %} {% translate "Take a photo" %}<input class="sr-only" type="file" name="pages" accept="image/*" capture="environment" data-pages></label>
+          <label class="btn-secondary inline-flex cursor-pointer items-center gap-2">{% include "components/nav_icon.html" with name="paperclip" %} {% translate "Choose photos or files" %}<input class="sr-only" type="file" name="pages" accept="image/*,application/pdf,.docx" multiple data-pages></label>
         </div>
         <ol class="grid grid-cols-3 gap-2 sm:grid-cols-5" data-thumbs></ol>
         <p class="text-xs text-slate-500">{% translate "One photo for each page. Photos are made smaller on your phone before they are sent, to save data. PDF and Word files are taken too." %}</p>

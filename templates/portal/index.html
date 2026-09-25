@@ -28,7 +28,7 @@
       </div>
       {% if card.homework %}
         <a href="{% url 'homework:todo' %}?student={{ s.pk }}" class="mt-3 flex items-center justify-between rounded-md border border-slate-200 px-3 py-2 text-sm hover:bg-slate-50">
-          <span>📚 {% translate "Homework" %}: {{ card.homework.due }} {% translate "due this week" %}{% if card.homework.overdue %} · <span class="font-semibold text-red-700">{{ card.homework.overdue }} {% translate "overdue" %}</span>{% endif %}</span>
+          <span class="inline-flex items-center gap-2">{% include "components/nav_icon.html" with name="book" %} {% translate "Homework" %}: {{ card.homework.due }} {% translate "due this week" %}{% if card.homework.overdue %} · <span class="font-semibold text-red-700">{{ card.homework.overdue }} {% translate "overdue" %}</span>{% endif %}</span>
           <span class="text-indigo-700">{% translate "Open" %}</span>
         </a>
       {% endif %}
