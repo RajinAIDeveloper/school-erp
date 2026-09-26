@@ -1,6 +1,7 @@
 from django.urls import path
 
 from academics.models import AcademicYear, ClassLevel, ClassSubject, Section, Subject, SubjectTeacher, Term
+from academics.views import subject_teacher_create
 from attendance.models import LeaveType
 from core.crud import crud
 from employees.models import Department, Designation
@@ -50,8 +51,8 @@ for model, key, fields, columns in [
     (
         Section,
         "section",
-        ["class_level", "name", "capacity", "class_teacher"],
-        [("Section", "__str__"), ("Teacher", "class_teacher"), ("Capacity", "capacity")],
+        ["class_level", "name", "capacity", "class_teacher", "shift", "default_room"],
+        [("Section", "__str__"), ("Teacher", "class_teacher"), ("Shift", "get_shift_display"), ("Classroom", "default_room"), ("Capacity", "capacity")],
     ),
     (
         Subject,
@@ -81,7 +82,7 @@ for model, key, fields, columns in [
     (Designation, "designation", ["name"], [("Designation", "name")]),
     (LeaveType, "leave_type", ["name", "days_per_year"], [("Leave type", "name"), ("Annual days", "days_per_year")]),
 ]:
-    urlpatterns += crud(
+    routes = crud(
         model,
         "settings",
         key,
@@ -92,10 +93,20 @@ for model, key, fields, columns in [
         list_permission="academics.change_classsubject" if model is ClassSubject else None,
         prefill_fields=(
             ("academic_year", "class_level", "subject") if model is ClassSubject else
-            ("academic_year", "section", "subject") if model is SubjectTeacher else
             ("class_level",) if model is Section else
             ("academic_year",) if model is Term else ()
         ),
-        create_success_url_name="academics:subject_setup" if model is ClassSubject else None,
-        detail_url_name="academics:subject_setup" if model is ClassSubject else None,
+        create_success_url_name=(
+            "academics:subject_setup" if model is ClassSubject else
+            "academics:subject_detail" if model is Subject else None
+        ),
+        detail_url_name=(
+            "academics:subject_setup" if model is ClassSubject else
+            "academics:subject_detail" if model is Subject else None
+        ),
     )
+    if model is SubjectTeacher:
+        routes = [route for route in routes if route.name != "subject_teacher_create"]
+    urlpatterns += routes
+
+urlpatterns += [path("subject-teacher/new/", subject_teacher_create, name="subject_teacher_create")]

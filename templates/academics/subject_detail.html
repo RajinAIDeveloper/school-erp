@@ -1,0 +1,27 @@
+{% extends "layouts/base.html" %}
+{% block header_actions %}
+  <a href="{% url 'academics:subjects' %}" class="btn-secondary btn-sm">All subjects</a>
+  {% if perms.academics.change_subject %}<a href="{% url 'settings:subject_update' subject.pk %}" class="btn-secondary btn-sm">Edit subject</a>{% endif %}
+{% endblock %}
+{% block content %}
+<div class="card card-body mb-5">
+  <p class="text-sm text-slate-600">Board code: <strong>{{ subject.code|default:"None" }}</strong></p>
+  <p class="mt-2 text-sm text-slate-600">Choose a section below to assign its teacher. Saving will also add {{ subject }} to that class's {{ year }} subject plan when needed.</p>
+</div>
+<form method="get" class="card card-body mb-5 flex flex-wrap items-end gap-3"><div><label for="year" class="label">Academic year</label><select id="year" name="year" class="input">
+  {% for item in years %}<option value="{{ item.pk }}" {% if year.pk == item.pk %}selected{% endif %}>{{ item }}</option>{% endfor %}
+</select></div><button class="btn-secondary">Show</button></form>
+{% for item in coverage %}
+<section class="card mb-4">
+  <div class="card-header flex flex-wrap items-center justify-between gap-2"><div><h2 class="font-semibold">{{ item.level }}</h2>
+    {% if item.plan %}<span class="text-xs text-emerald-700">In {{ year }} class plan</span>{% else %}<span class="text-xs text-amber-700">Not yet in {{ year }} class plan</span>{% endif %}</div>
+    {% if item.plan %}<a class="link text-sm" href="{% url 'academics:subject_setup' item.plan.pk %}">Teaching plan</a>{% endif %}</div>
+  <div class="divide-y divide-slate-100">
+    {% for row in item.sections %}<div class="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm">
+      <div><strong>{{ row.section }}</strong><span class="ml-3 text-slate-600">{% for assignment in row.teachers %}<a class="link" href="{% url 'employees:detail' assignment.teacher.pk %}">{{ assignment.teacher }}</a>{% if not forloop.last %}, {% endif %}{% empty %}<span class="text-amber-700">No subject teacher assigned</span>{% endfor %}</span></div>
+      {% if perms.academics.add_subjectteacher and year %}<a class="btn-secondary btn-sm" href="{% url 'settings:subject_teacher_create' %}?academic_year={{ year.pk }}&amp;section={{ row.section.pk }}&amp;subject={{ subject.pk }}&amp;return_to={{ request.get_full_path|urlencode }}">Assign teacher</a>{% endif %}
+    </div>{% empty %}<p class="px-5 py-3 text-sm text-slate-500">No sections yet. <a class="link" href="{% url 'settings:section_create' %}?class_level={{ item.level.pk }}">Add a section</a></p>{% endfor %}
+  </div>
+</section>
+{% empty %}<p class="text-sm text-slate-500">Add a class first in Basic Settings.</p>{% endfor %}
+{% endblock %}

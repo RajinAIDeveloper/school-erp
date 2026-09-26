@@ -4,18 +4,20 @@ from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.db import transaction
 from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 
 from core.access import is_manager, require_permission
 from core.models import audit
 from core.modules import has_module
 
-from .forms import TeachingPlanItemForm
-from .models import AcademicYear, ClassLevel, ClassSubject, Section, SubjectTeacher, TeachingPlanItem, Term
+from .forms import SubjectAssignmentForm, TeachingPlanItemForm
+from .models import AcademicYear, ClassLevel, ClassSubject, Section, Subject, SubjectTeacher, TeachingPlanItem, Term
 
 
 @require_permission("academics.view_section")
@@ -32,6 +34,109 @@ def sections_json(request):
 
 def _pick(queryset, raw):
     return queryset.filter(pk=int(raw)).first() if str(raw).isdigit() else None
+
+
+@require_permission("academics.view_classsubject")
+def subjects(request):
+    """Subject catalogue and the class/section plans reachable by this user."""
+    year = _pick(AcademicYear.objects.filter(school=request.school), request.GET.get("year"))
+    year = year or AcademicYear.current_for(request.school)
+    manager = is_manager(request.user)
+    rows = ClassSubject.objects.filter(school=request.school, academic_year=year).select_related(
+        "subject", "class_level"
+    ) if year else ClassSubject.objects.none()
+    assignments = SubjectTeacher.objects.filter(school=request.school, academic_year=year).select_related(
+        "subject", "section__class_level", "teacher"
+    ) if year else SubjectTeacher.objects.none()
+    if not manager:
+        assignments = assignments.filter(teacher__user=request.user)
+        taught = Q(pk__in=[])
+        for class_level_id, subject_id in assignments.values_list("section__class_level_id", "subject_id"):
+            taught |= Q(class_level_id=class_level_id, subject_id=subject_id)
+        rows = rows.filter(taught)
+    return render(request, "academics/subjects.html", {
+        "page_title": "Subjects", "manager": manager, "year": year,
+        "years": AcademicYear.objects.filter(school=request.school),
+        "subjects": Subject.objects.filter(school=request.school) if manager else [],
+        "rows": rows, "assignments": assignments,
+    })
+
+
+@require_permission("academics.view_classsubject", also="managers only")
+def subject_detail(request, pk):
+    if not is_manager(request.user):
+        raise PermissionDenied
+    subject = get_object_or_404(Subject, school=request.school, pk=pk)
+    year = _pick(AcademicYear.objects.filter(school=request.school), request.GET.get("year"))
+    year = year or AcademicYear.current_for(request.school)
+    plans = ClassSubject.objects.filter(school=request.school, academic_year=year, subject=subject).select_related(
+        "class_level"
+    ) if year else ClassSubject.objects.none()
+    plan_by_level = {row.class_level_id: row for row in plans}
+    assigned = list(SubjectTeacher.objects.filter(
+        school=request.school, academic_year=year, subject=subject
+    ).select_related("teacher", "section")) if year else []
+    assigned_by_section = {}
+    for row in assigned:
+        assigned_by_section.setdefault(row.section_id, []).append(row)
+    levels = ClassLevel.objects.filter(school=request.school, is_active=True).prefetch_related("sections")
+    coverage = []
+    for level in levels:
+        sections = []
+        for section in level.sections.all():
+            if section.is_active:
+                sections.append({"section": section, "teachers": assigned_by_section.get(section.pk, [])})
+        coverage.append({"level": level, "plan": plan_by_level.get(level.pk), "sections": sections})
+    return render(request, "academics/subject_detail.html", {
+        "page_title": subject.name, "subject": subject, "year": year,
+        "years": AcademicYear.objects.filter(school=request.school), "coverage": coverage,
+    })
+
+
+@require_permission("academics.add_subjectteacher")
+def subject_teacher_create(request):
+    """Assign a teacher, creating the missing class subject row in the same transaction."""
+    initial = {}
+    for field in ("academic_year", "section", "subject", "teacher"):
+        if request.GET.get(field, "").isdigit():
+            initial[field] = request.GET[field]
+    if "academic_year" not in initial:
+        current = AcademicYear.current_for(request.school)
+        if current:
+            initial["academic_year"] = current.pk
+    form = SubjectAssignmentForm(request.POST or None, school=request.school, initial=initial)
+    return_to = request.GET.get("return_to", "")
+    if not (return_to.startswith("/") and not return_to.startswith("//") and url_has_allowed_host_and_scheme(
+        return_to, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    )):
+        return_to = reverse("academics:subjects")
+    if request.method == "POST" and form.is_valid():
+        year = form.cleaned_data["academic_year"]
+        section = form.cleaned_data["section"]
+        subject = form.cleaned_data["subject"]
+        teacher = form.cleaned_data["teacher"]
+        with transaction.atomic():
+            if not subject.class_levels.filter(pk=section.class_level_id).exists():
+                subject.class_levels.add(section.class_level)
+            plan = ClassSubject.objects.filter(
+                school=request.school, academic_year=year, class_level=section.class_level, subject=subject
+            ).first()
+            if plan is None:
+                plan = ClassSubject.objects.create(
+                    school=request.school, academic_year=year, class_level=section.class_level,
+                    subject=subject, kind=form.cleaned_data["kind"],
+                )
+            assignment = SubjectTeacher(
+                school=request.school, academic_year=year, section=section, subject=subject, teacher=teacher
+            )
+            assignment.full_clean()
+            assignment.save()
+            audit(request, "record.saved", assignment)
+        messages.success(request, f"{teacher} now teaches {subject} in {section}. The class subject plan is ready too.")
+        return redirect(return_to)
+    return render(request, "academics/subject_teacher_form.html", {
+        "page_title": "Assign a subject teacher", "form": form, "cancel_url": return_to,
+    })
 
 
 @require_permission("academics.view_classsubject")

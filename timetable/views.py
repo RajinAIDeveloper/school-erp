@@ -31,6 +31,7 @@ class RoutineFilter(TailwindFormMixin, forms.Form):
     academic_year = forms.ModelChoiceField(queryset=AcademicYear.objects.none(), required=False)
     section = forms.ModelChoiceField(queryset=Section.objects.none(), required=False)
     teacher = forms.ModelChoiceField(queryset=Employee.objects.none(), required=False)
+    week_of = forms.DateField(label="Week containing date", required=False, widget=forms.DateInput(attrs={"type": "date"}))
 
     def __init__(self, *args, school, user, **kwargs):
         super().__init__(*args, **kwargs)
@@ -72,11 +73,12 @@ def visible_slots(request, queryset):
 def routine(request):
     """The week as a grid, for a class or for a teacher."""
     form = RoutineFilter(request.GET or None, school=request.school, user=request.user)
-    year = section = teacher = None
+    year = section = teacher = week_of = None
     if form.is_bound and form.is_valid():
         year = form.cleaned_data["academic_year"]
         section = form.cleaned_data["section"]
         teacher = form.cleaned_data["teacher"]
+        week_of = form.cleaned_data["week_of"]
     year = year or AcademicYear.current_for(request.school)
 
     # A student or guardian with no filter chosen still gets their own class.
@@ -87,7 +89,7 @@ def routine(request):
             own = Section.objects.filter(school=request.school, pk__in=[s for s in enrolled if s]).first()
         section = own
 
-    grid = week_grid(request.school, year, section=section, teacher=teacher) if year else None
+    grid = week_grid(request.school, year, section=section, teacher=teacher, week_of=week_of) if year else None
     if grid and not is_manager(request.user):
         allowed = set(
             visible_slots(request, RoutineSlot.objects.filter(school=request.school)).values_list("pk", flat=True)
@@ -111,6 +113,13 @@ def routine(request):
     if teacher:
         slots = slots.filter(teacher=teacher)
 
+    room_by_slot_id = {
+        slot.pk: slot.display_room
+        for row in (grid or {}).get("rows", ())
+        for cell in row["cells"]
+        for slot in cell["slots"]
+    }
+
     fmt = request.GET.get("format")
     if fmt:
         headers = ["Day", "Period", "Class / section", "Subject", "Teacher", "Room"]
@@ -121,7 +130,7 @@ def routine(request):
                 str(s.section),
                 str(s.subject),
                 str(s.teacher or ""),
-                str(s.room or ""),
+                str(room_by_slot_id.get(s.pk) or ""),
             ]
             for s in slots.order_by("weekday", "period__order")
         ]
@@ -146,6 +155,7 @@ def routine(request):
             "year": year,
             "section": section,
             "teacher": teacher,
+            "week_of": week_of,
             "can_edit": request.user.has_perm("timetable.change_routineslot"),
             "page_title": "Class routine",
         },
@@ -163,7 +173,7 @@ def grid_edit(request):
         else AcademicYear.current_for(request.school)
     )
     section = get_object_or_404(Section, school=request.school, pk=section_pk) if str(section_pk).isdigit() else None
-    periods = all_periods(request.school)
+    periods = all_periods(request.school, section=section, academic_year=year)
     weekdays = school_weekdays(request.school)
     weekend = request.school.weekend_day_numbers
     timings = day_times(request.school)
@@ -363,10 +373,15 @@ def school_week(request):
 
     school = request.school
     weekdays = dict(WEEKDAYS)
+    chosen_shift = (request.POST.get("shift") if request.method == "POST" else request.GET.get("shift")) or ""
+    if chosen_shift not in dict(Period.SHIFT_CHOICES) and chosen_shift != "":
+        chosen_shift = ""
     chosen_day = _number(request.GET.get("day") or request.POST.get("day"))
-    if chosen_day not in weekdays:
-        chosen_day = next((n for n, _label in school_weekdays(school)), 4)
-    periods = list(Period.objects.filter(school=school, is_active=True).order_by("order"))
+    school_days = school_weekdays(school)
+    school_day_numbers = {number for number, _label in school_days}
+    if chosen_day not in school_day_numbers:
+        chosen_day = school_days[0][0] if school_days else 4
+    periods = list(Period.objects.filter(school=school, shift=chosen_shift, is_active=True).order_by("order"))
 
     if request.method == "POST":
         action = request.POST.get("action", "")
@@ -393,7 +408,10 @@ def school_week(request):
                                 request.POST.get(f"break_name{suffix}", ""),
                             )
                         )
-                made = build_day(school=school, user=request.user, plan=plan_day(first_start, minutes, count, breaks))
+                made = build_day(
+                    school=school, user=request.user, shift=chosen_shift,
+                    plan=plan_day(first_start, minutes, count, breaks),
+                )
                 messages.success(
                     request, f"{len(made)} periods set, from {made[0].start_time:%H:%M} to {made[-1].end_time:%H:%M}."
                 )
@@ -418,7 +436,7 @@ def school_week(request):
                 messages.error(request, message)
         except PermissionDenied:
             messages.error(request, "Your role cannot change the school week.")
-        return redirect(f"{request.path}?day={chosen_day}")
+        return redirect(f"{request.path}?day={chosen_day}&shift={chosen_shift}")
 
     timings = day_times(school)
     day_rows = []
@@ -434,7 +452,10 @@ def school_week(request):
             }
         )
     special = {}
+    selected_period_ids = {period.pk for period in periods}
     for row in timings.values():
+        if row.period_id not in selected_period_ids:
+            continue
         special.setdefault(row.weekday, 0)
         special[row.weekday] += 1
     days_field = school_days_field()
@@ -443,10 +464,12 @@ def school_week(request):
         "timetable/week.html",
         {
             "weekdays": WEEKDAYS,
+            "shifts": [("", "Default schedule"), *Period.SHIFT_CHOICES],
+            "chosen_shift": chosen_shift,
             "school_days": school_days_of(school),
             "days_help": days_field.help_text,
             "periods": periods,
-            "used": RoutineSlot.objects.filter(school=school).exists(),
+            "used": RoutineSlot.objects.filter(school=school, period__shift=chosen_shift).exists(),
             "chosen_day": chosen_day,
             "chosen_label": weekdays[chosen_day],
             "day_rows": day_rows,

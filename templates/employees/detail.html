@@ -43,13 +43,17 @@
 
 <div class="grid gap-6 lg:grid-cols-2">
   <section class="card">
-    <div class="card-header"><h3 class="font-semibold">Teaching assignments</h3></div>
+    <div class="card-header flex flex-wrap items-center justify-between gap-2"><h3 class="font-semibold">Teaching assignments</h3>
+      {% if employee.employee_type == 'teacher' and perms.academics.add_subjectteacher %}
+        <a class="btn-secondary btn-sm" href="{% url 'settings:subject_teacher_create' %}?teacher={{ employee.pk }}&amp;return_to={{ request.get_full_path|urlencode }}">Assign subject or class</a>
+      {% endif %}
+    </div>
     <table class="table">
       <thead><tr><th>Year</th><th>Class / section</th><th>Subject</th></tr></thead>
       <tbody>
         {% for a in assignments %}
           <tr><td>{{ a.academic_year }}</td><td>{{ a.section }}</td><td>{{ a.subject }}</td></tr>
-        {% empty %}<tr><td colspan="3">{% include "components/empty.html" with message="No subjects assigned." %}</td></tr>{% endfor %}
+        {% empty %}<tr><td colspan="3">{% include "components/empty.html" with message="No subjects assigned. Use Assign subject or class to choose a year, section and subject." %}</td></tr>{% endfor %}
       </tbody>
     </table>
     {% if class_teacher_of %}
@@ -58,6 +62,7 @@
         {% for section in class_teacher_of %}<span class="font-medium">{{ section }}</span>{% if not forloop.last %}, {% endif %}{% endfor %}
       </div>
     {% endif %}
+    {% if employee.employee_type == 'teacher' %}<div class="border-t border-slate-200 px-5 py-3 text-xs text-slate-600">A class teacher manages the section. Subject teaching assignments decide which subjects this person teaches and plans. One teacher may have several assignments.</div>{% endif %}
   </section>
 
   <section class="card">

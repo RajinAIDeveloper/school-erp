@@ -1,0 +1,46 @@
+{% extends "layouts/base.html" %}
+{% block header_actions %}
+  {% if manager %}<a href="{% url 'settings:subject_create' %}" class="btn-primary btn-sm">Add a subject</a>{% endif %}
+{% endblock %}
+{% block content %}
+<div class="mb-5 rounded-md border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+  A subject is its name and board code. A class plan says which year and class take it. Teacher assignments say who teaches it in each section. Teaching plans, quiz dates and lesson notes are optional.
+</div>
+<form method="get" class="card card-body mb-5 flex flex-wrap items-end gap-3">
+  <div><label for="year" class="label">Academic year</label><select id="year" name="year" class="input">
+    {% for item in years %}<option value="{{ item.pk }}" {% if year.pk == item.pk %}selected{% endif %}>{{ item }}</option>{% endfor %}
+  </select></div><button class="btn-secondary">Show</button>
+</form>
+{% if manager %}
+<section class="card mb-5">
+  <div class="card-header flex flex-wrap items-center justify-between gap-2"><h2 class="font-semibold">Subjects</h2><a href="{% url 'settings:subject_create' %}" class="link text-sm">Add subject</a></div>
+  <div class="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
+    {% for subject in subjects %}
+      <a class="rounded-md border border-slate-200 p-3 hover:border-indigo-400 hover:bg-indigo-50" href="{% url 'academics:subject_detail' subject.pk %}{% if year %}?year={{ year.pk }}{% endif %}">
+        <span class="font-semibold text-indigo-700">{{ subject.name }}</span>
+        <span class="ml-2 text-xs text-slate-500">{{ subject.code }}</span>
+        <span class="mt-1 block text-xs text-slate-600">Open class and section setup</span>
+      </a>
+    {% empty %}<p class="text-sm text-slate-500">No subjects yet. Add your first subject.</p>{% endfor %}
+  </div>
+</section>
+{% endif %}
+<section class="card mb-5">
+  <div class="card-header flex flex-wrap items-center justify-between gap-2"><h2 class="font-semibold">Class subject plans{% if year %} · {{ year }}{% endif %}</h2>
+    {% if manager %}<a href="{% url 'academics:subject_plan' %}" class="link text-sm">View plan by class</a>{% endif %}</div>
+  <table class="table"><thead><tr><th>Class</th><th>Subject</th><th>Type</th><th></th></tr></thead><tbody>
+    {% for row in rows %}<tr><td>{{ row.class_level }}</td><td>{{ row.subject }}</td><td>{{ row.get_kind_display }}</td>
+      <td><a class="link" href="{% url 'academics:subject_setup' row.pk %}">Teaching plan and section setup</a></td></tr>
+    {% empty %}<tr><td colspan="4" class="text-slate-500">No class subject plans to show for this year.</td></tr>{% endfor %}
+  </tbody></table>
+</section>
+<section class="card">
+  <div class="card-header flex flex-wrap items-center justify-between gap-2"><h2 class="font-semibold">{% if manager %}Section teachers{% else %}My teaching assignments{% endif %}</h2>
+    {% if manager and perms.academics.add_subjectteacher %}<a href="{% url 'settings:subject_teacher_create' %}" class="link text-sm">Assign a teacher</a>{% endif %}</div>
+  <table class="table"><thead><tr><th>Section</th><th>Subject</th><th>Teacher</th><th></th></tr></thead><tbody>
+    {% for row in assignments %}<tr><td>{{ row.section }}</td><td>{{ row.subject }}</td><td>{{ row.teacher }}</td>
+      <td>{% if manager %}<a href="{% url 'employees:detail' row.teacher.pk %}" class="link">Teacher portfolio</a>{% else %}<a href="{% url 'academics:subject_plan' %}?year={{ year.pk }}&amp;class_level={{ row.section.class_level_id }}" class="link">Class plan</a>{% endif %}</td></tr>
+    {% empty %}<tr><td colspan="4" class="text-slate-500">No teacher assignments to show for this year.</td></tr>{% endfor %}
+  </tbody></table>
+</section>
+{% endblock %}

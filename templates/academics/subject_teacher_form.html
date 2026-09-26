@@ -1,0 +1,17 @@
+{% extends "layouts/base.html" %}
+{% load erp %}
+{% block content %}
+<div class="mx-auto max-w-3xl">
+  <div class="mb-4 rounded-md border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+    Choose a year, class section, subject and teacher. If the subject is missing from this class's plan, saving adds it automatically. The same teacher can teach more than one subject, section or class.
+  </div>
+  <form method="post" class="card card-body">
+    {% csrf_token %}
+    {% render_form form %}
+    <div class="mt-6 flex justify-end gap-3 border-t border-slate-200 pt-4">
+      <a href="{{ cancel_url }}" class="btn-secondary">Cancel</a>
+      <button class="btn-primary">Assign teacher</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -4,16 +4,25 @@
   <a href="{% url 'timetable:room_list' %}" class="btn-secondary btn-sm">Rooms</a>
 {% endblock %}
 {% block content %}
+<div class="mb-4 rounded-lg border border-slate-200 bg-white px-5 py-4">
+  <p class="font-semibold">Choose the bell schedule</p>
+  <p class="mt-1 text-sm text-slate-600">Use Default for sections without a shift. Give Morning, Day or Evening its own periods when sections use different start times.</p>
+  <div class="mt-3 flex flex-wrap gap-2">
+    {% for value, label in shifts %}
+      <a href="?shift={{ value }}&amp;day={{ chosen_day }}" class="rounded-lg px-3 py-2 text-sm {% if value == chosen_shift %}bg-indigo-600 text-white{% else %}bg-slate-100 text-slate-700{% endif %}">{{ label }}</a>
+    {% endfor %}
+  </div>
+</div>
 {% if stray %}
   <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
     <span>{{ stray }} lesson{{ stray|pluralize }} in the routine fall on a day the school no longer meets, or in a period not held that day. They are not shown and no class is expected.</span>
-    <form method="post" data-confirm="Remove these lessons from the routine?">{% csrf_token %}<input type="hidden" name="action" value="clear_stray"><button class="btn-secondary btn-sm">Remove them</button></form>
+    <form method="post" data-confirm="Remove these lessons from the routine?">{% csrf_token %}<input type="hidden" name="action" value="clear_stray"><input type="hidden" name="shift" value="{{ chosen_shift }}"><button class="btn-secondary btn-sm">Remove them</button></form>
   </div>
 {% endif %}
 
 <div class="grid gap-6 lg:grid-cols-2">
   <form method="post" class="card">
-    {% csrf_token %}<input type="hidden" name="action" value="days">
+    {% csrf_token %}<input type="hidden" name="action" value="days"><input type="hidden" name="shift" value="{{ chosen_shift }}">
     <div class="card-header"><h2 class="font-semibold">1. The days the school meets</h2></div>
     <div class="card-body text-sm">
       <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -28,23 +37,23 @@
 
   <section class="card">
     <div class="card-header"><h2 class="font-semibold">2. The periods of the day</h2>
-      <a href="{% url 'timetable:period_create' %}" class="link text-sm">Add one period</a></div>
+      <a href="{% url 'timetable:period_create' %}?shift={{ chosen_shift }}&amp;return_to=/routine/week/%3Fshift%3D{{ chosen_shift }}" class="link text-sm">Add one period</a></div>
     <ul class="divide-y divide-slate-100 text-sm">
       {% for p in periods %}
         <li class="flex items-center justify-between px-5 py-2 {% if p.is_break %}bg-slate-50 italic text-slate-500{% endif %}">
           <span>{{ p.order }}. {{ p.name }}</span>
-          <span>{{ p.start_time|time:"H:i" }}–{{ p.end_time|time:"H:i" }} <a class="link ml-3 text-xs not-italic" href="{% url 'timetable:period_update' p.pk %}">Edit</a></span>
+          <span>{{ p.start_time|time:"H:i" }}–{{ p.end_time|time:"H:i" }} <a class="link ml-3 text-xs not-italic" href="{% url 'timetable:period_update' p.pk %}?return_to=/routine/week/%3Fshift%3D{{ chosen_shift }}">Edit</a></span>
         </li>
       {% empty %}
         <li class="px-5 py-4 text-slate-500">No period yet. Build the day below.</li>
       {% endfor %}
     </ul>
-    <p class="border-t border-slate-200 px-5 py-3 text-xs text-slate-500">These are every school day's periods. A day with other timings is set in part 4.</p>
+    <p class="border-t border-slate-200 px-5 py-3 text-xs text-slate-500">These periods belong to the selected schedule. A weekday with other timings is set in part 4. Assign a section to Morning, Day or Evening in Basic Settings → Sections.</p>
   </section>
 </div>
 
 <form method="post" class="card mt-6">
-  {% csrf_token %}<input type="hidden" name="action" value="build">
+  {% csrf_token %}<input type="hidden" name="action" value="build"><input type="hidden" name="shift" value="{{ chosen_shift }}">
   <div class="card-header"><h2 class="font-semibold">3. Build the day</h2>
     <span class="text-xs text-slate-500">{% if used %}The periods are used in the routine, so they are changed one by one, in part 2.{% else %}Replaces the periods above.{% endif %}</span></div>
   <div class="card-body grid gap-4 text-sm sm:grid-cols-3">
@@ -62,12 +71,12 @@
 </form>
 
 <form method="post" class="card mt-6 overflow-x-auto">
-  {% csrf_token %}<input type="hidden" name="action" value="day_times"><input type="hidden" name="day" value="{{ chosen_day }}">
+  {% csrf_token %}<input type="hidden" name="action" value="day_times"><input type="hidden" name="day" value="{{ chosen_day }}"><input type="hidden" name="shift" value="{{ chosen_shift }}">
   <div class="card-header"><h2 class="font-semibold">4. A day with other timings</h2>
     <span class="text-xs text-slate-500">For a shorter Thursday or a half day. Days not set here keep the usual times.</span></div>
   <div class="flex flex-wrap gap-2 px-5 pt-4 text-xs">
     {% for number, label in weekdays %}{% if number in school_days %}
-      <a href="?day={{ number }}" class="rounded-full px-3 py-1 {% if number == chosen_day %}bg-indigo-600 text-white{% else %}bg-slate-100 text-slate-700{% endif %}">{{ label }}</a>
+      <a href="?day={{ number }}&amp;shift={{ chosen_shift }}" class="rounded-full px-3 py-1 {% if number == chosen_day %}bg-indigo-600 text-white{% else %}bg-slate-100 text-slate-700{% endif %}">{{ label }}</a>
     {% endif %}{% endfor %}
   </div>
   {% if special %}<p class="px-5 pt-2 text-xs text-slate-500">Other timings already set: {% for label, count, day in special %}{{ label }} ({{ count }} period{{ count|pluralize }}){% if not forloop.last %} · {% endif %}{% endfor %}</p>{% endif %}

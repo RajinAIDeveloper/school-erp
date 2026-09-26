@@ -111,6 +111,10 @@ class Section(SchoolScopedModel):
     class_level = models.ForeignKey(ClassLevel, on_delete=models.CASCADE, related_name="sections")
     name = models.CharField(max_length=20, help_text="e.g. A, B, Morning")
     capacity = models.PositiveSmallIntegerField(default=40)
+    default_room = models.ForeignKey(
+        "timetable.Room", null=True, blank=True, on_delete=models.SET_NULL, related_name="home_sections",
+        help_text="The usual classroom for this section. Add rooms under Routine → School days & periods → Rooms first.",
+    )
     class_teacher = models.ForeignKey(
         "employees.Employee", null=True, blank=True, on_delete=models.SET_NULL, related_name="class_teacher_of"
     )
@@ -139,6 +143,36 @@ class Section(SchoolScopedModel):
 
     def __str__(self):
         return f"{self.class_level} - {self.name}"
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        super().clean()
+        if not (self.pk and self.school_id and self.default_room_id):
+            return
+        previous = Section.objects.filter(pk=self.pk).values_list("default_room_id", flat=True).first()
+        if previous == self.default_room_id:
+            return
+        from timetable.models import RoutineSlot, day_times, times_on
+
+        timings = day_times(self.school)
+        own_slots = RoutineSlot.objects.filter(section=self, room__isnull=True).select_related("period")
+        for own in own_slots:
+            own_times = times_on(own.period, own.weekday, timings)
+            if own_times is None:
+                continue
+            others = RoutineSlot.objects.filter(
+                school=self.school, academic_year=own.academic_year, weekday=own.weekday
+            ).exclude(section=self).select_related("period", "section__default_room", "room")
+            for other in others:
+                other_room_id = other.room_id or other.section.default_room_id
+                other_times = times_on(other.period, other.weekday, timings)
+                if other_room_id == self.default_room_id and other_times and (
+                    other_times[0] < own_times[1] and own_times[0] < other_times[1]
+                ):
+                    raise ValidationError({
+                        "default_room": f"{self.default_room} is already used by {other.section} in a routine period."
+                    })
 
 
 class Subject(SchoolScopedModel):

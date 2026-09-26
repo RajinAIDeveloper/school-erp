@@ -236,6 +236,9 @@ asserts that list, so a view that forgets its permission decorator cannot quietl
 | /routine/period/ | timetable:period_list | `timetable.change_period` | - | Y | Y | Y | . | . | . | . | . |
 | /routine/period/<int:pk>/edit/ | timetable:period_update | `timetable.change_period` | - | Y | Y | Y | . | . | . | . | . |
 | /routine/period/new/ | timetable:period_create | `timetable.add_period` | - | Y | Y | Y | . | . | . | . | . |
+| /routine/room-changes/ | timetable:room_change_list | `timetable.change_sectionroomchange` | - | Y | Y | Y | . | . | . | . | . |
+| /routine/room-changes/<int:pk>/edit/ | timetable:room_change_update | `timetable.change_sectionroomchange` | - | Y | Y | Y | . | . | . | . | . |
+| /routine/room-changes/new/ | timetable:room_change_create | `timetable.add_sectionroomchange` | - | Y | Y | Y | . | . | . | . | . |
 | /routine/room/ | timetable:room_list | `timetable.change_room` | - | Y | Y | Y | . | . | . | . | . |
 | /routine/room/<int:pk>/edit/ | timetable:room_update | `timetable.change_room` | - | Y | Y | Y | . | . | . | . | . |
 | /routine/room/new/ | timetable:room_create | `timetable.add_room` | - | Y | Y | Y | . | . | . | . | . |

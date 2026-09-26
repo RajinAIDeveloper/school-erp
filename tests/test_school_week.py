@@ -232,3 +232,96 @@ def test_the_settings_card_leads_to_the_school_week(erp):
     assert "School week and periods" in body and "/routine/week/" in body
     assert date.today()  # the page itself renders for a manager
     assert login(erp.admin).get("/routine/week/?day=4").status_code == 200
+
+
+def test_two_shifts_have_their_own_starts_periods_and_breaks(erp):
+    client = login(erp.admin)
+    assert client.get("/routine/period/new/?shift=morning").context["form"]["shift"].value() == "morning"
+    assert "shift" in client.get(f"/settings/section/{erp.section.pk}/edit/").context["form"].fields
+    morning = build_day(
+        school=erp.school, user=erp.admin, shift="morning",
+        plan=plan_day(time(8, 30), 40, 2, [(1, 20, "Morning break")]),
+    )
+    evening = build_day(
+        school=erp.school, user=erp.admin, shift="evening",
+        plan=plan_day(time(14), 35, 3),
+    )
+    erp.section.shift = "morning"
+    erp.section.save(update_fields=["shift"])
+    erp.other_section.shift = "evening"
+    erp.other_section.save(update_fields=["shift"])
+
+    morning_page = login(erp.admin).get(f"/routine/edit/?section={erp.section.pk}&academic_year={erp.year.pk}").content.decode()
+    evening_page = login(erp.admin).get(
+        f"/routine/edit/?section={erp.other_section.pk}&academic_year={erp.year.pk}"
+    ).content.decode()
+    assert "08:30" in morning_page and "Morning break" in morning_page
+    assert f'name="1-{morning[0].pk}-subject"' in morning_page
+    assert f'name="1-{evening[0].pk}-subject"' not in morning_page
+    assert "14:00" in evening_page and "Morning break" not in evening_page
+    assert f'name="1-{evening[0].pk}-subject"' in evening_page
+
+    save_day_times(
+        school=erp.school, user=erp.admin, weekday=THURSDAY,
+        rows={morning[0]: (time(8), time(8, 40), False), morning[-1]: (None, None, True)},
+    )
+    morning_routine = login(erp.admin).get(f"/routine/?section={erp.section.pk}").content.decode()
+    evening_routine = login(erp.admin).get(f"/routine/?section={erp.other_section.pk}").content.decode()
+    assert "08:00" in morning_routine and "Not held" in morning_routine
+    assert "14:00" in evening_routine and "08:00" not in evening_routine
+
+    slot(erp, morning[0], 1, teacher=erp.employee).save()
+    # The same teacher may take a later shift when the real times do not overlap.
+    slot(erp, evening[0], 1, section=erp.other_section, teacher=erp.employee).full_clean(exclude=["school"])
+    with pytest.raises(ValidationError, match="Morning shift"):
+        slot(erp, evening[0], 1).full_clean(exclude=["school"])
+
+
+def test_existing_default_routine_survives_adding_a_shift_schedule(erp, day):
+    old_lesson = slot(erp, day[0], 1)
+    old_lesson.save()
+    erp.section.shift = "morning"
+    erp.section.save(update_fields=["shift"])
+    new_periods = build_day(
+        school=erp.school, user=erp.admin, shift="morning", plan=plan_day(time(8, 30), 40, 2)
+    )
+    routine = login(erp.admin).get(f"/routine/?section={erp.section.pk}&academic_year={erp.year.pk}").content.decode()
+    assert old_lesson.subject.name in routine
+    editor = login(erp.admin).get(f"/routine/edit/?section={erp.section.pk}&academic_year={erp.year.pk}").content.decode()
+    assert f'name="1-{new_periods[0].pk}-subject"' in editor
+    assert f'name="1-{day[0].pk}-subject"' in editor
+
+
+def test_room_capacity_counts_both_shifts_without_unused_starter_periods(erp, day):
+    from timetable.models import Room
+
+    Room.objects.create(school=erp.school, name="One classroom")
+    erp.section.shift = "morning"
+    erp.section.save(update_fields=["shift"])
+    erp.other_section.shift = "evening"
+    erp.other_section.save(update_fields=["shift"])
+    build_day(school=erp.school, user=erp.admin, shift="morning", plan=plan_day(time(8), 40, 2))
+    build_day(school=erp.school, user=erp.admin, shift="evening", plan=plan_day(time(14), 40, 3))
+    [row] = room_utilisation(erp.school, erp.year)
+    assert row["available"] == 25  # Five days times two morning and three evening lessons.
+
+
+def test_changing_a_weekday_time_cannot_double_book_a_teacher_across_shifts(erp):
+    morning = build_day(
+        school=erp.school, user=erp.admin, shift="morning", plan=plan_day(time(8), 40, 1)
+    )[0]
+    evening = build_day(
+        school=erp.school, user=erp.admin, shift="evening", plan=plan_day(time(14), 40, 1)
+    )[0]
+    erp.section.shift = "morning"
+    erp.section.save(update_fields=["shift"])
+    erp.other_section.shift = "evening"
+    erp.other_section.save(update_fields=["shift"])
+    slot(erp, morning, 1, teacher=erp.employee).save()
+    slot(erp, evening, 1, section=erp.other_section, teacher=erp.employee).save()
+    with pytest.raises(ValidationError, match="Move the lessons first"):
+        save_day_times(
+            school=erp.school, user=erp.admin, weekday=1,
+            rows={morning: (time(14, 10), time(14, 50), False)},
+        )
+    assert not PeriodDayTime.objects.filter(period=morning, weekday=1).exists()

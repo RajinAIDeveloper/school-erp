@@ -80,7 +80,10 @@
 <a href="{% url 'timetable:routine' %}" class="{{ base }} {% active request 'timetable' %}">{% include "components/nav_icon.html" with name="calendar" %} {% translate "Routine" %}</a>
 {% endif %}
 {% if perms.academics.view_classsubject %}
-<a href="{% url 'academics:subject_plan' %}" class="{{ base }} {% active request 'subject_plan' 'subject_setup' 'teaching_plan_edit' %}">{% include "components/nav_icon.html" with name="book" %} {% translate "Teaching plans" %}</a>
+<a href="{% url 'academics:subjects' %}" class="{{ base }} {% active request 'subjects' 'subject_detail' 'subject_plan' 'subject_setup' 'teaching_plan_edit' %}">{% include "components/nav_icon.html" with name="book" %} {% translate "Subjects" %}</a>
+{% with sub="flex items-center gap-2 rounded-md py-1.5 pl-10 pr-3 text-sm hover:bg-slate-800 hover:text-white" %}
+<a href="{% url 'academics:subject_plan' %}" class="{{ sub }} {% active request 'subject_plan' 'subject_setup' 'teaching_plan_edit' %}">{% translate "Class teaching plans" %}</a>
+{% endwith %}
 {% endif %}
 
 <p class="mt-4 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{% translate "Communication" %}</p>

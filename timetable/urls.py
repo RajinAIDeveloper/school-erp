@@ -3,7 +3,7 @@ from django.urls import path
 from core.crud import crud
 
 from . import views
-from .models import Period, Room, RoutineSlot
+from .models import Period, Room, RoutineSlot, SectionRoomChange
 
 app_name = "timetable"
 
@@ -26,8 +26,8 @@ for model, key, fields, cols in [
     (
         Period,
         "period",
-        ["name", "order", "start_time", "end_time", "is_break"],
-        [("Period", "name"), ("Start", "start_time"), ("End", "end_time"), ("Break", "is_break", "bool")],
+        ["shift", "name", "order", "start_time", "end_time", "is_break"],
+        [("Shift", "get_shift_display"), ("Period", "name"), ("Start", "start_time"), ("End", "end_time"), ("Break", "is_break", "bool")],
     ),
     (Room, "room", ["name", "capacity"], [("Room", "name"), ("Capacity", "capacity")]),
     (
@@ -52,4 +52,17 @@ for model, key, fields, cols in [
         cols,
         actions=ROUTINE_ACTIONS,
         list_permission=f"timetable.change_{model._meta.model_name}",
+        prefill_fields=("shift",) if model is Period else (),
     )
+
+urlpatterns += crud(
+    SectionRoomChange,
+    "timetable",
+    "room_change",
+    ["section", "start_date", "end_date", "room", "reason"],
+    [("Section", "section"), ("From", "start_date", "date"), ("To", "end_date", "date"), ("New classroom", "room")],
+    prefix="room-changes/",
+    actions=ROUTINE_ACTIONS,
+    list_permission="timetable.change_sectionroomchange",
+    prefill_fields=("section", "start_date", "end_date"),
+)

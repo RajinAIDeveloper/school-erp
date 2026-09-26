@@ -1,6 +1,8 @@
 {% extends "layouts/base.html" %}
 {% load erp %}
 {% block header_actions %}
+  {% if perms.timetable.change_period %}<a href="{% url 'timetable:week' %}" class="btn-secondary btn-sm">School days &amp; periods</a>{% endif %}
+  {% if perms.timetable.change_sectionroomchange %}<a href="{% url 'timetable:room_change_list' %}" class="btn-secondary btn-sm">Temporary classroom changes</a>{% endif %}
   <a href="?{{ request.GET.urlencode }}&amp;format=pdf" class="btn-secondary btn-sm">PDF</a>
   <a href="?{{ request.GET.urlencode }}&amp;format=xlsx" class="btn-secondary btn-sm">Excel</a>
   <button onclick="window.print()" class="btn-secondary btn-sm">Print</button>
@@ -8,7 +10,8 @@
 {% endblock %}
 {% block content %}
 <form method="get" class="card card-body mb-4 print:hidden" data-autosubmit>
-  <div class="grid gap-4 sm:grid-cols-3">{% for field in form %}{% render_field field %}{% endfor %}</div>
+  <div class="grid gap-4 sm:grid-cols-4">{% for field in form %}{% render_field field %}{% endfor %}</div>
+  <p class="mt-3 text-xs text-slate-500">Choose a date to preview temporary classroom changes for that week. Leave it blank for the regular weekly routine.</p>
   <div class="mt-4 flex gap-3"><button class="btn-secondary">Show</button>
     {% if request.GET %}<a href="{% url 'timetable:routine' %}" class="link self-center text-sm">Clear</a>{% endif %}</div>
 </form>
@@ -18,7 +21,8 @@
     <h2 class="text-lg font-semibold">
       {% if section %}{{ section }}{% elif teacher %}{{ teacher.full_name }}{% else %}Whole school{% endif %}
     </h2>
-    <span class="text-sm text-slate-500">{{ year }}</span>
+    <span class="text-sm text-slate-500">{{ year }}{% if week_of %} · Week containing {{ week_of|date:"d M Y" }}{% endif %}</span>
+    {% if section and perms.timetable.add_sectionroomchange %}<a class="link text-sm" href="{% url 'timetable:room_change_create' %}?section={{ section.pk }}{% if week_of %}&amp;start_date={{ week_of|date:'Y-m-d' }}&amp;end_date={{ week_of|date:'Y-m-d' }}{% endif %}">Move this classroom for a date or week</a>{% endif %}
   </div>
 
   <div class="card overflow-x-auto">
@@ -33,7 +37,7 @@
         {% for row in grid.rows %}
           <tr class="{% if row.period.is_break %}bg-slate-50{% endif %}">
             <td class="align-top">
-              <p class="font-medium">{{ row.period.name }}</p>
+              <p class="font-medium">{% if not section and row.period.shift %}{{ row.period.get_shift_display }} · {% endif %}{{ row.period.name }}</p>
               <p class="text-xs text-slate-500">{{ row.period.start_time|time:"H:i" }}–{{ row.period.end_time|time:"H:i" }}</p>
             </td>
             {% if row.period.is_break %}
@@ -50,7 +54,7 @@
                       <p class="text-sm font-medium">{{ slot.subject }}</p>
                       {% if not section %}<p class="text-xs text-indigo-700">{{ slot.section }}</p>{% endif %}
                       {% if slot.teacher and not teacher %}<p class="text-xs text-slate-500">{{ slot.teacher.full_name }}</p>{% endif %}
-                      {% if slot.room %}<p class="text-xs text-slate-400">{{ slot.room }}</p>{% endif %}
+                      {% if slot.display_room %}<p class="text-xs text-slate-400">{{ slot.display_room }}{% if not slot.room and section.default_room_id and not week_of %} (classroom){% endif %}</p>{% endif %}
                     </div>
                   {% empty %}
                     <span class="text-xs text-slate-300">—</span>

@@ -1,5 +1,9 @@
 {% extends "layouts/base.html" %}
 {% load erp %}
+{% block header_actions %}
+  {% if section and perms.timetable.add_sectionroomchange %}<a href="{% url 'timetable:room_change_create' %}?section={{ section.pk }}" class="btn-secondary btn-sm">Move classroom for dates</a>{% endif %}
+  {% if perms.timetable.change_period %}<a href="{% url 'timetable:week' %}" class="btn-secondary btn-sm">School days &amp; periods</a>{% endif %}
+{% endblock %}
 {% block content %}
 <form method="get" class="card card-body mb-4 flex flex-wrap items-end gap-3">
   <div><label class="label" for="academic_year">Academic year</label>
@@ -21,8 +25,9 @@
   <input type="hidden" name="section" value="{{ section.pk }}">
   <div class="card-header">
     <h2 class="font-semibold">{{ section }} &middot; {{ year }}</h2>
-    <p class="text-sm text-slate-500">Leaving a subject blank clears that period. Only the days the school meets are shown.</p>
+    <p class="text-sm text-slate-500">Leaving a subject blank clears that period. Room uses this section's classroom by default; choose Gym or another room only for that lesson.</p>
   </div>
+  {% if not section.default_room and perms.academics.change_section %}<p class="border-b border-amber-200 bg-amber-50 px-5 py-2 text-sm text-amber-900">This section has no classroom yet. <a class="link" href="{% url 'settings:section_update' section.pk %}">Set its default classroom</a>.</p>{% endif %}
   {% if stray %}<p class="border-b border-amber-200 bg-amber-50 px-5 py-2 text-sm text-amber-900">{{ stray }} lesson{{ stray|pluralize }} of this section fall on a day the school no longer meets, or in a period not held that day. Saving the week removes them.</p>{% endif %}
 
   <div class="overflow-x-auto">
@@ -63,7 +68,7 @@
                     {% endfor %}
                   </select>
                   <select name="{{ cell.prefix }}-room" class="input py-1 text-xs">
-                    <option value="">No room</option>
+                    <option value="">{% if section.default_room %}Section classroom: {{ section.default_room.name }}{% else %}No classroom set{% endif %}</option>
                     {% for r in rooms %}
                       <option value="{{ r.pk }}" {% if cell.slot.room_id == r.pk %}selected{% endif %}>{{ r.name }}</option>
                     {% endfor %}
