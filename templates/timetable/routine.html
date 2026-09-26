@@ -40,7 +40,11 @@
               <td colspan="{{ grid.weekdays|length }}" class="text-center text-sm italic text-slate-500">Break</td>
             {% else %}
               {% for cell in row.cells %}
+                {% if cell.off %}
+                <td class="align-top bg-slate-50 text-center text-xs italic text-slate-400">Not held</td>
+                {% else %}
                 <td class="align-top">
+                  {% if cell.times %}<p class="mb-1 text-xs font-medium text-amber-700">{{ cell.times.0|time:"H:i" }}–{{ cell.times.1|time:"H:i" }}</p>{% endif %}
                   {% for slot in cell.slots %}
                     <div class="mb-1 rounded border border-slate-200 bg-white px-2 py-1">
                       <p class="text-sm font-medium">{{ slot.subject }}</p>
@@ -52,12 +56,13 @@
                     <span class="text-xs text-slate-300">—</span>
                   {% endfor %}
                 </td>
+                {% endif %}
               {% endfor %}
             {% endif %}
           </tr>
         {% empty %}
           <tr><td colspan="{{ grid.weekdays|length|add:1 }}">
-            {% include "components/empty.html" with message="No periods are set up yet. Add them under Basic settings." %}</td></tr>
+            {% include "components/empty.html" with message="No periods are set up yet. Build the day under Basic Settings, School week and periods." %}</td></tr>
         {% endfor %}
       </tbody>
     </table>

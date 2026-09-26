@@ -15,7 +15,7 @@ from core.forms import TailwindFormMixin
 from core.pdf import table_document
 from employees.models import Employee
 
-from .models import WEEKDAYS, Period, Room, RoutineSlot
+from .models import WEEKDAYS, Period, Room, RoutineSlot, day_times, school_weekdays, times_on
 from .services import (
     WeekGridError,
     all_periods,
@@ -164,6 +164,9 @@ def grid_edit(request):
     )
     section = get_object_or_404(Section, school=request.school, pk=section_pk) if str(section_pk).isdigit() else None
     periods = all_periods(request.school)
+    weekdays = school_weekdays(request.school)
+    weekend = request.school.weekend_day_numbers
+    timings = day_times(request.school)
     # Retired master data stays on the historical rows that use it, but is not offered
     # for a new one: a school that closed a room should not be able to book it again.
     subjects = Subject.objects.filter(school=request.school, is_active=True).order_by("name")
@@ -179,7 +182,9 @@ def grid_edit(request):
         for period in periods:
             if period.is_break or not period.is_active:
                 continue
-            for weekday, _label in WEEKDAYS:
+            for weekday, _label in weekdays:
+                if times_on(period, weekday, timings) is None:
+                    continue
                 prefix = f"{weekday}-{period.pk}"
                 subject_pk = request.POST.get(f"{prefix}-subject", "")
                 if not subject_pk:
@@ -200,6 +205,14 @@ def grid_edit(request):
                     cell_errors[(weekday, period.pk)] = "That room is not available. Reload the page."
                     continue
                 cells[(weekday, period.pk)] = {"subject": subject, "teacher": teacher, "room": room}
+        # A lesson on a day the school no longer meets, or in a period not held that day, goes
+        # with the week it belongs to. A retired period keeps what it holds.
+        for slot in RoutineSlot.objects.filter(school=request.school, academic_year=year, section=section):
+            key = (slot.weekday, slot.period_id)
+            if key in cells or key in cell_errors or slot.period.is_break or not slot.period.is_active:
+                continue
+            if slot.weekday in weekend or times_on(slot.period, slot.weekday, timings) is None:
+                cells[key] = None
         if cell_errors:
             messages.error(request, "Nothing was saved. The cells marked below could not be read.")
             cells = None
@@ -219,22 +232,31 @@ def grid_edit(request):
             cell_errors = exc.errors
             messages.error(request, "Nothing was saved. The cells marked below clash with another class.")
 
-    current = {}
+    current, stray = {}, 0
     if section and year:
-        for slot in RoutineSlot.objects.filter(school=request.school, academic_year=year, section=section):
+        for slot in RoutineSlot.objects.filter(
+            school=request.school, academic_year=year, section=section
+        ).select_related("period"):
             current[(slot.weekday, slot.period_id)] = slot
+            if slot.period.is_active and (
+                slot.weekday in weekend or times_on(slot.period, slot.weekday, timings) is None
+            ):
+                stray += 1
 
     rows = []
     for period in periods:
         cells = []
-        for weekday, label in WEEKDAYS:
+        for weekday, label in weekdays:
             slot = current.get((weekday, period.pk))
+            times = times_on(period, weekday, timings)
             cells.append(
                 {
                     "weekday": weekday,
                     "label": label,
                     "prefix": f"{weekday}-{period.pk}",
                     "slot": slot,
+                    "off": times is None,
+                    "times": times if times and times != (period.start_time, period.end_time) else None,
                     "error": cell_errors.get((weekday, period.pk)),
                 }
             )
@@ -251,7 +273,8 @@ def grid_edit(request):
             # is never built into one.
             "sections": Section.objects.filter(school=request.school, is_active=True).select_related("class_level"),
             "years": AcademicYear.objects.filter(school=request.school),
-            "weekdays": WEEKDAYS,
+            "weekdays": weekdays,
+            "stray": stray,
             "rows": rows,
             "subjects": subjects,
             "teachers": teachers,
@@ -307,4 +330,128 @@ def utilisation(request):
         request,
         "timetable/utilisation.html",
         {"rooms": rooms, "load": load, "year": year, "page_title": "Routine utilisation"},
+    )
+
+
+def _clock(raw):
+    from datetime import time
+
+    raw = (raw or "").strip()
+    try:
+        hour, minute = raw.split(":")[:2]
+        return time(int(hour), int(minute))
+    except (TypeError, ValueError):
+        return None
+
+
+def _number(raw):
+    raw = (raw or "").strip()
+    return int(raw) if raw.isdigit() else None
+
+
+@require_permission("timetable.change_period", also="the school's managers")
+def school_week(request):
+    """
+    The school week on one page: which days the school meets, the periods of the day and
+    their times, days that keep other timings, and lessons left on days no longer held.
+    """
+    from django.core.exceptions import ValidationError
+
+    from core.forms import school_days_field, school_days_of, weekend_for
+
+    from .services import build_day, clear_stray_slots, plan_day, save_day_times, stray_slots
+
+    school = request.school
+    weekdays = dict(WEEKDAYS)
+    chosen_day = _number(request.GET.get("day") or request.POST.get("day"))
+    if chosen_day not in weekdays:
+        chosen_day = next((n for n, _label in school_weekdays(school)), 4)
+    periods = list(Period.objects.filter(school=school, is_active=True).order_by("order"))
+
+    if request.method == "POST":
+        action = request.POST.get("action", "")
+        try:
+            if action == "days":
+                field = school_days_field()
+                days = field.clean(request.POST.getlist("school_days"))
+                school.weekend_days = weekend_for(days)
+                school.save(update_fields=["weekend_days", "updated_at"])
+                messages.success(request, "School days saved.")
+            elif action == "build":
+                first_start = _clock(request.POST.get("first_start"))
+                minutes, count = _number(request.POST.get("minutes")), _number(request.POST.get("count"))
+                if first_start is None or minutes is None or count is None:
+                    raise ValidationError("Give when the first period starts, how long a period lasts and how many.")
+                breaks = []
+                for suffix in ("", "_2"):
+                    after = _number(request.POST.get(f"break_after{suffix}"))
+                    if after:
+                        breaks.append(
+                            (
+                                after,
+                                _number(request.POST.get(f"break_minutes{suffix}")) or 0,
+                                request.POST.get(f"break_name{suffix}", ""),
+                            )
+                        )
+                made = build_day(school=school, user=request.user, plan=plan_day(first_start, minutes, count, breaks))
+                messages.success(
+                    request, f"{len(made)} periods set, from {made[0].start_time:%H:%M} to {made[-1].end_time:%H:%M}."
+                )
+            elif action == "day_times":
+                rows = {
+                    period: (
+                        _clock(request.POST.get(f"start_{period.pk}")),
+                        _clock(request.POST.get(f"end_{period.pk}")),
+                        request.POST.get(f"off_{period.pk}") == "on",
+                    )
+                    for period in periods
+                }
+                changed = save_day_times(school=school, user=request.user, weekday=chosen_day, rows=rows)
+                messages.success(request, f"{weekdays[chosen_day]} saved: {changed} period(s) changed.")
+            elif action == "clear_stray":
+                cleared = clear_stray_slots(school=school, user=request.user)
+                messages.success(request, f"{cleared} lesson(s) removed from the routine.")
+            else:
+                raise ValidationError("Choose what to save.")
+        except ValidationError as problem:
+            for message in problem.messages:
+                messages.error(request, message)
+        except PermissionDenied:
+            messages.error(request, "Your role cannot change the school week.")
+        return redirect(f"{request.path}?day={chosen_day}")
+
+    timings = day_times(school)
+    day_rows = []
+    for period in periods:
+        times = times_on(period, chosen_day, timings)
+        day_rows.append(
+            {
+                "period": period,
+                "start": times[0] if times else period.start_time,
+                "end": times[1] if times else period.end_time,
+                "off": times is None,
+                "changed": (period.pk, chosen_day) in timings,
+            }
+        )
+    special = {}
+    for row in timings.values():
+        special.setdefault(row.weekday, 0)
+        special[row.weekday] += 1
+    days_field = school_days_field()
+    return render(
+        request,
+        "timetable/week.html",
+        {
+            "weekdays": WEEKDAYS,
+            "school_days": school_days_of(school),
+            "days_help": days_field.help_text,
+            "periods": periods,
+            "used": RoutineSlot.objects.filter(school=school).exists(),
+            "chosen_day": chosen_day,
+            "chosen_label": weekdays[chosen_day],
+            "day_rows": day_rows,
+            "special": [(weekdays[day], count, day) for day, count in sorted(special.items())],
+            "stray": len(stray_slots(school)),
+            "page_title": "School week and periods",
+        },
     )

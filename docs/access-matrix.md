@@ -243,6 +243,7 @@ asserts that list, so a view that forgets its permission decorator cannot quietl
 | /routine/slot/<int:pk>/edit/ | timetable:slot_update | `timetable.change_routineslot` | - | Y | Y | Y | . | . | . | . | . |
 | /routine/slot/new/ | timetable:slot_create | `timetable.add_routineslot` | - | Y | Y | Y | . | . | . | . | . |
 | /routine/utilisation/ | timetable:utilisation | `timetable.view_routineslot` | timetable editors only | Y | Y | Y | . | Y | Y | Y | Y |
+| /routine/week/ | timetable:week | `timetable.change_period` | the school's managers | Y | Y | Y | . | . | . | . | . |
 | /settings/ | settings:hub | `(sign-in only)` | - | o | o | o | o | o | o | o | o |
 | /settings/audit/ | settings:audit | `core.view_auditlog` | - | Y | . | . | . | . | . | . | . |
 | /settings/class-subject/ | settings:class_subject_list | `academics.change_classsubject` | - | Y | Y | Y | . | . | . | . | . |

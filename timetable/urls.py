@@ -10,6 +10,7 @@ app_name = "timetable"
 ROUTINE_ACTIONS = (
     ("Routine", "timetable:routine", "timetable.view_routineslot"),
     ("Edit week", "timetable:grid_edit", "timetable.change_routineslot"),
+    ("School week", "timetable:week", "timetable.change_period"),
     ("Utilisation", "timetable:utilisation", "timetable.view_routineslot"),
 )
 
@@ -18,6 +19,7 @@ urlpatterns = [
     path("edit/", views.grid_edit, name="grid_edit"),
     path("free-teachers.json", views.free_teachers_json, name="free_teachers"),
     path("utilisation/", views.utilisation, name="utilisation"),
+    path("week/", views.school_week, name="week"),
 ]
 
 for model, key, fields, cols in [

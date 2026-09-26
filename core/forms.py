@@ -139,6 +139,31 @@ class SchoolModelForm(TailwindFormMixin, forms.ModelForm):
             self.add_error(None, " ".join(exc.messages))
 
 
+def school_days_field():
+    from timetable.models import WEEKDAYS
+
+    return forms.TypedMultipleChoiceField(
+        label="School days",
+        coerce=int,
+        choices=WEEKDAYS,
+        widget=forms.CheckboxSelectMultiple,
+        help_text=(
+            "The days the school meets. The others are the weekend: no register is expected, no "
+            "homework falls due and the routine does not show them."
+        ),
+        error_messages={"required": "Tick at least one school day."},
+    )
+
+
+def weekend_for(days):
+    """The school's weekend, as stored, for the days it meets."""
+    return ",".join(str(number) for number in range(1, 8) if number not in set(days))
+
+
+def school_days_of(school):
+    return [number for number in range(1, 8) if number not in school.weekend_day_numbers]
+
+
 class SchoolForm(TailwindFormMixin, forms.ModelForm):
     class Meta:
         model = School
@@ -157,13 +182,28 @@ class SchoolForm(TailwindFormMixin, forms.ModelForm):
             "currency_symbol",
             "country",
             "timezone",
-            "weekend_days",
             "assessment_system",
             "bangla_enabled",
             "default_language",
             "retention_years",
         ]
         widgets = {"address": forms.Textarea(attrs={"rows": 3})}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        field = school_days_field()
+        field.initial = school_days_of(self.instance)
+        field.widget.attrs["class"] = "space-y-1"
+        self.fields["school_days"] = field
+        names = [name for name in self.fields if name != "school_days"]
+        names.insert(names.index("timezone") + 1, "school_days")
+        self.order_fields(names)
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("school_days"):
+            self.instance.weekend_days = weekend_for(cleaned["school_days"])
+        return cleaned
 
 
 class SMSSettingsForm(TailwindFormMixin, forms.ModelForm):

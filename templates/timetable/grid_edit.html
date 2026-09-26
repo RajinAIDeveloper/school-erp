@@ -21,8 +21,9 @@
   <input type="hidden" name="section" value="{{ section.pk }}">
   <div class="card-header">
     <h2 class="font-semibold">{{ section }} &middot; {{ year }}</h2>
-    <p class="text-sm text-slate-500">Leaving a subject blank clears that period.</p>
+    <p class="text-sm text-slate-500">Leaving a subject blank clears that period. Only the days the school meets are shown.</p>
   </div>
+  {% if stray %}<p class="border-b border-amber-200 bg-amber-50 px-5 py-2 text-sm text-amber-900">{{ stray }} lesson{{ stray|pluralize }} of this section fall on a day the school no longer meets, or in a period not held that day. Saving the week removes them.</p>{% endif %}
 
   <div class="overflow-x-auto">
     <table class="table">
@@ -44,7 +45,11 @@
               </td>
             {% else %}
               {% for cell in row.cells %}
+                {% if cell.off %}
+                <td class="align-top bg-slate-50 text-center text-xs italic text-slate-400">Not held on {{ cell.label }}</td>
+                {% else %}
                 <td class="align-top {% if cell.error %}bg-red-50{% endif %}">
+                  {% if cell.times %}<p class="mb-1 text-xs font-medium text-amber-700">{{ cell.times.0|time:"H:i" }}–{{ cell.times.1|time:"H:i" }}</p>{% endif %}
                   <select name="{{ cell.prefix }}-subject" class="input mb-1 py-1 text-xs">
                     <option value="">—</option>
                     {% for subject in subjects %}
@@ -65,6 +70,7 @@
                   </select>
                   {% if cell.error %}<p class="mt-1 text-xs text-red-700">{{ cell.error }}</p>{% endif %}
                 </td>
+                {% endif %}
               {% endfor %}
             {% endif %}
           </tr>

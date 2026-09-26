@@ -197,21 +197,25 @@ def subject_family(subject):
 
 def _lesson_starts(section, subject, academic_year):
     """Weekday -> the start of the section's first lesson in the subject that day."""
-    from timetable.models import RoutineSlot
+    from timetable.models import RoutineSlot, day_times, times_on
 
+    timings = day_times(section.school)
     own = {subject.pk} | set(subject.papers.values_list("pk", flat=True))
     # Its own lessons first; failing those, lessons of the rest of the subject (the other paper).
     for ids in (own, subject_family(subject)):
         starts = {}
-        for weekday, start in RoutineSlot.objects.filter(
+        for slot in RoutineSlot.objects.filter(
             school=section.school,
             academic_year=academic_year,
             section=section,
             subject_id__in=ids,
             period__is_active=True,
-        ).values_list("weekday", "period__start_time"):
-            if weekday not in starts or start < starts[weekday]:
-                starts[weekday] = start
+        ).select_related("period"):
+            times = times_on(slot.period, slot.weekday, timings)
+            if times is None:
+                continue
+            if slot.weekday not in starts or times[0] < starts[slot.weekday]:
+                starts[slot.weekday] = times[0]
         if starts:
             return starts
     return {}

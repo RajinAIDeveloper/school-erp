@@ -1,0 +1,92 @@
+{% extends "layouts/base.html" %}
+{% block header_actions %}
+  <a href="{% url 'timetable:routine' %}" class="btn-secondary btn-sm">Routine</a>
+  <a href="{% url 'timetable:room_list' %}" class="btn-secondary btn-sm">Rooms</a>
+{% endblock %}
+{% block content %}
+{% if stray %}
+  <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+    <span>{{ stray }} lesson{{ stray|pluralize }} in the routine fall on a day the school no longer meets, or in a period not held that day. They are not shown and no class is expected.</span>
+    <form method="post" data-confirm="Remove these lessons from the routine?">{% csrf_token %}<input type="hidden" name="action" value="clear_stray"><button class="btn-secondary btn-sm">Remove them</button></form>
+  </div>
+{% endif %}
+
+<div class="grid gap-6 lg:grid-cols-2">
+  <form method="post" class="card">
+    {% csrf_token %}<input type="hidden" name="action" value="days">
+    <div class="card-header"><h2 class="font-semibold">1. The days the school meets</h2></div>
+    <div class="card-body text-sm">
+      <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {% for number, label in weekdays %}
+          <label class="flex items-center gap-2"><input type="checkbox" name="school_days" value="{{ number }}" class="h-4 w-4" {% if number in school_days %}checked{% endif %}> {{ label }}</label>
+        {% endfor %}
+      </div>
+      <p class="mt-3 text-xs text-slate-500">{{ days_help }}</p>
+    </div>
+    <div class="flex justify-end border-t border-slate-200 px-5 py-4"><button class="btn-primary">Save school days</button></div>
+  </form>
+
+  <section class="card">
+    <div class="card-header"><h2 class="font-semibold">2. The periods of the day</h2>
+      <a href="{% url 'timetable:period_create' %}" class="link text-sm">Add one period</a></div>
+    <ul class="divide-y divide-slate-100 text-sm">
+      {% for p in periods %}
+        <li class="flex items-center justify-between px-5 py-2 {% if p.is_break %}bg-slate-50 italic text-slate-500{% endif %}">
+          <span>{{ p.order }}. {{ p.name }}</span>
+          <span>{{ p.start_time|time:"H:i" }}–{{ p.end_time|time:"H:i" }} <a class="link ml-3 text-xs not-italic" href="{% url 'timetable:period_update' p.pk %}">Edit</a></span>
+        </li>
+      {% empty %}
+        <li class="px-5 py-4 text-slate-500">No period yet. Build the day below.</li>
+      {% endfor %}
+    </ul>
+    <p class="border-t border-slate-200 px-5 py-3 text-xs text-slate-500">These are every school day's periods. A day with other timings is set in part 4.</p>
+  </section>
+</div>
+
+<form method="post" class="card mt-6">
+  {% csrf_token %}<input type="hidden" name="action" value="build">
+  <div class="card-header"><h2 class="font-semibold">3. Build the day</h2>
+    <span class="text-xs text-slate-500">{% if used %}The periods are used in the routine, so they are changed one by one, in part 2.{% else %}Replaces the periods above.{% endif %}</span></div>
+  <div class="card-body grid gap-4 text-sm sm:grid-cols-3">
+    <label class="block">First period starts at<input class="input mt-1" type="time" name="first_start" value="08:00" required {% if used %}disabled{% endif %}></label>
+    <label class="block">Each period lasts (minutes)<input class="input mt-1" type="number" min="10" max="180" name="minutes" value="45" required {% if used %}disabled{% endif %}></label>
+    <label class="block">Periods in a day<input class="input mt-1" type="number" min="1" max="15" name="count" value="7" required {% if used %}disabled{% endif %}></label>
+    <label class="block">Break after period<input class="input mt-1" type="number" min="1" max="14" name="break_after" value="4" {% if used %}disabled{% endif %}></label>
+    <label class="block">Break lasts (minutes)<input class="input mt-1" type="number" min="5" max="120" name="break_minutes" value="30" {% if used %}disabled{% endif %}></label>
+    <label class="block">Called<input class="input mt-1" name="break_name" value="Tiffin" maxlength="50" {% if used %}disabled{% endif %}></label>
+    <label class="block">A second break after period (optional)<input class="input mt-1" type="number" min="1" max="14" name="break_after_2" {% if used %}disabled{% endif %}></label>
+    <label class="block">Second break lasts (minutes)<input class="input mt-1" type="number" min="5" max="120" name="break_minutes_2" {% if used %}disabled{% endif %}></label>
+    <label class="block">Called<input class="input mt-1" name="break_name_2" value="Prayer break" maxlength="50" {% if used %}disabled{% endif %}></label>
+  </div>
+  {% if not used %}<div class="flex justify-end border-t border-slate-200 px-5 py-4"><button class="btn-primary" {% if periods %}data-confirm="Replace the periods above with this day?"{% endif %}>Build the day</button></div>{% endif %}
+</form>
+
+<form method="post" class="card mt-6 overflow-x-auto">
+  {% csrf_token %}<input type="hidden" name="action" value="day_times"><input type="hidden" name="day" value="{{ chosen_day }}">
+  <div class="card-header"><h2 class="font-semibold">4. A day with other timings</h2>
+    <span class="text-xs text-slate-500">For a shorter Thursday or a half day. Days not set here keep the usual times.</span></div>
+  <div class="flex flex-wrap gap-2 px-5 pt-4 text-xs">
+    {% for number, label in weekdays %}{% if number in school_days %}
+      <a href="?day={{ number }}" class="rounded-full px-3 py-1 {% if number == chosen_day %}bg-indigo-600 text-white{% else %}bg-slate-100 text-slate-700{% endif %}">{{ label }}</a>
+    {% endif %}{% endfor %}
+  </div>
+  {% if special %}<p class="px-5 pt-2 text-xs text-slate-500">Other timings already set: {% for label, count, day in special %}{{ label }} ({{ count }} period{{ count|pluralize }}){% if not forloop.last %} · {% endif %}{% endfor %}</p>{% endif %}
+  <table class="table mt-2">
+    <thead><tr><th>Period</th><th>Usually</th><th>On {{ chosen_label }}: starts</th><th>ends</th><th>Not held</th></tr></thead>
+    <tbody>
+      {% for r in day_rows %}
+        <tr class="{% if r.changed %}bg-amber-50{% endif %}">
+          <td class="font-medium">{{ r.period.name }}</td>
+          <td class="text-slate-500">{{ r.period.start_time|time:"H:i" }}–{{ r.period.end_time|time:"H:i" }}</td>
+          <td><input class="input w-32" type="time" name="start_{{ r.period.pk }}" value="{{ r.start|time:'H:i' }}" aria-label="Starts"></td>
+          <td><input class="input w-32" type="time" name="end_{{ r.period.pk }}" value="{{ r.end|time:'H:i' }}" aria-label="Ends"></td>
+          <td><input type="checkbox" name="off_{{ r.period.pk }}" class="h-4 w-4" {% if r.off %}checked{% endif %} aria-label="Not held"></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5">{% include "components/empty.html" with message="Build the day first." %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if day_rows %}<div class="flex justify-end border-t border-slate-200 px-5 py-4"><button class="btn-primary">Save {{ chosen_label }}</button></div>{% endif %}
+</form>
+{% endblock %}

@@ -37,6 +37,49 @@ class Period(SchoolScopedModel):
         return f"{self.name} ({self.start_time:%H:%M}-{self.end_time:%H:%M})"
 
 
+class PeriodDayTime(SchoolScopedModel):
+    """
+    A period at other times on one day of the week, or not held that day: a shorter Thursday,
+    a half day, a late start after assembly. Days without one keep the period's own times.
+    """
+
+    period = models.ForeignKey(Period, on_delete=models.CASCADE, related_name="day_times")
+    weekday = models.PositiveSmallIntegerField(choices=WEEKDAYS)
+    start_time = models.TimeField(null=True, blank=True)
+    end_time = models.TimeField(null=True, blank=True)
+    not_held = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["weekday", "period__order"]
+        constraints = [models.UniqueConstraint(fields=["period", "weekday"], name="one_timing_per_period_day")]
+
+    def __str__(self):
+        if self.not_held:
+            return f"{self.period.name}: not held on {self.get_weekday_display()}"
+        return f"{self.period.name} on {self.get_weekday_display()}: {self.start_time:%H:%M}-{self.end_time:%H:%M}"
+
+
+def school_weekdays(school):
+    """The days the school meets, in the order of a Bangladeshi week: Saturday first."""
+    weekend = school.weekend_day_numbers
+    return [(number, label) for number, label in WEEKDAYS if number not in weekend]
+
+
+def day_times(school):
+    """Every different timing the school has set: {(period id, weekday): PeriodDayTime}."""
+    return {(row.period_id, row.weekday): row for row in PeriodDayTime.objects.filter(school=school)}
+
+
+def times_on(period, weekday, timings):
+    """(start, end) of a period on a day, or None when it is not held that day."""
+    row = timings.get((period.pk, weekday))
+    if row is None:
+        return period.start_time, period.end_time
+    if row.not_held:
+        return None
+    return row.start_time, row.end_time
+
+
 class Room(SchoolScopedModel):
     name = models.CharField(max_length=50)
     capacity = models.PositiveSmallIntegerField(default=40)
@@ -80,14 +123,29 @@ class RoutineSlot(SchoolScopedModel):
         super().clean()
         if not (self.academic_year_id and self.period_id and self.weekday):
             return
-        others = RoutineSlot.objects.filter(
-            academic_year_id=self.academic_year_id,
-            weekday=self.weekday,
-            period__start_time__lt=self.period.end_time,
-            period__end_time__gt=self.period.start_time,
-        ).exclude(pk=self.pk)
         if self.period.is_break:
             raise ValidationError({"period": "Cannot schedule teaching during a break."})
+        school = self.period.school
+        day = dict(WEEKDAYS).get(self.weekday, "that day")
+        if self.weekday in school.weekend_day_numbers:
+            raise ValidationError({"weekday": f"The school does not meet on {day}."})
+        # Busy means busy at that time on that day, which a day's own timings can change.
+        timings = day_times(school)
+        mine = times_on(self.period, self.weekday, timings)
+        if mine is None:
+            raise ValidationError({"period": f"{self.period.name} is not held on {day}."})
+        start, end = mine
+        same_day = (
+            RoutineSlot.objects.filter(academic_year_id=self.academic_year_id, weekday=self.weekday)
+            .exclude(pk=self.pk)
+            .select_related("period", "section__class_level")
+        )
+        overlapping = []
+        for other in same_day:
+            theirs = times_on(other.period, other.weekday, timings)
+            if theirs and theirs[0] < end and start < theirs[1]:
+                overlapping.append(other)
+        others = RoutineSlot.objects.filter(pk__in=[other.pk for other in overlapping])
         if self.section_id and others.filter(section_id=self.section_id).exists():
             raise ValidationError({"section": "This section already has a lesson during this time."})
         if self.teacher_id:

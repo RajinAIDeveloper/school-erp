@@ -209,9 +209,9 @@ SETTINGS_CARDS = [
         "module": "admissions",
     },
     {
-        "title": "Periods and rooms",
-        "description": "The school day's periods, breaks and teaching rooms.",
-        "url": "timetable:period_list",
+        "title": "School week and periods",
+        "description": "The days the school meets, the periods of the day and their times, days with other timings, and rooms.",
+        "url": "timetable:week",
         "permission": "timetable.change_period",
     },
     {
